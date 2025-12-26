@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SkyBlock Mobile RPG</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Добавляем Supabase -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg: #0b0b0d; --card: #16161a; --accent: #ffaa00;
@@ -56,35 +54,14 @@
         .inv-tab.active { border-color: var(--accent); color: var(--white); }
         .item-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 8px; }
         .act-btn { background: #333; border: 1px solid #555; color: white; padding: 4px; font-size: 0.65rem; border-radius: 4px; }
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 9999;
-        }
-        .sync-status {
-            position: fixed; top: 10px; right: 10px; background: var(--dark-gray);
-            padding: 4px 8px; border-radius: 4px; font-size: 0.7rem;
-            color: var(--green); display: none;
-        }
     </style>
 </head>
 <body>
-    <div id="sync-status" class="sync-status">🔄 Синхронизация...</div>
-    
-    <div id="loading" class="loading-overlay">
-        <h2 style="color: var(--accent);">SkyBlock RPG</h2>
-        <p id="loading-text">Загрузка...</p>
-        <div style="width: 200px; height: 4px; background: #333; margin-top: 20px; border-radius: 2px; overflow: hidden;">
-            <div id="loading-bar" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.3s;"></div>
-        </div>
-    </div>
-
     <div id="header-ui">
         <button class="top-btn" onclick="game.showModal('skillsModal')">⚙️ СКИЛЛЫ</button>
         <div class="sb-lvl-badge">LVL <span id="sb-lvl">0.00</span></div>
         <button class="top-btn" onclick="game.showModal('leadModal')">🏆 ТОП</button>
     </div>
-    
     <div id="viewport">
         <div id="home" class="screen active">
             <div class="card" style="text-align: center;">
@@ -95,7 +72,6 @@
                 <div class="stat-grid" id="stats-display"></div>
             </div>
         </div>
-        
         <div id="portal" class="screen">
             <h3 style="text-align:center; margin-top:0;">🌀 ПОРТАЛ</h3>
             <div class="portal-grid">
@@ -110,7 +86,6 @@
                 <div class="portal-node" onclick="game.msg('Скоро...')">🗳️ МЭР</div>
             </div>
         </div>
-        
         <div id="action-loc" class="screen">
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
             <h2 id="loc-title" style="text-align:center; text-transform:uppercase;">ШАХТА</h2>
@@ -122,7 +97,6 @@
             </div>
             <div id="loc-log" style="text-align:center; color:var(--green); min-height: 20px; margin-top:10px;"></div>
         </div>
-        
         <div id="dungeons-menu" class="screen">
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
             <h3>💀 КАТАКОМБЫ</h3>
@@ -131,7 +105,6 @@
                 <button class="cooldown-btn" onclick="game.startDungeon()">ВОЙТИ В ДАНЖ</button>
             </div>
         </div>
-        
         <div id="battle-screen" class="screen">
             <h2 id="mob-name" style="text-align:center; color:var(--red);">МОНСТР</h2>
             <div class="card">
@@ -144,20 +117,17 @@
             </div>
             <button class="cooldown-btn" style="height:80px" onclick="game.dungeonAttack()">💥 УДАРИТЬ</button>
         </div>
-        
         <div id="loot-screen" class="screen">
             <h2 style="text-align:center; color:var(--accent);">ПОБЕДА!</h2>
             <p style="text-align:center; font-size:1.2rem;">🎁 Деревянный сундук добавлен в инвентарь!</p>
             <button class="cooldown-btn" onclick="game.switchTab('portal')">ВЕРНУТЬСЯ НА ПОРТАЛ</button>
         </div>
-        
         <div id="minions" class="screen">
             <div class="card" style="border-color:var(--accent); text-align:center">
                 КОШЕЛЕК: <span id="m-coins-val" style="color:var(--accent)">0</span> 💰
             </div>
             <div id="minions-list"></div>
         </div>
-        
         <div id="inventory" class="screen">
             <div class="inv-tabs">
                 <div class="inv-tab active" onclick="game.filterInv('weapon', this)">ОРУЖИЕ</div>
@@ -177,7 +147,6 @@
         <h3>📊 ТВОИ НАВЫКИ</h3>
         <div id="skills-content"></div>
     </div>
-    
     <div id="leadModal" class="modal">
         <span style="float:right; font-weight:bold; cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
         <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
@@ -196,15 +165,10 @@
     </nav>
 
     <script>
-        // ==================== КОНФИГУРАЦИЯ SUPABASE ====================
-        const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
-        // ⚠️ ЗАМЕНИ НА СВОЙ КЛЮЧ из Supabase → Settings → API → anon public key
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZGRhYmd2c2JxbWFxZnZqZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg2MDA0NjQsImV4cCI6MjA1NDE3NjQ2NH0.bARm_-H7XoEGs8q8jXWTVt6L1XYdQX4-tP9xOft5uPg';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
-        const SAVE_KEY = 'skyblock_save_v4';
-        
+        const userTag = tg.initDataUnsafe?.user?.username ? "@" + tg.initDataUnsafe.user.username : "@Player";
+        const SAVE_KEY = 'skyblock_save_v3';
+
         const defaultState = {
             coins: 0,
             nextItemId: 10,
@@ -215,11 +179,11 @@
                 combat: { lvl: 1, xp: 0, next: 100, label: 'БОЙ' },
                 foraging: { lvl: 1, xp: 0, next: 100, label: 'ЛЕС' }
             },
-            stats: { hp: 100, str: 10, def: 0, cc: 5, cd: 50, mf: 0, max_hp: 100 },
+            stats: { hp: 100, str: 10, def: 0, cc: 5, cd: 50, mf: 0 },
             inventory: [
                 { id: 1, name: 'Старый меч', type: 'weapon', str: 15, equipped: false },
                 { id: 2, name: 'Начальная кирка', type: 'tool', equipped: true },
-                { id: 3, name: 'Зелье лечения', type: 'potion' }
+                { id: 3, name: 'Зелье лечения', type: 'potion', equipped: false }
             ],
             minions: [
                 { id: 'wheat', name: 'ПШЕНИЧНЫЙ', cost: 50, count: 0, stored: 0, rate: 0.5 },
@@ -235,201 +199,30 @@
             isBusy: false,
             currentLoc: '',
             lastFilter: 'weapon',
-            lastCloudSave: 0,
-            isOnline: false,
-            
-            // ==================== SUPABASE ФУНКЦИИ ====================
-            async initializePlayer() {
-                const userId = tg.initDataUnsafe?.user?.id;
-                const username = tg.initDataUnsafe?.user?.username || 'Player';
-                
-                if (!userId) {
-                    console.log('Нет Telegram ID, работаем оффлайн');
-                    return false;
-                }
-                
-                try {
-                    // Проверяем, есть ли игрок в базе
-                    const { data, error } = await supabase
-                        .from('players')
-                        .select('*')
-                        .eq('user_id', userId)
-                        .single();
-                    
-                    if (error && error.code !== 'PGRST116') { // PGRST116 = не найдено
-                        throw error;
-                    }
-                    
-                    if (data) {
-                        // Загружаем из базы
-                        this.state.coins = data.coins || 0;
-                        
-                        if (data.data) {
-                            this.state.skills = data.data.skills || this.state.skills;
-                            this.state.stats = data.data.stats || this.state.stats;
-                            this.state.inventory = data.data.inventory || this.state.inventory;
-                            this.state.minions = data.data.minions || this.state.minions;
-                            this.state.nextItemId = data.data.nextItemId || this.state.nextItemId;
-                        }
-                        
-                        console.log('Данные загружены из облака');
-                        this.isOnline = true;
-                        return true;
-                    } else {
-                        // Создаем нового игрока
-                        const saveData = {
-                            user_id: userId,
-                            name: '@' + username,
-                            coins: 0,
-                            total_level: 1,
-                            data: {
-                                stats: this.state.stats,
-                                skills: this.state.skills,
-                                inventory: this.state.inventory,
-                                minions: this.state.minions,
-                                nextItemId: this.state.nextItemId,
-                                created_at: new Date().toISOString()
-                            }
-                        };
-                        
-                        const { error: insertError } = await supabase
-                            .from('players')
-                            .insert(saveData);
-                        
-                        if (insertError) throw insertError;
-                        
-                        console.log('Новый игрок создан в облаке');
-                        this.isOnline = true;
-                        return true;
-                    }
-                } catch (err) {
-                    console.error('Ошибка Supabase:', err);
-                    this.isOnline = false;
-                    return false;
-                }
-            },
-            
-            async saveToCloud() {
-                if (!this.isOnline || !tg.initDataUnsafe?.user?.id) return;
-                
-                const userId = tg.initDataUnsafe.user.id;
-                const username = tg.initDataUnsafe.user.username || 'Player';
-                const totalLevel = Object.values(this.state.skills)
-                    .reduce((sum, skill) => sum + skill.lvl, 0) - 5;
-                
-                const saveData = {
-                    user_id: userId,
-                    name: '@' + username,
-                    coins: this.state.coins,
-                    total_level: Math.max(1, Math.floor(totalLevel / 10)),
-                    data: {
-                        stats: this.state.stats,
-                        skills: this.state.skills,
-                        inventory: this.state.inventory,
-                        minions: this.state.minions,
-                        nextItemId: this.state.nextItemId,
-                        last_save: new Date().toISOString()
-                    }
-                };
-                
-                try {
-                    document.getElementById('sync-status').style.display = 'block';
-                    
-                    const { error } = await supabase
-                        .from('players')
-                        .upsert(saveData, { onConflict: 'user_id' });
-                    
-                    if (error) throw error;
-                    
-                    document.getElementById('sync-status').style.color = 'var(--green)';
-                    document.getElementById('sync-status').textContent = '✓ Синхронизировано';
-                    
-                    setTimeout(() => {
-                        document.getElementById('sync-status').style.display = 'none';
-                    }, 2000);
-                    
-                } catch (err) {
-                    console.error('Ошибка сохранения в облако:', err);
-                    document.getElementById('sync-status').style.color = 'var(--red)';
-                    document.getElementById('sync-status').textContent = '✗ Ошибка синхронизации';
-                    this.isOnline = false;
-                }
-            },
-            
-            async getLeaderboard(type = 'coins') {
-                try {
-                    const { data, error } = await supabase
-                        .from('players')
-                        .select('name, coins, total_level')
-                        .order(type === 'coins' ? 'coins' : 'total_level', { ascending: false })
-                        .limit(20);
-                    
-                    if (error) throw error;
-                    
-                    return data.map((player, index) => ({
-                        rank: index + 1,
-                        name: player.name || '@Player',
-                        value: type === 'coins' 
-                            ? `${Math.floor(player.coins).toLocaleString()} 💰`
-                            : `LVL ${player.total_level}`
-                    }));
-                } catch (err) {
-                    console.error('Ошибка загрузки лидерборда:', err);
-                    return [];
-                }
-            },
-            
-            // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
-            async load() {
-                // Показываем загрузку
-                document.getElementById('loading').style.display = 'flex';
-                document.getElementById('loading-bar').style.width = '30%';
-                document.getElementById('loading-text').textContent = 'Загрузка локальных данных...';
-                
-                // 1. Загружаем из localStorage
+
+            load() {
                 const saved = localStorage.getItem(SAVE_KEY);
                 if (saved) {
                     try {
                         this.state = JSON.parse(saved);
-                        console.log("Локальный прогресс загружен");
+                        console.log("Прогресс загружен!");
                     } catch (e) {
-                        console.error("Ошибка загрузки локальных данных", e);
+                        console.error("Ошибка загрузки", e);
                         this.state = { ...defaultState };
                     }
                 }
-                
-                // 2. Пробуем загрузить из облака
-                document.getElementById('loading-bar').style.width = '60%';
-                document.getElementById('loading-text').textContent = 'Синхронизация с облаком...';
-                
-                if (tg.initDataUnsafe?.user?.id) {
-                    await this.initializePlayer();
-                }
-                
-                // 3. Скрываем загрузку
-                document.getElementById('loading-bar').style.width = '100%';
-                setTimeout(() => {
-                    document.getElementById('loading').style.display = 'none';
-                    this.updateUI();
-                }, 500);
             },
 
             save() {
-                // Сохраняем локально
                 localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
-                
-                // Сохраняем в облако каждые 30 секунд
-                if (!this.lastCloudSave || Date.now() - this.lastCloudSave > 30000) {
-                    this.saveToCloud();
-                    this.lastCloudSave = Date.now();
-                }
             },
 
-            async init() {
-                tg.expand();
-                await this.load();
+            init() {
+                this.load();
+                this.updateUI();
                 setInterval(() => this.minionTick(), 1000);
                 setInterval(() => this.save(), 5000); // Автосохранение каждые 5 сек
+                tg.expand();
             },
 
             addMaterial(name, type = 'material') {
@@ -450,7 +243,6 @@
                 let s = { ...this.state.stats };
                 this.state.inventory.forEach(i => {
                     if (i.equipped && i.str) s.str += i.str;
-                    if (i.equipped && i.def) s.def += i.def;
                 });
                 return s;
             },
@@ -464,7 +256,7 @@
                 document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
 
                 document.getElementById('stats-display').innerHTML = `
-                    <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${s.hp}/${s.max_hp}</span></div>
+                    <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${s.hp}</span></div>
                     <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${s.str}</span></div>
                     <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${s.def}</span></div>
                     <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${s.cc}%</span></div>
@@ -474,7 +266,7 @@
 
                 this.renderMinions();
                 this.renderInvList(this.lastFilter);
-                this.save(); // Сохраняем при каждом обновлении UI
+                this.save();
             },
 
             goLoc(loc) {
@@ -514,8 +306,8 @@
                 if (skill.xp >= skill.next) {
                     skill.lvl++;
                     skill.xp = 0;
-                    skill.next = Math.floor(skill.next * 1.6);
-                    this.msg(`🎉 LEVEL UP! ${skill.label} теперь ${skill.lvl} уровень!`);
+                    skill.next *= 1.6;
+                    this.msg("LEVEL UP! " + skill.label);
                 }
 
                 const materials = { mine: 'Уголь', farm: 'Пшеница', fish: 'Рыба' };
@@ -544,8 +336,8 @@
                 const s = this.calcStats();
                 let dmg = s.str;
                 if (Math.random() * 100 < s.cc) {
-                    dmg = Math.floor(dmg * (1 + s.cd / 100));
-                    this.msg("💥 КРИТИЧЕСКИЙ УДАР!");
+                    dmg *= (1 + s.cd / 100);
+                    this.msg("КРИТИЧЕСКИЙ УДАР!");
                 }
                 this.dungeon.mobHp -= dmg;
 
@@ -560,13 +352,13 @@
                     } else {
                         this.dungeon.mobHp = this.dungeon.mobIdx === 3 ? 80 : 50;
                         this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + this.dungeon.pMaxHp * 0.2);
-                        this.msg("🎯 МОБ УБИТ! +20% ХП");
+                        this.msg("МОБ УБИТ! +20% ХП");
                         this.updateBattleUI();
                     }
                 }
 
                 if (this.dungeon.pHp <= 0) {
-                    this.msg("☠️ ТЫ УМЕР!");
+                    this.msg("ТЫ УМЕР!");
                     this.switchTab('portal');
                 } else {
                     this.updateBattleUI();
@@ -576,13 +368,6 @@
 
             giveDungeonReward() {
                 this.state.coins += 150;
-                this.state.skills.combat.xp += 50;
-                if (this.state.skills.combat.xp >= this.state.skills.combat.next) {
-                    this.state.skills.combat.lvl++;
-                    this.state.skills.combat.xp = 0;
-                    this.state.skills.combat.next = Math.floor(this.state.skills.combat.next * 1.6);
-                    this.msg("🎖️ БОЕВОЙ УРОВЕНЬ ПОВЫШЕН!");
-                }
                 this.addMaterial('Деревянный сундук', 'chest');
                 this.updateUI();
             },
@@ -625,10 +410,10 @@
                 if (this.state.coins >= m.cost && m.count < 13) {
                     this.state.coins -= m.cost;
                     m.count++;
-                    m.cost = Math.floor(m.cost * 1.5);
+                    m.cost *= 1.5;
                     m.rate *= 1.2;
                     this.updateUI();
-                    this.msg("👷 Миньон улучшен!");
+                    this.msg("Миньон улучшен!");
                 }
             },
 
@@ -639,7 +424,7 @@
                     this.state.coins += coinsGain;
                     m.stored = 0;
                     this.updateUI();
-                    this.msg(`💰 +${coinsGain} от миньона!`);
+                    this.msg(`+${coinsGain} 💰 от миньона!`);
                 }
             },
 
@@ -685,16 +470,16 @@
                             <button class="act-btn" onclick="game.toggleEquip(${item.id})">
                                 ${item.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}
                             </button>
-                            <button class="act-btn" onclick="game.upgradeItem(${item.id})">УЛУЧШИТЬ</button>
+                            <button class="act-btn" onclick="game.msg('Улучшено!')">УЛУЧШИТЬ</button>
                         `;
                     } else if (item.type === 'potion') {
-                        actions = `<button class="act-btn" onclick="game.usePotion(${item.id})">ПИТЬ</button>`;
+                        actions = `<button class="act-btn">ПИТЬ</button>`;
                     }
 
                     list.innerHTML += `
                         <div class="card">
                             <b>${item.name}${countText}</b><br>
-                            <small>${item.str ? '+' + item.str + ' СИЛЫ' : ''}${item.def ? ' +' + item.def + ' БРОНИ' : ''}</small>
+                            <small>${item.str ? '+' + item.str + ' СИЛЫ' : 'ПРЕДМЕТ'}</small>
                             <div class="item-actions">
                                 ${actions}
                             </div>
@@ -716,7 +501,7 @@
                 }
 
                 this.updateUI();
-                this.msg(`🎁 Открыт сундук! +${reward} 💰`);
+                this.msg(`Открыт сундук! +${reward} 💰`);
             },
 
             sellItem(id) {
@@ -734,7 +519,7 @@
                 }
 
                 this.updateUI();
-                this.msg(`💰 Продано! +${sellPrice * count} монет`);
+                this.msg(`Продано! +${sellPrice * count} 💰`);
             },
 
             toggleEquip(id) {
@@ -743,47 +528,11 @@
 
                 if (item.type === 'weapon') {
                     this.state.inventory.forEach(x => {
-                        if (x.type === 'weapon') x.equipped = false;
+                        if (x.type === 'weapon' && x.id !== id) x.equipped = false;
                     });
-                } else if (item.type === 'armor') {
-                    // Для брони можно реализовать слоты
                 }
-                
                 item.equipped = !item.equipped;
                 this.updateUI();
-                this.msg(item.equipped ? `✅ ${item.name} экипирован` : `❌ ${item.name} снят`);
-            },
-            
-            upgradeItem(id) {
-                const item = this.state.inventory.find(x => x.id === id);
-                if (!item) return;
-                
-                const upgradeCost = 100;
-                if (this.state.coins >= upgradeCost) {
-                    this.state.coins -= upgradeCost;
-                    if (item.str) item.str += 5;
-                    if (item.def) item.def += 3;
-                    this.updateUI();
-                    this.msg(`⚡ ${item.name} улучшен!`);
-                } else {
-                    this.msg('❌ Недостаточно монет для улучшения');
-                }
-            },
-            
-            usePotion(id) {
-                const item = this.state.inventory.find(x => x.id === id);
-                if (!item || item.type !== 'potion') return;
-                
-                this.state.stats.hp = Math.min(this.state.stats.max_hp, this.state.stats.hp + 30);
-                
-                if (item.count > 1) {
-                    item.count -= 1;
-                } else {
-                    this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-                }
-                
-                this.updateUI();
-                this.msg('❤️ Здоровье восстановлено!');
             },
 
             switchTab(id, el) {
@@ -819,39 +568,23 @@
                 document.getElementById(id).style.display = 'none';
             },
 
-            async switchLead(type) {
+            switchLead(t) {
                 document.querySelectorAll('#leadModal .inv-tab').forEach(b => b.classList.remove('active'));
-                document.getElementById('l-tab-' + (type === 'coins' ? 'coins' : 'lvl')).classList.add('active');
-                
-                const leaders = await this.getLeaderboard(type);
-                let html = '';
-                
-                if (leaders.length > 0) {
-                    leaders.forEach(leader => {
-                        html += `
-                            <div class="card">
-                                <b>${leader.rank}. ${leader.name}</b> 
-                                <span style="float:right; color:var(--accent)">${leader.value}</span>
-                            </div>`;
-                    });
+                document.getElementById('l-tab-' + (t === 'coins' ? 'coins' : 'lvl')).classList.add('active');
+
+                let value;
+                if (t === 'coins') {
+                    value = Math.floor(this.state.coins).toLocaleString() + ' 💰';
                 } else {
-                    // Оффлайн режим
                     const totalLvl = Object.values(this.state.skills).reduce((a, b) => a + b.lvl, 0) - 5;
-                    const value = type === 'coins' 
-                        ? `${Math.floor(this.state.coins).toLocaleString()} 💰` 
-                        : `LVL ${(totalLvl / 10).toFixed(2)}`;
-                    
-                    html = `
-                        <div class="card">
-                            <b>1. ${tg.initDataUnsafe?.user?.username ? '@' + tg.initDataUnsafe.user.username : 'Вы'}</b> 
-                            <span style="float:right; color:var(--accent)">${value}</span>
-                        </div>
-                        <div class="card" style="text-align:center; color:#666;">
-                            Подключитесь к Telegram для полной таблицы лидеров
-                        </div>`;
+                    value = (totalLvl / 10).toFixed(2);
                 }
-                
-                document.getElementById('lead-list').innerHTML = html;
+
+                document.getElementById('lead-list').innerHTML = `
+                    <div class="card">
+                        <b>1. ${userTag}</b> 
+                        <span style="float:right; color:var(--accent)">${value}</span>
+                    </div>`;
             },
 
             msg(t) {
@@ -859,7 +592,6 @@
             }
         };
 
-        // Запускаем игру
         game.init();
     </script>
 </body>
