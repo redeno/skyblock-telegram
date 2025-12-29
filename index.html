@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SkyBlock Mobile RPG</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg: #0b0b0d; --card: #16161a; --accent: #ffaa00;
@@ -54,6 +56,7 @@
         .inv-tab.active { border-color: var(--accent); color: var(--white); }
         .item-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 8px; }
         .act-btn { background: #333; border: 1px solid #555; color: white; padding: 4px; font-size: 0.65rem; border-radius: 4px; }
+        .loader { text-align: center; color: var(--accent); padding: 30px; }
     </style>
 </head>
 <body>
@@ -147,6 +150,7 @@
         <h3>📊 ТВОИ НАВЫКИ</h3>
         <div id="skills-content"></div>
     </div>
+
     <div id="leadModal" class="modal">
         <span style="float:right; font-weight:bold; cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
         <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
@@ -154,7 +158,7 @@
             <div class="inv-tab active" id="l-tab-coins" onclick="game.switchLead('coins')">ПО МОНЕТАМ</div>
             <div class="inv-tab" id="l-tab-lvl" onclick="game.switchLead('lvl')">ПО УРОВНЮ</div>
         </div>
-        <div id="lead-list"></div>
+        <div id="lead-list" class="loader">Загрузка лидеров...</div>
     </div>
 
     <nav id="nav">
@@ -166,12 +170,25 @@
 
     <script>
         const tg = window.Telegram.WebApp;
-        const userTag = tg.initDataUnsafe?.user?.username ? "@" + tg.initDataUnsafe.user.username : "@Player";
-        const SAVE_KEY = 'skyblock_save_v3';
+        tg.expand();
+
+        // ТВОИ ДАННЫЕ SUPABASE (уже вставлены)
+        const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZGRhYmd2c2JxbWFxZnZqZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MzA3NDQsImV4cCI6MjA4MjMwNjc0NH0.tKP5nhhZuyPEoySNuQ7ajo6XOkz-cNyZw4kA35OFOFE';
+
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const userId = tg.initDataUnsafe?.user?.id;
+        const username = tg.initDataUnsafe?.user?.username ? "@" + tg.initDataUnsafe.user.username : "Player";
+
+        if (!userId) {
+            alert("Ошибка: игра должна запускаться внутри Telegram!");
+            throw new Error("No Telegram user ID");
+        }
 
         const defaultState = {
             coins: 0,
-            nextItemId: 10,
+            next_item_id: 10,
             skills: {
                 mining: { lvl: 1, xp: 0, next: 100, label: 'ШАХТА' },
                 farming: { lvl: 1, xp: 0, next: 100, label: 'ФЕРМА' },
@@ -200,29 +217,61 @@
             currentLoc: '',
             lastFilter: 'weapon',
 
-            load() {
-                const saved = localStorage.getItem(SAVE_KEY);
-                if (saved) {
-                    try {
-                        this.state = JSON.parse(saved);
-                        console.log("Прогресс загружен!");
-                    } catch (e) {
-                        console.error("Ошибка загрузки", e);
-                        this.state = { ...defaultState };
+            async loadFromSupabase() {
+                const { data, error } = await supabase
+                    .from('players')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+
+                if (error && error.code === 'PGRST116') { // Новый игрок
+                    const { error: insErr } = await supabase
+                        .from('players')
+                        .insert({ id: userId, username, ...defaultState });
+                    if (insErr) {
+                        console.error('Ошибка регистрации:', insErr);
+                        tg.showAlert('Не удалось зарегистрироваться');
+                        return;
                     }
+                    this.state = { ...defaultState };
+                } else if (error) {
+                    console.error('Ошибка загрузки:', error);
+                    tg.showAlert('Ошибка загрузки данных');
+                    this.state = { ...defaultState };
+                } else {
+                    this.state = {
+                        coins: data.coins ?? 0,
+                        next_item_id: data.next_item_id ?? 10,
+                        skills: data.skills ?? defaultState.skills,
+                        stats: data.stats ?? defaultState.stats,
+                        inventory: data.inventory ?? defaultState.inventory,
+                        minions: data.minions ?? defaultState.minions
+                    };
                 }
-            },
-
-            save() {
-                localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
-            },
-
-            init() {
-                this.load();
                 this.updateUI();
+            },
+
+            async saveToSupabase() {
+                const { error } = await supabase
+                    .from('players')
+                    .update({
+                        username,
+                        coins: this.state.coins,
+                        next_item_id: this.state.next_item_id,
+                        skills: this.state.skills,
+                        stats: this.state.stats,
+                        inventory: this.state.inventory,
+                        minions: this.state.minions
+                    })
+                    .eq('id', userId);
+
+                if (error) console.error('Ошибка сохранения:', error);
+            },
+
+            async init() {
+                await this.loadFromSupabase();
                 setInterval(() => this.minionTick(), 1000);
-                setInterval(() => this.save(), 5000); // Автосохранение каждые 5 сек
-                tg.expand();
+                setInterval(() => this.saveToSupabase(), 8000);
             },
 
             addMaterial(name, type = 'material') {
@@ -231,9 +280,9 @@
                     existing.count = (existing.count || 1) + 1;
                 } else {
                     this.state.inventory.push({
-                        id: this.state.nextItemId++,
-                        name: name,
-                        type: type,
+                        id: this.state.next_item_id++,
+                        name,
+                        type,
                         count: 1
                     });
                 }
@@ -266,7 +315,6 @@
 
                 this.renderMinions();
                 this.renderInvList(this.lastFilter);
-                this.save();
             },
 
             goLoc(loc) {
@@ -288,16 +336,16 @@
                     prog.style.transition = 'width 1.5s linear';
                     prog.style.width = '100%';
                 }, 20);
-                setTimeout(() => {
+                setTimeout(async () => {
                     this.isBusy = false;
                     btn.disabled = false;
                     prog.style.transition = 'none';
                     prog.style.width = '0%';
-                    this.finishAction();
+                    await this.finishAction();
                 }, 1520);
             },
 
-            finishAction() {
+            async finishAction() {
                 const map = { mine: 'mining', farm: 'farming', fish: 'fishing' };
                 const skill = this.state.skills[map[this.currentLoc]];
                 const gain = 15 * skill.lvl;
@@ -306,16 +354,15 @@
                 if (skill.xp >= skill.next) {
                     skill.lvl++;
                     skill.xp = 0;
-                    skill.next *= 1.6;
+                    skill.next = Math.floor(skill.next * 1.6);
                     this.msg("LEVEL UP! " + skill.label);
                 }
-
                 const materials = { mine: 'Уголь', farm: 'Пшеница', fish: 'Рыба' };
                 const matName = materials[this.currentLoc];
                 this.addMaterial(matName);
-
                 document.getElementById('loc-log').innerText = `+${gain} 💰 | +20 XP | +1 ${matName}`;
                 this.updateUI();
+                await this.saveToSupabase();
                 tg.HapticFeedback.impactOccurred('light');
             },
 
@@ -332,7 +379,7 @@
                 this.switchTab('battle-screen');
             },
 
-            dungeonAttack() {
+            async dungeonAttack() {
                 const s = this.calcStats();
                 let dmg = s.str;
                 if (Math.random() * 100 < s.cc) {
@@ -340,14 +387,13 @@
                     this.msg("КРИТИЧЕСКИЙ УДАР!");
                 }
                 this.dungeon.mobHp -= dmg;
-
                 const enemyDmg = this.dungeon.mobIdx === 3 ? 6 : 4;
                 this.dungeon.pHp -= Math.max(1, enemyDmg - s.def);
 
                 if (this.dungeon.mobHp <= 0) {
                     this.dungeon.mobIdx++;
                     if (this.dungeon.mobIdx >= this.dungeon.mobs.length) {
-                        this.giveDungeonReward();
+                        await this.giveDungeonReward();
                         this.switchTab('loot-screen');
                     } else {
                         this.dungeon.mobHp = this.dungeon.mobIdx === 3 ? 80 : 50;
@@ -356,7 +402,6 @@
                         this.updateBattleUI();
                     }
                 }
-
                 if (this.dungeon.pHp <= 0) {
                     this.msg("ТЫ УМЕР!");
                     this.switchTab('portal');
@@ -366,10 +411,11 @@
                 tg.HapticFeedback.impactOccurred('medium');
             },
 
-            giveDungeonReward() {
+            async giveDungeonReward() {
                 this.state.coins += 150;
                 this.addMaterial('Деревянный сундук', 'chest');
                 this.updateUI();
+                await this.saveToSupabase();
             },
 
             updateBattleUI() {
@@ -405,25 +451,27 @@
                 });
             },
 
-            buyMinion(i) {
+            async buyMinion(i) {
                 const m = this.state.minions[i];
                 if (this.state.coins >= m.cost && m.count < 13) {
                     this.state.coins -= m.cost;
                     m.count++;
-                    m.cost *= 1.5;
+                    m.cost = Math.floor(m.cost * 1.5);
                     m.rate *= 1.2;
                     this.updateUI();
+                    await this.saveToSupabase();
                     this.msg("Миньон улучшен!");
                 }
             },
 
-            collectMinion(i) {
+            async collectMinion(i) {
                 const m = this.state.minions[i];
                 if (m.stored >= 0.1) {
                     const coinsGain = Math.floor(m.stored * 20);
                     this.state.coins += coinsGain;
                     m.stored = 0;
                     this.updateUI();
+                    await this.saveToSupabase();
                     this.msg(`+${coinsGain} 💰 от миньона!`);
                 }
             },
@@ -461,78 +509,55 @@
                 items.forEach(item => {
                     const countText = item.count > 1 ? ` (${item.count})` : '';
                     let actions = '';
-                    if (item.type === 'material') {
-                        actions = `<button class="act-btn" onclick="game.sellItem(${item.id})">ПРОДАТЬ</button>`;
-                    } else if (item.type === 'chest') {
-                        actions = `<button class="act-btn" onclick="game.openChest(${item.id})">ОТКРЫТЬ</button>`;
-                    } else if (['weapon', 'tool', 'armor'].includes(item.type)) {
+                    if (item.type === 'material') actions = `<button class="act-btn" onclick="game.sellItem(${item.id})">ПРОДАТЬ</button>`;
+                    else if (item.type === 'chest') actions = `<button class="act-btn" onclick="game.openChest(${item.id})">ОТКРЫТЬ</button>`;
+                    else if (['weapon', 'tool', 'armor'].includes(item.type)) {
                         actions = `
-                            <button class="act-btn" onclick="game.toggleEquip(${item.id})">
-                                ${item.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}
-                            </button>
+                            <button class="act-btn" onclick="game.toggleEquip(${item.id})">${item.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
                             <button class="act-btn" onclick="game.msg('Улучшено!')">УЛУЧШИТЬ</button>
                         `;
-                    } else if (item.type === 'potion') {
-                        actions = `<button class="act-btn">ПИТЬ</button>`;
                     }
-
                     list.innerHTML += `
                         <div class="card">
                             <b>${item.name}${countText}</b><br>
                             <small>${item.str ? '+' + item.str + ' СИЛЫ' : 'ПРЕДМЕТ'}</small>
-                            <div class="item-actions">
-                                ${actions}
-                            </div>
+                            <div class="item-actions">${actions}</div>
                         </div>`;
                 });
             },
 
-            openChest(id) {
+            async openChest(id) {
                 const item = this.state.inventory.find(x => x.id === id);
                 if (!item || item.type !== 'chest') return;
-
-                const reward = Math.floor(Math.random() * 51) + 50; // 50-100
+                const reward = Math.floor(Math.random() * 51) + 50;
                 this.state.coins += reward;
-
-                if (item.count > 1) {
-                    item.count -= 1;
-                } else {
-                    this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-                }
-
+                if (item.count > 1) item.count--; else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
                 this.updateUI();
+                await this.saveToSupabase();
                 this.msg(`Открыт сундук! +${reward} 💰`);
             },
 
-            sellItem(id) {
+            async sellItem(id) {
                 const item = this.state.inventory.find(x => x.id === id);
                 if (!item || item.type !== 'material') return;
-
                 const sellPrice = 2;
                 const count = item.count || 1;
                 this.state.coins += sellPrice * count;
-
-                if (count > 1) {
-                    item.count -= 1;
-                } else {
-                    this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-                }
-
+                if (count > 1) item.count--; else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
                 this.updateUI();
+                await this.saveToSupabase();
                 this.msg(`Продано! +${sellPrice * count} 💰`);
             },
 
-            toggleEquip(id) {
+            async toggleEquip(id) {
                 const item = this.state.inventory.find(x => x.id === id);
                 if (!item || !['weapon', 'tool', 'armor'].includes(item.type)) return;
-
                 if (item.type === 'weapon') {
-                    this.state.inventory.forEach(x => {
-                        if (x.type === 'weapon' && x.id !== id) x.equipped = false;
-                    });
+                    this.state.inventory.forEach(x => { if (x.type === 'weapon' && x.id !== id) x.equipped = false; });
                 }
                 item.equipped = !item.equipped;
                 this.updateUI();
+                await this.saveToSupabase();
             },
 
             switchTab(id, el) {
@@ -561,30 +586,51 @@
                     });
                     document.getElementById('skills-content').innerHTML = h;
                 }
-                if (id === 'leadModal') this.switchLead('coins');
             },
 
             closeModal(id) {
                 document.getElementById(id).style.display = 'none';
             },
 
-            switchLead(t) {
-                document.querySelectorAll('#leadModal .inv-tab').forEach(b => b.classList.remove('active'));
-                document.getElementById('l-tab-' + (t === 'coins' ? 'coins' : 'lvl')).classList.add('active');
+            async loadLeaderboard(type) {
+                document.getElementById('lead-list').innerHTML = '<div class="loader">Загрузка...</div>';
 
-                let value;
-                if (t === 'coins') {
-                    value = Math.floor(this.state.coins).toLocaleString() + ' 💰';
+                let data;
+                if (type === 'coins') {
+                    const res = await supabase.from('players').select('username, coins').order('coins', { ascending: false }).limit(20);
+                    data = res.data;
                 } else {
-                    const totalLvl = Object.values(this.state.skills).reduce((a, b) => a + b.lvl, 0) - 5;
-                    value = (totalLvl / 10).toFixed(2);
+                    const res = await supabase.from('players').select('username, coins, skills');
+                    data = res.data;
+                    if (data) {
+                        data.forEach(p => {
+                            const totalLvl = Object.values(p.skills || defaultState.skills).reduce((a, b) => a + b.lvl, 0) - 5;
+                            p.sb_level = totalLvl / 10;
+                        });
+                        data.sort((a, b) => b.sb_level - a.sb_level);
+                        data = data.slice(0, 20);
+                    }
                 }
 
-                document.getElementById('lead-list').innerHTML = `
-                    <div class="card">
-                        <b>1. ${userTag}</b> 
-                        <span style="float:right; color:var(--accent)">${value}</span>
-                    </div>`;
+                if (!data || data.length === 0) {
+                    document.getElementById('lead-list').innerHTML = '<div class="card">Нет данных</div>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach((p, i) => {
+                    let value = type === 'coins' ? Math.floor(p.coins).toLocaleString() + ' 💰' : p.sb_level.toFixed(2);
+                    const name = p.username || 'Игрок';
+                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                    html += `<div class="card"><b>${medal} ${name}</b><span style="float:right; color:var(--accent)">${value}</span></div>`;
+                });
+                document.getElementById('lead-list').innerHTML = html;
+            },
+
+            async switchLead(type) {
+                document.querySelectorAll('#leadModal .inv-tab').forEach(b => b.classList.remove('active'));
+                document.getElementById('l-tab-' + type).classList.add('active');
+                await this.loadLeaderboard(type);
             },
 
             msg(t) {
