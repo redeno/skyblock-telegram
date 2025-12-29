@@ -182,10 +182,9 @@
     const telegramId = user.id;
     const telegramUsername = user.username || 'guest';
 
-    // Supabase init
     const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZGRhYmd2c2JxbWFxZnZqZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MzA3NDQsImV4cCI6MjA4MjMwNjc0NH0.tKP5nhhZuyPEoySNuQ7ajo6XOkz-cNyZw4kA35OFOFE';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const defaultState = {
         coins: 0,
@@ -220,7 +219,7 @@
 
         async load() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('players')
                     .select()
                     .eq('telegram_id', telegramId)
@@ -228,12 +227,10 @@
                     .single();
                 if (error && error.code !== 'PGRST116') throw error;
                 if (!data) {
-                    // Создаем нового игрока
-                    const { error: err } = await supabase.from('players').insert({
+                    await supabaseClient.from('players').insert({
                         telegram_id: telegramId,
                         username: telegramUsername
                     });
-                    if (err) console.error(err);
                     this.state = { ...defaultState };
                     return;
                 }
@@ -241,24 +238,23 @@
                     coins: data.coins ?? 0,
                     nextItemId: data.next_item_id ?? 10,
                     skills: data.skills ?? defaultState.skills,
-                    stats: data.stats ?? defaultState.stats,
+                    stats: defaultState.stats,
                     inventory: data.inventory ?? defaultState.inventory,
-                    minions: data.minions ?? defaultState.minions,
+                    minions: data.minions ?? defaultState.minions
                 };
             } catch (e) {
-                console.error("Ошибка загрузки из Supabase", e);
+                console.error('Ошибка загрузки из Supabase', e);
                 this.state = { ...defaultState };
             }
         },
 
         async save() {
             try {
-                const { error } = await supabase.from('players').upsert({
+                const { error } = await supabaseClient.from('players').upsert({
                     telegram_id: telegramId,
                     username: telegramUsername,
                     coins: this.state.coins,
                     skills: this.state.skills,
-                    stats: this.state.stats,
                     inventory: this.state.inventory,
                     minions: this.state.minions,
                     next_item_id: this.state.nextItemId,
@@ -266,7 +262,7 @@
                 }, { onConflict: 'telegram_id' });
                 if (error) throw error;
             } catch (e) {
-                console.error("Ошибка сохранения в Supabase", e);
+                console.error('Ошибка сохранения в Supabase', e);
             }
         },
 
@@ -286,8 +282,8 @@
             } else {
                 this.state.inventory.push({
                     id: this.state.nextItemId++,
-                    name: name,
-                    type: type,
+                    name,
+                    type,
                     count: 1
                 });
             }
@@ -478,9 +474,9 @@
             let updated = false;
             this.state.minions.forEach(m => {
                 if (m.count > 0) {
-                    const old = m.stored;
+                    const last = m.stored;
                     m.stored = Math.min(64, m.stored + m.rate * m.count / 30);
-                    if (Math.floor(m.stored * 10) > Math.floor(old * 10)) updated = true;
+                    if (Math.floor(last * 10) !== Math.floor(m.stored * 10)) updated = true;
                 }
             });
             if (document.querySelector('#minions.active') || updated) {
@@ -500,12 +496,12 @@
             const list = document.getElementById('inv-list');
             list.innerHTML = '';
             const items = this.state.inventory.filter(i => i.type === type);
-            if (items.length === 0) {
+            if (!items.length) {
                 list.innerHTML = '<div class="card" style="text-align:center; color:#666;">Пусто</div>';
                 return;
             }
             items.forEach(item => {
-                const countText = item.count > 1 ? ` (${item.count})` : '';
+                const countText = item.count && item.count > 1 ? ` (${item.count})` : '';
                 let actions = '';
                 if (item.type === 'material') {
                     actions = `<button class="act-btn" onclick="game.sellItem(${item.id})">ПРОДАТЬ</button>`;
@@ -516,8 +512,7 @@
                         <button class="act-btn" onclick="game.toggleEquip(${item.id})">
                             ${item.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}
                         </button>
-                        <button class="act-btn" onclick="game.msg('Улучшено!')">УЛУЧШИТЬ</button>
-                    `;
+                        <button class="act-btn" onclick="game.msg('Улучшено!')">УЛУЧШИТЬ</button>`;
                 } else if (item.type === 'potion') {
                     actions = `<button class="act-btn">ПИТЬ</button>`;
                 }
@@ -535,13 +530,10 @@
         openChest(id) {
             const item = this.state.inventory.find(x => x.id === id);
             if (!item || item.type !== 'chest') return;
-            const reward = Math.floor(Math.random() * 51) + 50; // 50-100 монет
+            const reward = Math.floor(Math.random() * 51) + 50;
             this.state.coins += reward;
-            if (item.count > 1) {
-                item.count -= 1;
-            } else {
-                this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-            }
+            if (item.count > 1) item.count--;
+            else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
             this.updateUI();
             this.msg(`Открыт сундук! +${reward} 💰`);
         },
@@ -552,11 +544,8 @@
             const sellPrice = 2;
             const count = item.count || 1;
             this.state.coins += sellPrice * count;
-            if (count > 1) {
-                item.count -= 1;
-            } else {
-                this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-            }
+            if (count > 1) item.count -= 1;
+            else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
             this.updateUI();
             this.msg(`Продано! +${sellPrice * count} 💰`);
         },
@@ -585,10 +574,10 @@
         showModal(id) {
             document.getElementById(id).style.display = 'block';
             if (id === 'skillsModal') {
-                let h = '';
+                let content = '';
                 Object.values(this.state.skills).forEach(s => {
-                    const progress = (s.xp / s.next * 100).toFixed(1);
-                    h += `
+                    const progress = ((s.xp / s.next) * 100).toFixed(1);
+                    content += `
                         <div class="card">
                             <b>${s.label} LVL ${s.lvl}</b><br>
                             <small>${Math.floor(s.xp)} / ${Math.floor(s.next)} XP</small>
@@ -597,7 +586,7 @@
                             </div>
                         </div>`;
                 });
-                document.getElementById('skills-content').innerHTML = h;
+                document.getElementById('skills-content').innerHTML = content;
             }
             if (id === 'leadModal') this.switchLead('coins');
         },
@@ -606,25 +595,21 @@
             document.getElementById(id).style.display = 'none';
         },
 
-        switchLead(t) {
+        switchLead(type) {
             document.querySelectorAll('#leadModal .inv-tab').forEach(b => b.classList.remove('active'));
-            document.getElementById('l-tab-' + (t === 'coins' ? 'coins' : 'lvl')).classList.add('active');
+            document.getElementById('l-tab-' + (type === 'coins' ? 'coins' : 'lvl')).classList.add('active');
             let value;
-            if (t === 'coins') {
-                value = Math.floor(this.state.coins).toLocaleString() + ' 💰';
-            } else {
-                const totalLvl = Object.values(this.state.skills).reduce((a, b) => a + b.lvl, 0) - 5;
-                value = (totalLvl / 10).toFixed(2);
-            }
+            if (type === 'coins') value = Math.floor(this.state.coins).toLocaleString() + ' 💰';
+            else value = ((Object.values(this.state.skills).reduce((a, b) => a + b.lvl, 0) - 5) / 10).toFixed(2);
             document.getElementById('lead-list').innerHTML = `
                 <div class="card">
-                    <b>1. ${telegramUsername}</b> 
+                    <b>1. ${telegramUsername}</b>
                     <span style="float:right; color:var(--accent)">${value}</span>
                 </div>`;
         },
 
-        msg(t) {
-            tg.showAlert(t);
+        msg(text) {
+            tg.showAlert(text);
         }
     };
 
@@ -632,3 +617,4 @@
 </script>
 </body>
 </html>
+
