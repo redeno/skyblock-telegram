@@ -1,1093 +1,649 @@
 <!DOCTYPE html>
-
 <html lang="ru">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
     <title>SkyBlock Mobile RPG</title>
-
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-
         :root {
-
             --bg: #0b0b0d; --card: #16161a; --accent: #ffaa00;
-
             --blue: #5555ff; --red: #ff5555; --gray: #aaaaaa; --white: #ffffff;
-
             --green: #55ff55; --dark-gray: #333333;
-
         }
-
         body {
-
             margin: 0; padding: 0; background: var(--bg); color: var(--white);
-
             font-family: 'Courier New', Courier, monospace;
-
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-
         }
-
         #header-ui {
-
             padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;
-
             background: rgba(0,0,0,0.8); border-bottom: 2px solid var(--dark-gray);
-
         }
-
         .sb-lvl-badge { color: var(--accent); font-weight: bold; border: 1px solid var(--accent); padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; }
-
         .top-btn { background: var(--dark-gray); border: 1px solid #555; color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; }
-
         #viewport { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 90px; }
-
         .screen { display: none; }
-
         .screen.active { display: block; }
-
         .card { background: var(--card); border: 2px solid var(--dark-gray); padding: 15px; margin-bottom: 12px; border-radius: 8px; }
-
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; }
-
         .stat-label { color: var(--gray); }
-
         .stat-val { color: var(--red); font-weight: bold; }
-
         .cooldown-btn {
-
             position: relative; width: 100%; height: 55px; background: #222; border: 2px solid #444;
-
             color: white; font-weight: bold; cursor: pointer; overflow: hidden; margin-top: 5px; border-radius: 8px;
-
         }
-
         .progress-overlay { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: rgba(255, 170, 0, 0.3); }
-
         .portal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-
         .portal-node { background: #222; border: 2px solid #444; padding: 15px; text-align: center; font-size: 0.9rem; cursor: pointer; border-radius: 8px; }
-
         #nav {
-
             position: fixed; bottom: 0; width: 100%; height: 70px;
-
             background: #1c1c1c; display: flex; border-top: 3px solid var(--dark-gray);
-
         }
-
         .nav-item {
-
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-
             color: #777; font-size: 0.7rem; background: none; border: none; text-transform: uppercase; font-weight: bold;
-
         }
-
         .nav-item.active { color: var(--accent); background: #252525; }
-
         .nav-item span { font-size: 1.4rem; margin-bottom: 2px; }
-
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; padding: 20px; overflow-y: auto; }
-
         .hp-bar { width: 100%; height: 12px; background: #333; border: 1px solid #555; margin: 8px 0; border-radius: 6px; overflow: hidden; }
-
         .hp-fill { height: 100%; background: var(--red); transition: width 0.2s; }
-
         .inv-tabs { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 15px; padding-bottom: 5px; }
-
         .inv-tab { background: #222; border: 1px solid #444; color: #888; padding: 6px 12px; font-size: 0.7rem; white-space: nowrap; border-radius: 4px; }
-
         .inv-tab.active { border-color: var(--accent); color: var(--white); }
-
         .item-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 8px; }
-
         .act-btn { background: #333; border: 1px solid #555; color: white; padding: 4px; font-size: 0.65rem; border-radius: 4px; }
-
     </style>
-
 </head>
-
 <body>
-
     <div id="header-ui">
-
         <button class="top-btn" onclick="game.showModal('skillsModal')">⚙️ СКИЛЛЫ</button>
-
         <div class="sb-lvl-badge">LVL <span id="sb-lvl">0.00</span></div>
-
         <button class="top-btn" onclick="game.showModal('leadModal')">🏆 ТОП</button>
-
     </div>
-
     <div id="viewport">
-
         <div id="home" class="screen active">
-
             <div class="card" style="text-align: center;">
-
                 <h1 style="margin:0; color:var(--accent);">💰 <span id="coins-val">0</span></h1>
-
                 <small style="color:var(--gray)">ТВОИ МОНЕТЫ</small>
-
             </div>
-
             <div class="card">
-
                 <div class="stat-grid" id="stats-display"></div>
-
             </div>
-
         </div>
-
         <div id="portal" class="screen">
-
             <h3 style="text-align:center; margin-top:0;">🌀 ПОРТАЛ</h3>
-
             <div class="portal-grid">
-
                 <div class="portal-node" onclick="game.goLoc('mine')">⛏️ ШАХТА</div>
-
                 <div class="portal-node" onclick="game.goLoc('farm')">🌾 ФЕРМА</div>
-
                 <div class="portal-node" onclick="game.goLoc('fish')">🎣 РЫБАЛКА</div>
-
                 <div class="portal-node" onclick="game.switchTab('dungeons-menu')">💀 ДАНЖИ</div>
-
                 <div class="portal-node" onclick="game.msg('Скоро...')">👹 СЛЕЙЕРЫ</div>
-
                 <div class="portal-node" onclick="game.msg('Скоро...')">🛒 МАГАЗИН</div>
-
                 <div class="portal-node" onclick="game.msg('Скоро...')">⚖️ ОБМЕН</div>
-
                 <div class="portal-node" onclick="game.msg('Скоро...')">📅 ИВЕНТ</div>
-
                 <div class="portal-node" onclick="game.msg('Скоро...')">🗳️ МЭР</div>
-
             </div>
-
         </div>
-
         <div id="action-loc" class="screen">
-
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
-
             <h2 id="loc-title" style="text-align:center; text-transform:uppercase;">ШАХТА</h2>
-
             <div class="card" style="text-align:center">
-
                 <button id="action-btn" class="cooldown-btn" onclick="game.executeAction()">
-
                     <div id="action-prog" class="progress-overlay"></div>
-
                     <span style="position:relative">РАБОТАТЬ</span>
-
                 </button>
-
             </div>
-
             <div id="loc-log" style="text-align:center; color:var(--green); min-height: 20px; margin-top:10px;"></div>
-
         </div>
-
         <div id="dungeons-menu" class="screen">
-
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
-
             <h3>💀 КАТАКОМБЫ</h3>
-
             <div class="card">
-
                 <p>ЭТАЖ I - ВХОД</p>
-
                 <button class="cooldown-btn" onclick="game.startDungeon()">ВОЙТИ В ДАНЖ</button>
-
             </div>
-
         </div>
-
         <div id="battle-screen" class="screen">
-
             <h2 id="mob-name" style="text-align:center; color:var(--red);">МОНСТР</h2>
-
             <div class="card">
-
                 <div style="display:flex; justify-content:space-between"><span>ХП ВРАГА</span><span id="m-hp-txt">50/50</span></div>
-
                 <div class="hp-bar"><div id="m-hp-fill" class="hp-fill" style="width:100%"></div></div>
-
             </div>
-
             <div class="card" style="border-color:var(--blue)">
-
                 <div style="display:flex; justify-content:space-between"><span>ТВОЁ ХП</span><span id="p-hp-txt">100/100</span></div>
-
                 <div class="hp-bar"><div id="p-hp-fill" class="hp-fill" style="width:100%; background:var(--blue)"></div></div>
-
             </div>
-
             <button class="cooldown-btn" style="height:80px" onclick="game.dungeonAttack()">💥 УДАРИТЬ</button>
-
         </div>
-
         <div id="loot-screen" class="screen">
-
             <h2 style="text-align:center; color:var(--accent);">ПОБЕДА!</h2>
-
             <p style="text-align:center; font-size:1.2rem;">🎁 Деревянный сундук добавлен в инвентарь!</p>
-
             <button class="cooldown-btn" onclick="game.switchTab('portal')">ВЕРНУТЬСЯ НА ПОРТАЛ</button>
-
         </div>
-
         <div id="minions" class="screen">
-
             <div class="card" style="border-color:var(--accent); text-align:center">
-
                 КОШЕЛЕК: <span id="m-coins-val" style="color:var(--accent)">0</span> 💰
-
             </div>
-
             <div id="minions-list"></div>
-
         </div>
-
         <div id="inventory" class="screen">
-
             <div class="inv-tabs">
-
                 <div class="inv-tab active" onclick="game.filterInv('weapon', this)">ОРУЖИЕ</div>
-
                 <div class="inv-tab" onclick="game.filterInv('armor', this)">БРОНЯ</div>
-
                 <div class="inv-tab" onclick="game.filterInv('tool', this)">ИНСТРУМЕНТЫ</div>
-
                 <div class="inv-tab" onclick="game.filterInv('material', this)">МАТЕРИАЛ</div>
-
                 <div class="inv-tab" onclick="game.filterInv('arrow', this)">СТРЕЛЫ</div>
-
                 <div class="inv-tab" onclick="game.filterInv('potion', this)">ЗЕЛЬЯ</div>
-
                 <div class="inv-tab" onclick="game.filterInv('chest', this)">СУНДУКИ</div>
-
             </div>
-
             <div id="inv-list"></div>
-
         </div>
-
     </div>
-
     <div id="skillsModal" class="modal">
-
         <span style="float:right; font-weight:bold; cursor:pointer" onclick="game.closeModal('skillsModal')">[ЗАКРЫТЬ]</span>
-
         <h3>📊 ТВОИ НАВЫКИ</h3>
-
         <div id="skills-content"></div>
-
     </div>
-
     <div id="leadModal" class="modal">
-
         <span style="float:right; font-weight:bold; cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
-
         <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
-
         <div class="inv-tabs">
-
             <div class="inv-tab active" id="l-tab-coins" onclick="game.switchLead('coins')">ПО МОНЕТАМ</div>
-
             <div class="inv-tab" id="l-tab-lvl" onclick="game.switchLead('lvl')">ПО УРОВНЮ</div>
-
         </div>
-
         <div id="lead-list"></div>
-
     </div>
-
     <nav id="nav">
-
         <button class="nav-item active" onclick="game.switchTab('home', this)"><span>🏠</span>ДОМ</button>
-
         <button class="nav-item" onclick="game.switchTab('portal', this)"><span>🌀</span>ПОРТАЛ</button>
-
         <button class="nav-item" onclick="game.switchTab('minions', this)"><span>👷</span>МИНЬОНЫ</button>
-
         <button class="nav-item" onclick="game.switchTab('inventory', this)"><span>🎒</span>ИНВЕНТАРЬ</button>
-
     </nav>
 
     <script>
-
         const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
 
-        const userTag = tg.initDataUnsafe?.user?.username ? "@" + tg.initDataUnsafe.user.username : "@Player";
+        const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZGRhYmd2c2JxbWFxZnZqZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MzA3NDQsImV4cCI6MjA4MjMwNjc0NH0.tKP5nhhZuyPEoySNuQ7ajo6XOkz-cNyZw4kA35OFOFE';
 
-        const SAVE_KEY = 'skyblock_save_v3';
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const telegramUser = tg.initDataUnsafe?.user;
+        const telegramId = telegramUser?.id;
+        let username = telegramUser?.username ? `@${telegramUser.username}` : (telegramUser?.first_name || '@Player');
+
+        if (!telegramId) {
+            tg.showAlert('Ошибка: запускай игру только из Telegram!');
+        }
 
         const defaultState = {
-
             coins: 0,
-
             nextItemId: 10,
-
             skills: {
-
                 mining: { lvl: 1, xp: 0, next: 100, label: 'ШАХТА' },
-
                 farming: { lvl: 1, xp: 0, next: 100, label: 'ФЕРМА' },
-
                 fishing: { lvl: 1, xp: 0, next: 100, label: 'РЫБАЛКА' },
-
                 combat: { lvl: 1, xp: 0, next: 100, label: 'БОЙ' },
-
                 foraging: { lvl: 1, xp: 0, next: 100, label: 'ЛЕС' }
-
             },
-
             stats: { hp: 100, str: 10, def: 0, cc: 5, cd: 50, mf: 0 },
-
             inventory: [
-
                 { id: 1, name: 'Старый меч', type: 'weapon', str: 15, equipped: false },
-
                 { id: 2, name: 'Начальная кирка', type: 'tool', equipped: true },
-
                 { id: 3, name: 'Зелье лечения', type: 'potion', equipped: false }
-
             ],
-
             minions: [
-
                 { id: 'wheat', name: 'ПШЕНИЧНЫЙ', cost: 50, count: 0, stored: 0, rate: 0.5 },
-
                 { id: 'fish', name: 'РЫБНЫЙ', cost: 75, count: 0, stored: 0, rate: 0.75 },
-
                 { id: 'oak', name: 'ДУБОВЫЙ', cost: 100, count: 0, stored: 0, rate: 1.0 },
-
                 { id: 'coal', name: 'УГОЛЬНЫЙ', cost: 125, count: 0, stored: 0, rate: 1.5 }
-
             ]
-
         };
 
         const game = {
-
             state: { ...defaultState },
-
+            playerId: null,
             dungeon: { mobIdx: 0, mobHp: 50, pHp: 100, pMaxHp: 100, mobs: ['ЗОМБИ', 'СКЕЛЕТ', 'ПАУК', 'БОСС'] },
-
             isBusy: false,
-
             currentLoc: '',
-
             lastFilter: 'weapon',
 
-            load() {
+            async loadPlayer() {
+                if (!telegramId) return;
 
-                const saved = localStorage.getItem(SAVE_KEY);
+                let { data, error } = await supabase
+                    .from('players')
+                    .select('*')
+                    .eq('telegram_id', telegramId)
+                    .single();
 
-                if (saved) {
+                if (error && error.code === 'PGRST116') { // не найдено
+                    const { data: inserted, error: insErr } = await supabase
+                        .from('players')
+                        .insert({
+                            telegram_id: telegramId,
+                            username: telegramUser?.username || telegramUser?.first_name || 'Player',
+                            coins: defaultState.coins,
+                            skills: defaultState.skills,
+                            inventory: defaultState.inventory,
+                            minions: defaultState.minions,
+                            next_item_id: defaultState.nextItemId
+                        })
+                        .select()
+                        .single();
 
-                    try {
-
-                        this.state = JSON.parse(saved);
-
-                        console.log("Прогресс загружен!");
-
-                    } catch (e) {
-
-                        console.error("Ошибка загрузки", e);
-
-                        this.state = { ...defaultState };
-
+                    if (insErr) {
+                        console.error('Ошибка создания:', insErr);
+                        tg.showAlert('Не удалось создать профиль');
+                        return;
                     }
-
+                    data = inserted;
+                } else if (error) {
+                    console.error('Ошибка загрузки:', error);
+                    tg.showAlert('Ошибка соединения');
+                    return;
                 }
 
+                this.playerId = data.id;
+                this.state.coins = Number(data.coins) || 0;
+                this.state.nextItemId = data.next_item_id || 10;
+                this.state.skills = data.skills || defaultState.skills;
+                this.state.inventory = data.inventory || defaultState.inventory;
+                this.state.minions = data.minions || defaultState.minions;
+
+                // Обновляем username из базы (на случай если он изменился)
+                username = data.username ? `@${data.username}` : username;
+
+                this.updateUI();
             },
 
-            save() {
+            async save() {
+                if (!this.playerId) return;
 
-                localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
+                const { error } = await supabase
+                    .from('players')
+                    .update({
+                        coins: this.state.coins,
+                        skills: this.state.skills,
+                        inventory: this.state.inventory,
+                        minions: this.state.minions,
+                        next_item_id: this.state.nextItemId,
+                        username: telegramUser?.username || telegramUser?.first_name || 'Player'
+                    })
+                    .eq('id', this.playerId);
 
+                if (error) console.error('Ошибка сохранения:', error);
             },
 
             init() {
-
-                this.load();
-
-                this.updateUI();
-
-                setInterval(() => this.minionTick(), 1000);
-
-                setInterval(() => this.save(), 5000); // Автосохранение каждые 5 сек
-
-                tg.expand();
-
+                this.loadPlayer().then(() => {
+                    this.updateUI();
+                    setInterval(() => this.minionTick(), 1000);
+                    setInterval(() => this.save(), 5000);
+                });
             },
 
             addMaterial(name, type = 'material') {
-
                 const existing = this.state.inventory.find(i => i.name === name && i.type === type);
-
                 if (existing) {
-
                     existing.count = (existing.count || 1) + 1;
-
                 } else {
-
                     this.state.inventory.push({
-
                         id: this.state.nextItemId++,
-
                         name: name,
-
                         type: type,
-
                         count: 1
-
                     });
-
                 }
-
             },
 
             calcStats() {
-
                 let s = { ...this.state.stats };
-
                 this.state.inventory.forEach(i => {
-
                     if (i.equipped && i.str) s.str += i.str;
-
                 });
-
                 return s;
-
             },
 
             updateUI() {
-
                 const s = this.calcStats();
-
                 document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
-
                 document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
 
                 const totalLvl = Object.values(this.state.skills).reduce((a, b) => a + b.lvl, 0) - 5;
-
                 document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
 
                 document.getElementById('stats-display').innerHTML = `
-
                     <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${s.hp}</span></div>
-
                     <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${s.str}</span></div>
-
                     <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${s.def}</span></div>
-
                     <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${s.cc}%</span></div>
-
                     <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${s.cd}%</span></div>
-
                     <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${s.mf}</span></div>
-
                 `;
 
                 this.renderMinions();
-
                 this.renderInvList(this.lastFilter);
-
-                this.save();
-
             },
 
+            // Все остальные функции без изменений (goLoc, executeAction, finishAction, startDungeon, dungeonAttack, giveDungeonReward, updateBattleUI, renderMinions, buyMinion, collectMinion, minionTick, filterInv, renderInvList, openChest, sellItem, toggleEquip, switchTab, showModal, closeModal, switchLead, msg)
+
             goLoc(loc) {
-
                 this.currentLoc = loc;
-
                 this.switchTab('action-loc');
-
                 const titles = { mine: 'ШАХТА', farm: 'ФЕРМА', fish: 'РЫБАЛКА' };
-
                 document.getElementById('loc-title').innerText = titles[loc] || 'ЛОКАЦИЯ';
-
                 document.getElementById('loc-log').innerText = '';
-
             },
 
             executeAction() {
-
                 if (this.isBusy) return;
-
                 this.isBusy = true;
-
                 const prog = document.getElementById('action-prog');
-
                 const btn = document.getElementById('action-btn');
-
                 btn.disabled = true;
-
                 prog.style.width = '0%';
-
                 setTimeout(() => {
-
                     prog.style.transition = 'width 1.5s linear';
-
                     prog.style.width = '100%';
-
                 }, 20);
-
                 setTimeout(() => {
-
                     this.isBusy = false;
-
                     btn.disabled = false;
-
                     prog.style.transition = 'none';
-
                     prog.style.width = '0%';
-
                     this.finishAction();
-
                 }, 1520);
-
             },
 
             finishAction() {
-
                 const map = { mine: 'mining', farm: 'farming', fish: 'fishing' };
-
                 const skill = this.state.skills[map[this.currentLoc]];
-
                 const gain = 15 * skill.lvl;
-
                 this.state.coins += gain;
-
                 skill.xp += 20;
-
                 if (skill.xp >= skill.next) {
-
                     skill.lvl++;
-
                     skill.xp = 0;
-
                     skill.next *= 1.6;
-
                     this.msg("LEVEL UP! " + skill.label);
-
                 }
-
                 const materials = { mine: 'Уголь', farm: 'Пшеница', fish: 'Рыба' };
-
                 const matName = materials[this.currentLoc];
-
                 this.addMaterial(matName);
-
                 document.getElementById('loc-log').innerText = `+${gain} 💰 | +20 XP | +1 ${matName}`;
-
                 this.updateUI();
-
                 tg.HapticFeedback.impactOccurred('light');
-
             },
 
             startDungeon() {
-
                 const s = this.calcStats();
-
                 this.dungeon = {
-
                     mobIdx: 0,
-
                     mobHp: 50,
-
                     pHp: s.hp,
-
                     pMaxHp: s.hp,
-
                     mobs: ['ЗОМБИ', 'СКЕЛЕТ', 'ПАУК', 'БОСС']
-
                 };
-
                 this.updateBattleUI();
-
                 this.switchTab('battle-screen');
-
             },
 
             dungeonAttack() {
-
                 const s = this.calcStats();
-
                 let dmg = s.str;
-
                 if (Math.random() * 100 < s.cc) {
-
                     dmg *= (1 + s.cd / 100);
-
                     this.msg("КРИТИЧЕСКИЙ УДАР!");
-
                 }
-
                 this.dungeon.mobHp -= dmg;
-
                 const enemyDmg = this.dungeon.mobIdx === 3 ? 6 : 4;
-
                 this.dungeon.pHp -= Math.max(1, enemyDmg - s.def);
-
                 if (this.dungeon.mobHp <= 0) {
-
                     this.dungeon.mobIdx++;
-
                     if (this.dungeon.mobIdx >= this.dungeon.mobs.length) {
-
                         this.giveDungeonReward();
-
                         this.switchTab('loot-screen');
-
                     } else {
-
                         this.dungeon.mobHp = this.dungeon.mobIdx === 3 ? 80 : 50;
-
                         this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + this.dungeon.pMaxHp * 0.2);
-
                         this.msg("МОБ УБИТ! +20% ХП");
-
                         this.updateBattleUI();
-
                     }
-
                 }
-
                 if (this.dungeon.pHp <= 0) {
-
                     this.msg("ТЫ УМЕР!");
-
                     this.switchTab('portal');
-
                 } else {
-
                     this.updateBattleUI();
-
                 }
-
                 tg.HapticFeedback.impactOccurred('medium');
-
             },
 
             giveDungeonReward() {
-
                 this.state.coins += 150;
-
                 this.addMaterial('Деревянный сундук', 'chest');
-
                 this.updateUI();
-
             },
 
             updateBattleUI() {
-
                 document.getElementById('mob-name').innerText = this.dungeon.mobs[this.dungeon.mobIdx] || '???';
-
                 const maxMobHp = this.dungeon.mobIdx === 3 ? 80 : 50;
-
                 document.getElementById('m-hp-txt').innerText = `${Math.max(0, Math.floor(this.dungeon.mobHp))}/${maxMobHp}`;
-
                 document.getElementById('m-hp-fill').style.width = Math.max(0, this.dungeon.mobHp / maxMobHp * 100) + '%';
-
                 document.getElementById('p-hp-txt').innerText = `${Math.max(0, Math.floor(this.dungeon.pHp))}/${this.dungeon.pMaxHp}`;
-
                 document.getElementById('p-hp-fill').style.width = (this.dungeon.pHp / this.dungeon.pMaxHp * 100) + '%';
-
             },
 
             renderMinions() {
-
                 const list = document.getElementById('minions-list');
-
                 list.innerHTML = '';
-
                 this.state.minions.forEach((m, i) => {
-
                     const canBuy = this.state.coins >= m.cost && m.count < 13;
-
                     const canCollect = m.stored >= 0.1;
-
                     list.innerHTML += `
-
                         <div class="card">
-
                             <div style="display:flex; justify-content:space-between">
-
                                 <b>${m.name} (${m.count}/13)</b>
-
                                 <span>📦 ${m.stored.toFixed(1)}/64</span>
-
                             </div>
-
                             <div class="item-actions">
-
                                 <button class="act-btn" ${!canBuy ? 'disabled' : ''} onclick="game.buyMinion(${i})">
-
                                     КУПИТЬ (${Math.floor(m.cost)}💰)
-
                                 </button>
-
                                 <button class="act-btn" ${!canCollect ? 'disabled' : ''} onclick="game.collectMinion(${i})">
-
                                     СОБРАТЬ (${Math.floor(m.stored * 20)}💰)
-
                                 </button>
-
                             </div>
-
                         </div>`;
-
                 });
-
             },
 
             buyMinion(i) {
-
                 const m = this.state.minions[i];
-
                 if (this.state.coins >= m.cost && m.count < 13) {
-
                     this.state.coins -= m.cost;
-
                     m.count++;
-
                     m.cost *= 1.5;
-
                     m.rate *= 1.2;
-
                     this.updateUI();
-
                     this.msg("Миньон улучшен!");
-
                 }
-
             },
 
             collectMinion(i) {
-
                 const m = this.state.minions[i];
-
                 if (m.stored >= 0.1) {
-
                     const coinsGain = Math.floor(m.stored * 20);
-
                     this.state.coins += coinsGain;
-
                     m.stored = 0;
-
                     this.updateUI();
-
                     this.msg(`+${coinsGain} 💰 от миньона!`);
-
                 }
-
             },
 
             minionTick() {
-
                 let updated = false;
-
                 this.state.minions.forEach(m => {
-
                     if (m.count > 0) {
-
                         const old = m.stored;
-
                         m.stored = Math.min(64, m.stored + m.rate * m.count / 30);
-
                         if (Math.floor(m.stored * 10) > Math.floor(old * 10)) updated = true;
-
                     }
-
                 });
-
                 if (document.querySelector('#minions.active') || updated) {
-
                     this.renderMinions();
-
                     document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
-
                 }
-
             },
 
             filterInv(type, el) {
-
                 document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
-
                 el.classList.add('active');
-
                 this.lastFilter = type;
-
                 this.renderInvList(type);
-
             },
 
             renderInvList(type) {
-
                 const list = document.getElementById('inv-list');
-
                 list.innerHTML = '';
-
                 const items = this.state.inventory.filter(i => i.type === type);
-
                 if (items.length === 0) {
-
                     list.innerHTML = '<div class="card" style="text-align:center; color:#666;">Пусто</div>';
-
                     return;
-
                 }
-
                 items.forEach(item => {
-
                     const countText = item.count > 1 ? ` (${item.count})` : '';
-
                     let actions = '';
-
                     if (item.type === 'material') {
-
                         actions = `<button class="act-btn" onclick="game.sellItem(${item.id})">ПРОДАТЬ</button>`;
-
                     } else if (item.type === 'chest') {
-
                         actions = `<button class="act-btn" onclick="game.openChest(${item.id})">ОТКРЫТЬ</button>`;
-
                     } else if (['weapon', 'tool', 'armor'].includes(item.type)) {
-
                         actions = `
-
                             <button class="act-btn" onclick="game.toggleEquip(${item.id})">
-
                                 ${item.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}
-
                             </button>
-
                             <button class="act-btn" onclick="game.msg('Улучшено!')">УЛУЧШИТЬ</button>
-
                         `;
-
                     } else if (item.type === 'potion') {
-
                         actions = `<button class="act-btn">ПИТЬ</button>`;
-
                     }
-
                     list.innerHTML += `
-
                         <div class="card">
-
                             <b>${item.name}${countText}</b><br>
-
                             <small>${item.str ? '+' + item.str + ' СИЛЫ' : 'ПРЕДМЕТ'}</small>
-
                             <div class="item-actions">
-
                                 ${actions}
-
                             </div>
-
                         </div>`;
-
                 });
-
             },
 
             openChest(id) {
-
                 const item = this.state.inventory.find(x => x.id === id);
-
                 if (!item || item.type !== 'chest') return;
-
-                const reward = Math.floor(Math.random() * 51) + 50; // 50-100
-
+                const reward = Math.floor(Math.random() * 51) + 50;
                 this.state.coins += reward;
-
                 if (item.count > 1) {
-
                     item.count -= 1;
-
                 } else {
-
                     this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-
                 }
-
                 this.updateUI();
-
                 this.msg(`Открыт сундук! +${reward} 💰`);
-
             },
 
             sellItem(id) {
-
                 const item = this.state.inventory.find(x => x.id === id);
-
                 if (!item || item.type !== 'material') return;
-
                 const sellPrice = 2;
-
                 const count = item.count || 1;
-
                 this.state.coins += sellPrice * count;
-
                 if (count > 1) {
-
                     item.count -= 1;
-
                 } else {
-
                     this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-
                 }
-
                 this.updateUI();
-
                 this.msg(`Продано! +${sellPrice * count} 💰`);
-
             },
 
             toggleEquip(id) {
-
                 const item = this.state.inventory.find(x => x.id === id);
-
                 if (!item || !['weapon', 'tool', 'armor'].includes(item.type)) return;
-
                 if (item.type === 'weapon') {
-
                     this.state.inventory.forEach(x => {
-
                         if (x.type === 'weapon' && x.id !== id) x.equipped = false;
-
                     });
-
                 }
-
                 item.equipped = !item.equipped;
-
                 this.updateUI();
-
             },
 
             switchTab(id, el) {
-
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-
                 document.getElementById(id).classList.add('active');
-
                 if (el) {
-
                     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
                     el.classList.add('active');
-
                 }
-
             },
 
             showModal(id) {
-
                 document.getElementById(id).style.display = 'block';
-
                 if (id === 'skillsModal') {
-
                     let h = '';
-
                     Object.values(this.state.skills).forEach(s => {
-
                         const progress = (s.xp / s.next * 100).toFixed(1);
-
                         h += `
-
                             <div class="card">
-
                                 <b>${s.label} LVL ${s.lvl}</b><br>
-
                                 <small>${Math.floor(s.xp)} / ${Math.floor(s.next)} XP</small>
-
                                 <div class="hp-bar" style="margin-top:8px;">
-
                                     <div class="hp-fill" style="width:${progress}%; background:var(--green);"></div>
-
                                 </div>
-
                             </div>`;
-
                     });
-
                     document.getElementById('skills-content').innerHTML = h;
-
                 }
-
                 if (id === 'leadModal') this.switchLead('coins');
-
             },
 
             closeModal(id) {
-
                 document.getElementById(id).style.display = 'none';
-
             },
 
             switchLead(t) {
-
                 document.querySelectorAll('#leadModal .inv-tab').forEach(b => b.classList.remove('active'));
-
                 document.getElementById('l-tab-' + (t === 'coins' ? 'coins' : 'lvl')).classList.add('active');
 
                 let value;
-
                 if (t === 'coins') {
-
                     value = Math.floor(this.state.coins).toLocaleString() + ' 💰';
-
                 } else {
-
                     const totalLvl = Object.values(this.state.skills).reduce((a, b) => a + b.lvl, 0) - 5;
-
                     value = (totalLvl / 10).toFixed(2);
-
                 }
 
                 document.getElementById('lead-list').innerHTML = `
-
                     <div class="card">
-
-                        <b>1. ${userTag}</b> 
-
+                        <b>1. ${username}</b>
                         <span style="float:right; color:var(--accent)">${value}</span>
-
                     </div>`;
-
             },
 
             msg(t) {
-
                 tg.showAlert(t);
-
             }
-
         };
 
         game.init();
-
     </script>
-
 </body>
-
 </html>
