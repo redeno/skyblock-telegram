@@ -178,14 +178,14 @@
 
 <script>
     const tg = window.Telegram.WebApp;
-    const userTag = tg.initDataUnsafe?.user?.username ? "@" + tg.initDataUnsafe.user.username : "@Player";
+    const user = tg.initDataUnsafe?.user || { id: 0, username: 'guest' };
+    const telegramId = user.id;
+    const telegramUsername = user.username || 'guest';
 
     // Supabase init
     const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZGRhYmd2c2JxbWFxZnZqZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MzA3NDQsImV4cCI6MjA4MjMwNjc0NH0.tKP5nhhZuyPEoySNuQ7ajo6XOkz-cNyZw4kA35OFOFE';
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const SAVE_KEY = 'skyblock_save_v3';
 
     const defaultState = {
         coins: 0,
@@ -219,52 +219,55 @@
         lastFilter: 'weapon',
 
         async load() {
-            // Пытаемся загрузить прогресс из Supabase
             try {
-                const user = userTag || "guest";
                 const { data, error } = await supabase
-                    .from('game_states')
-                    .select('state')
-                    .eq('user', user)
+                    .from('players')
+                    .select()
+                    .eq('telegram_id', telegramId)
+                    .limit(1)
                     .single();
-
                 if (error && error.code !== 'PGRST116') throw error;
-
-                if (data && data.state) {
-                    this.state = JSON.parse(data.state);
-                    console.log("Прогресс загружен из Supabase");
+                if (!data) {
+                    // Создаем нового игрока
+                    const { error: err } = await supabase.from('players').insert({
+                        telegram_id: telegramId,
+                        username: telegramUsername
+                    });
+                    if (err) console.error(err);
+                    this.state = { ...defaultState };
                     return;
                 }
+                this.state = {
+                    coins: data.coins ?? 0,
+                    nextItemId: data.next_item_id ?? 10,
+                    skills: data.skills ?? defaultState.skills,
+                    stats: data.stats ?? defaultState.stats,
+                    inventory: data.inventory ?? defaultState.inventory,
+                    minions: data.minions ?? defaultState.minions,
+                };
             } catch (e) {
                 console.error("Ошибка загрузки из Supabase", e);
-            }
-
-            // fallback - загрузка из localStorage
-            const saved = localStorage.getItem(SAVE_KEY);
-            if (saved) {
-                try {
-                    this.state = JSON.parse(saved);
-                    console.log("Прогресс загружен из localStorage");
-                } catch {
-                    this.state = { ...defaultState };
-                }
+                this.state = { ...defaultState };
             }
         },
 
         async save() {
             try {
-                const user = userTag || "guest";
-                const stateStr = JSON.stringify(this.state);
-                const { error } = await supabase
-                    .from('game_states')
-                    .upsert({ user: user, state: stateStr }, { onConflict: 'user' });
+                const { error } = await supabase.from('players').upsert({
+                    telegram_id: telegramId,
+                    username: telegramUsername,
+                    coins: this.state.coins,
+                    skills: this.state.skills,
+                    stats: this.state.stats,
+                    inventory: this.state.inventory,
+                    minions: this.state.minions,
+                    next_item_id: this.state.nextItemId,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'telegram_id' });
                 if (error) throw error;
-                console.log("Прогресс сохранён в Supabase");
             } catch (e) {
                 console.error("Ошибка сохранения в Supabase", e);
             }
-            // Локальное сохранение
-            localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
         },
 
         init() {
@@ -615,7 +618,7 @@
             }
             document.getElementById('lead-list').innerHTML = `
                 <div class="card">
-                    <b>1. ${userTag}</b> 
+                    <b>1. ${telegramUsername}</b> 
                     <span style="float:right; color:var(--accent)">${value}</span>
                 </div>`;
         },
