@@ -646,9 +646,7 @@
                         if (this.state.class === 'healer') {
                             this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + this.dungeon.pMaxHp * 0.2);
                             this.msg('МОБ УБИТ! +20% ХП (Хиллер)');
-                        } else {
-                            this.msg('МОБ УБИТ!');
-                        }
+                        } 
                         this.updateBattleUI();
                     }
                 } else if (this.dungeon.pHp <= 0) {
@@ -871,4 +869,5 @@
     </script>
 </body>
 </html>
+
 
