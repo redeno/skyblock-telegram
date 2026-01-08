@@ -265,6 +265,18 @@ const game = {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
+        if (inDungeon) {
+            const dunMul = 1 + 0.015 * (this.state.skills.dungeons.lvl - 1);
+            s.hp *= dunMul; s.str *= dunMul; s.def *= dunMul;
+            s.cc *= dunMul; s.cd *= dunMul; s.int *= dunMul; s.mag_amp *= dunMul;
+        }
+        const c = this.state.class;
+        if (c === 'berserk' && inDungeon) s.str *= 1.2;
+        else if (c === 'tank') { s.def *= 1.3; s.str *= 1.05; }
+        else if (c === 'mage') s.mag_amp *= 1.2;
+        else if (c === 'healer') {
+            Object.keys(s).forEach(k => { if (typeof s[k] === 'number') s[k] *= 1.05; });
+        }
         return s;
     },
 
@@ -504,11 +516,24 @@ const game = {
     openChest(id){
         const i=this.state.inventory.find(x=>x.id===id);
         if(!i||i.type!=='chest')return;
-        const coins = 1000; // простая награда без данжей
+
+        // Определяем этаж из названия сундука
+        const floorMatch = i.name.match(/\d+/);
+        const floor = floorMatch ? parseInt(floorMatch[0]) : 1;
+
+        // Отладка — посмотри в консоли, какой этаж определяется
+        console.log('Открытие сундука:', i.name, 'определён этаж:', floor);
+
+        // Берём награду из dungeonRewards (если этаж не найден — берём 1-й)
+        const r = dungeonRewards[floor] || dungeonRewards[1];
+        const coins = Math.floor(Math.random() * (r.coins_max - r.coins_min + 1) + r.coins_min);
+
         this.state.coins += coins;
+
         if (i.count > 1) i.count--;
         else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-        this.msg(`+${coins} 💰 из сундука!`);
+
+        this.msg(`+${coins.toLocaleString()} 💰 из сундука этажа ${floor}!`);
         this.updateUI();
     },
 
