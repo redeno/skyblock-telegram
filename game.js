@@ -428,7 +428,7 @@ async saveToSupabase() {
         const resourceName = petResourceMap[pet.skill];
         const resourceItem = this.state.inventory.find(i => i.name === resourceName && i.type === 'material');
         const resourceCount = resourceItem ? resourceItem.count || 0 : 0;
-        const upgradeItem = this.state.inventory.find(i => i.name === 'Апгрейд петомца' && i.type === 'material');
+        const upgradeItem = this.state.inventory.find(i => i.name === 'Апгрейд питомца' && i.type === 'material');
         const upgradeCount = upgradeItem ? upgradeItem.count || 0 : 0;
         if (this.state.coins < cost.coins || resourceCount < cost.resources || (cost.upgradeItem && upgradeCount < cost.upgradeItem)) {
             this.msg('Не хватает ресурсов или монет!');
@@ -502,8 +502,8 @@ async saveToSupabase() {
         });
         let upgradeChance = this.dungeon.floor >= 5 ? 5 : 1;
         if (Math.random() * 100 < upgradeChance) {
-            this.addMaterial('Апгрейд петомца', 'material');
-            this.msg('Выпал Апгрейд петомца!');
+            this.addMaterial('Апгрейд питомца', 'material');
+            this.msg('Выпал Апгрейд питомца!');
         }
         this.addMaterial(`Сундук этажа ${this.dungeon.floor}`, 'chest');
         if (this.dungeon.floor >= 5) {
