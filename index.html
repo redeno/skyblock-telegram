@@ -210,11 +210,19 @@
         </div>
     </div>
 
-    <div id="leadModal" class="modal">
-        <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
-        <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
-        <div id="lead-list"></div>
+<div id="leadModal" class="modal">
+    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
+    <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
+    
+    <!-- Вкладки топа -->
+    <div class="inv-tabs">
+        <div class="inv-tab active" onclick="game.loadTop('rich')">💰 БОГАТЫЕ</div>
+        <div class="inv-tab" onclick="game.loadTop('dungeons')">💀 ДАНЖИ</div>
+        <div class="inv-tab" onclick="game.loadTop('level')">🌟 УРОВЕНЬ</div>
     </div>
+    
+    <div id="lead-list"></div>
+</div>
 
     <!-- Нижняя навигация -->
     <nav id="nav">
@@ -229,4 +237,5 @@
     <script src="top.js"></script>
 </body>
 </html>
+
 
