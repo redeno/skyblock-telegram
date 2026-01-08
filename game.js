@@ -35,25 +35,6 @@ const defaultState = {
     pets: []
 };
 
-const dungeonRewards = {
-    1: {coins_min:50, coins_max:250, drops:[]},
-    2: {coins_min:300, coins_max:500, drops:[{chance:1, items:[
-        {name:'Талисман силы +1',type:'accessory',str:1},
-        {name:'Талисман крита +1',type:'accessory',cd:1},
-        {name:'Талисман удачи +1',type:'accessory',mf:1}
-    ]}]},
-    3: {coins_min:1000, coins_max:2500, drops:[{chance:1, item:{name:'Талисман защиты +20',type:'accessory',def:20}}]},
-    4: {coins_min:5000, coins_max:25000, drops:[
-        {chance:1, item:{name:'Меч Мидаса',type:'weapon',dynamic_str:'midas'}},
-        {chance:1, item:{name:'Талисман золота +5%',type:'accessory',gold_bonus:5}}
-    ]},
-    5: {coins_min:10000, coins_max:40000, drops:[
-        {chance:3, item:{name:'Меч Гиганта',type:'weapon',str:100,cd:50}},
-        {chance:5, item:{name:'Меч Мидаса',type:'weapon',dynamic_str:'midas'}}
-    ]},
-    6: {coins_min:100000, coins_max:500000, drops:[{chance:0.5, item:{name:'Гиперион',type:'weapon',magic:true}}]}
-};
-
 const shopItems = {
     weapon: [
         {name:'Каменный меч',type:'weapon',str:10,cost:1000},
@@ -121,7 +102,6 @@ const petResourceMap = {
 
 const game = {
     state: {...defaultState},
-    dungeon: {floor:1,mobIdx:0,mobHp:50,pHp:100,pMaxHp:100,mobs:['ЗОМБИ','СКЕЛЕТ','ПАУК','БОСС']},
     isBusy: false,
     currentLoc: '',
     lastFilter: 'weapon',
@@ -163,85 +143,46 @@ const game = {
             this.state.buffs = data.buffs ?? defaultState.buffs;
             this.msg('Сохранение загружено!');
         } else {
-    // Если данных нет — создаем нового игрока
-    const tgUser = tg.initDataUnsafe?.user;
-    const username = tgUser?.username ? tgUser.username : null; // @username или null
+            const tgUser = tg.initDataUnsafe?.user;
+            const username = tgUser?.username ? tgUser.username : null;
 
-    const newPlayer = {
-        telegram_id: this.playerTelegramId,
-        username: username,  // ← новое поле
-        coins: 0,
-        next_item_id: 10,
-        class: '',
-        skills: defaultState.skills,
-        stats: defaultState.stats,
-        inventory: defaultState.inventory,
-        minions: defaultState.minions,
-        pets: [],
-        buffs: defaultState.buffs
-    };
+            const newPlayer = {
+                telegram_id: this.playerTelegramId,
+                username: username,
+                coins: 0,
+                next_item_id: 10,
+                class: '',
+                skills: defaultState.skills,
+                stats: defaultState.stats,
+                inventory: defaultState.inventory,
+                minions: defaultState.minions,
+                pets: [],
+                buffs: defaultState.buffs
+            };
 
-    const { error: insertError } = await supabaseClient
-        .from('players')
-        .insert(newPlayer);
+            const { error: insertError } = await supabaseClient
+                .from('players')
+                .insert(newPlayer);
 
-    if (insertError) {
-        console.error('Не удалось создать нового игрока:', insertError);
-        this.msg('Ошибка создания профиля');
-        this.state = JSON.parse(JSON.stringify(defaultState));
-    } else {
-        this.state = JSON.parse(JSON.stringify(defaultState));
-        this.msg('Новый профиль создан!');
-    }
-}
+            if (insertError) {
+                console.error('Не удалось создать нового игрока:', insertError);
+                this.msg('Ошибка создания профиля');
+                this.state = JSON.parse(JSON.stringify(defaultState));
+            } else {
+                this.state = JSON.parse(JSON.stringify(defaultState));
+                this.msg('Новый профиль создан!');
+            }
+        }
 
         this.updateUI();
     },
 
-async saveToSupabase() {
-    if (!this.playerTelegramId) return;
+    saveToSupabase: async function() {
+        if (!this.playerTelegramId) return;
 
-    // Проверка, существует ли запись с этим telegram_id
-    let { data, error } = await supabaseClient
-        .from('players')
-        .select('*')
-        .eq('telegram_id', this.playerTelegramId)
-        .maybeSingle(); // maybeSingle() не выбрасывает ошибку, если данных нет
-
-    if (error) {
-        console.error('Ошибка при загрузке данных:', error);
-        this.msg('Ошибка связи с сервером');
-        return;
-    }
-
-    // Если запись существует — обновляем
-    if (data) {
-        const { error: updateError } = await supabaseClient
+        const { error } = await supabaseClient
             .from('players')
-            .update({
-                coins: this.state.coins,
-                next_item_id: this.state.nextItemId,
-                class: this.state.class,
-                skills: this.state.skills,
-                stats: this.state.stats,
-                inventory: this.state.inventory,
-                minions: this.state.minions,
-                pets: this.state.pets,
-                buffs: this.state.buffs
-            })
-            .eq('telegram_id', this.playerTelegramId);  // Указываем конкретно telegram_id для обновления
-
-        if (updateError) {
-            console.error('Ошибка обновления:', updateError);
-            this.msg('Ошибка при обновлении данных');
-        } else {
-            console.log('Данные успешно обновлены!');
-        }
-    } else {
-        // Если записи нет, вставляем новую
-        const { error: insertError } = await supabaseClient
-            .from('players')
-            .insert({
+            .upsert({
                 telegram_id: this.playerTelegramId,
                 coins: this.state.coins,
                 next_item_id: this.state.nextItemId,
@@ -252,17 +193,10 @@ async saveToSupabase() {
                 minions: this.state.minions,
                 pets: this.state.pets,
                 buffs: this.state.buffs
-            });
+            }, { onConflict: 'telegram_id' });
 
-        if (insertError) {
-            console.error('Не удалось создать нового игрока:', insertError);
-            this.msg('Ошибка создания профиля');
-        } else {
-            console.log('Новый профиль создан!');
-        }
-    }
-}
-,
+        if (error) console.error('Ошибка сохранения:', error);
+    },
 
     init: async function() {
         this.playerTelegramId = tg.initDataUnsafe?.user?.id;
@@ -274,7 +208,7 @@ async saveToSupabase() {
         await this.loadFromSupabase();
 
         setInterval(() => this.minionTick(), 1000);
-        setInterval(() => this.saveToSupabase(), 5000);
+        setInterval(() => this.saveToSupabase(), 10000);
 
         tg.expand?.();
     },
@@ -283,11 +217,7 @@ async saveToSupabase() {
         if (this.messageQueue.includes(t)) return;
         this.messageQueue.push(t);
         try {
-            if (tg && typeof tg.showAlert === 'function') {
-                tg.showAlert(t);
-            } else {
-                throw new Error("showAlert not available");
-            }
+            tg.showAlert(t);
         } catch (e) {
             alert(t);
         }
@@ -335,18 +265,6 @@ async saveToSupabase() {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
-        if (inDungeon) {
-            const dunMul = 1 + 0.015 * (this.state.skills.dungeons.lvl - 1);
-            s.hp *= dunMul; s.str *= dunMul; s.def *= dunMul;
-            s.cc *= dunMul; s.cd *= dunMul; s.int *= dunMul; s.mag_amp *= dunMul;
-        }
-        const c = this.state.class;
-        if (c === 'berserk' && inDungeon) s.str *= 1.2;
-        else if (c === 'tank') { s.def *= 1.3; s.str *= 1.05; }
-        else if (c === 'mage') s.mag_amp *= 1.2;
-        else if (c === 'healer') {
-            Object.keys(s).forEach(k => { if (typeof s[k] === 'number') s[k] *= 1.05; });
-        }
         return s;
     },
 
@@ -362,8 +280,7 @@ async saveToSupabase() {
     },
 
     updateUI() {
-        const inDungeon = document.getElementById('battle-screen')?.classList.contains('active') || false;
-        const s = this.calcStats(inDungeon);
+        const s = this.calcStats(false);
         document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
         document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
         const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
@@ -383,7 +300,6 @@ async saveToSupabase() {
         if (document.getElementById('pen').classList.contains('active')) this.renderPenList();
         if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
         document.getElementById('class-select').value = this.state.class;
-
         this.saveToSupabase();
     },
 
@@ -473,125 +389,6 @@ async saveToSupabase() {
         for (let i = 0; i < count; i++) this.addMaterial(mat);
         document.getElementById('loc-log').innerText = `+${gain} 💰 | +20 XP | +${count} ${mat}`;
         this.updateUI();
-    },
-
-    buyExtraChest(level) {
-        const costs = this.dungeon.floor >= 5 ? [3000000, 5000000, 10000000] : [10000000, 15000000, 20000000];
-        const names = ['Обычный', 'Эпический', 'Элитный'];
-        const cost = costs[level - 1];
-        if (this.state.coins < cost) { this.msg('Не хватает монет!'); return; }
-        this.state.coins -= cost;
-        this.addMaterial(`Сундук ${this.dungeon.floor} этажа ${names[level - 1]}`, 'chest');
-        this.msg(`Куплен ${names[level - 1]} сундук!`);
-        this.updateUI();
-    },
-
-    giveDungeonReward() {
-        const s = this.calcStats(true);
-        const r = dungeonRewards[this.dungeon.floor];
-        let coins = Math.floor(Math.random() * (r.coins_max - r.coins_min + 1) + r.coins_min);
-        coins = Math.floor(coins * (1 + s.gold_bonus / 100));
-        this.state.coins += coins;
-        this.addXp('dungeons', this.dungeon.floor * 100);
-        r.drops?.forEach(drop => {
-            if (Math.random() * 100 < (drop.chance + s.mf)) {
-                const item = drop.item || drop.items[Math.floor(Math.random() * drop.items.length)];
-                this.state.inventory.push({...item, id: this.state.nextItemId++, equipped: false});
-                this.msg(`Выпал ${item.name}!`);
-            }
-        });
-        let upgradeChance = this.dungeon.floor >= 5 ? 5 : 1;
-        if (Math.random() * 100 < upgradeChance) {
-            this.addMaterial('Апгрейд питомца', 'material');
-            this.msg('Выпал Апгрейд питомца!');
-        }
-        this.addMaterial(`Сундук этажа ${this.dungeon.floor}`, 'chest');
-        if (this.dungeon.floor >= 5) {
-            document.getElementById('extra-chests').style.display = 'block';
-        } else {
-            document.getElementById('extra-chests').style.display = 'none';
-        }
-        this.updateUI();
-    },
-
-    getItemDesc(i) {
-        let d = '';
-        if (i.str) d += `+${i.str} СИЛЫ `;
-        if (i.def) d += `+${i.def} БРОНИ `;
-        if (i.cc) d += `+${i.cc}% КРИТ ШАНС `;
-        if (i.cd) d += `+${i.cd}% КРИТ УРОН `;
-        if (i.mf) d += `+${i.mf} УДАЧИ `;
-        if (i.int) d += `+${i.int} ИНТЕЛЛЕКТА `;
-        if (i.mag_amp) d += `+${i.mag_amp} МАГ УСИЛЕНИЯ `;
-        if (i.xp_bonus) d += `+${i.xp_bonus}% ОПЫТА `;
-        if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
-        if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
-        if (i.fast) d += 'БЫСТРАЯ ';
-        if (i.dynamic_str === 'midas') d += 'МИДАС ';
-        if (i.magic) d += 'МАГИЧЕСКОЕ ';
-        if (i.type === 'pet') d += `+${(petRarityBonuses[i.rarity] * i.lvl * 100).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
-        return d || 'ПРЕДМЕТ';
-    },
-
-    dungeonAttack() {
-        const inDungeon = true;
-        const s = this.calcStats(inDungeon);
-        const weapon = this.state.inventory.find(i => i.equipped && i.type === 'weapon');
-        let damage = weapon?.magic ? s.int * s.mag_amp * 100 : s.str;
-        let msgText = '';
-        if (this.state.class === 'berserk' && Math.random() < 0.2) {
-            damage *= 2;
-            msgText += 'ДВОЙНОЙ УДАР! ';
-        }
-        if (this.state.class === 'archer') {
-            if (this.dungeon.mobIdx < 3 && Math.random() < 0.2) {
-                damage = 999999;
-                msgText += 'ВАНШОТ! ';
-            } else if (this.dungeon.mobIdx === 3 && Math.random() < 0.03) {
-                damage = this.dungeon.mobHp * 0.4;
-                msgText += 'Мощный выстрел по боссу! ';
-            }
-        }
-        if (Math.random() * 100 < s.cc) {
-            damage *= (1 + s.cd / 100);
-            msgText += 'КРИТИЧЕСКИЙ УДАР! ';
-        }
-        this.dungeon.mobHp -= damage;
-        const baseMobDmg = (this.dungeon.mobIdx === 3 ? 6 : 4) * this.dungeon.floor;
-        const actualDmg = Math.max(1, baseMobDmg - s.def);
-        this.dungeon.pHp -= actualDmg;
-        if (msgText) this.msg(msgText.trim());
-        if (this.dungeon.mobHp <= 0) {
-            this.addXp('combat', this.dungeon.mobIdx === 3 ? 50 : 20);
-            this.dungeon.mobIdx++;
-            if (this.dungeon.mobIdx >= 4) {
-                this.giveDungeonReward();
-                this.switchTab('loot-screen');
-            } else {
-                this.dungeon.mobHp = (this.dungeon.mobIdx === 3 ? 80 : 50) * this.dungeon.floor;
-                if (this.state.class === 'healer') {
-                    this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + this.dungeon.pMaxHp * 0.2);
-                    this.msg('МОБ УБИТ! +20% ХП (Хиллер)');
-                } else {
-                    this.msg('МОБ УБИТ!');
-                }
-                this.updateBattleUI();
-            }
-        } else if (this.dungeon.pHp <= 0) {
-            this.msg(`ТЫ УМЕР на этаже ${this.dungeon.floor}!`);
-            this.switchTab('portal');
-        } else {
-            this.updateBattleUI();
-        }
-    },
-
-    updateBattleUI() {
-        document.getElementById('mob-name').innerText = this.dungeon.mobs[this.dungeon.mobIdx];
-        const maxMobHp = (this.dungeon.mobIdx === 3 ? 80 : 50) * this.dungeon.floor;
-        document.getElementById('m-hp-txt').innerText = `${Math.max(0, Math.floor(this.dungeon.mobHp))}/${maxMobHp}`;
-        document.getElementById('m-hp-fill').style.width = `${Math.max(0, this.dungeon.mobHp / maxMobHp * 100)}%`;
-        document.getElementById('p-hp-txt').innerText = `${Math.max(0, Math.floor(this.dungeon.pHp))}/${Math.floor(this.dungeon.pMaxHp)}`;
-        document.getElementById('p-hp-fill').style.width = `${this.dungeon.pHp / this.dungeon.pMaxHp * 100}%`;
     },
 
     renderMinions(){
@@ -707,10 +504,7 @@ async saveToSupabase() {
     openChest(id){
         const i=this.state.inventory.find(x=>x.id===id);
         if(!i||i.type!=='chest')return;
-        const floorMatch = i.name.match(/\d+/);
-        const floor = floorMatch ? parseInt(floorMatch[0]) : 1;
-        const r = dungeonRewards[floor] || dungeonRewards[1];
-        const coins = Math.floor(Math.random() * (r.coins_max - r.coins_min + 1) + r.coins_min);
+        const coins = 1000; // простая награда без данжей
         this.state.coins += coins;
         if (i.count > 1) i.count--;
         else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
@@ -798,23 +592,23 @@ async saveToSupabase() {
         }, 1520);
     },
 
-    startDungeon(floor) {
-        const req = (floor - 1) * 5 + 1;
-        if (this.state.skills.dungeons.lvl < req) {
-            this.msg(`Требуется уровень ДАНЖЕЙ ${req}`);
-            return;
-        }
-        const s = this.calcStats(true);
-        this.dungeon = {
-            floor,
-            mobIdx: 0,
-            mobHp: 50 * floor,
-            pHp: s.hp,
-            pMaxHp: s.hp,
-            mobs: ['ЗОМБИ','СКЕЛЕТ','ПАУК','БОСС']
-        };
-        this.updateBattleUI();
-        this.switchTab('battle-screen');
+    getItemDesc(i) {
+        let d = '';
+        if (i.str) d += `+${i.str} СИЛЫ `;
+        if (i.def) d += `+${i.def} БРОНИ `;
+        if (i.cc) d += `+${i.cc}% КРИТ ШАНС `;
+        if (i.cd) d += `+${i.cd}% КРИТ УРОН `;
+        if (i.mf) d += `+${i.mf} УДАЧИ `;
+        if (i.int) d += `+${i.int} ИНТЕЛЛЕКТА `;
+        if (i.mag_amp) d += `+${i.mag_amp} МАГ УСИЛЕНИЯ `;
+        if (i.xp_bonus) d += `+${i.xp_bonus}% ОПЫТА `;
+        if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
+        if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
+        if (i.fast) d += 'БЫСТРАЯ ';
+        if (i.dynamic_str === 'midas') d += 'МИДАС ';
+        if (i.magic) d += 'МАГИЧЕСКОЕ ';
+        if (i.type === 'pet') d += `+${(petRarityBonuses[i.rarity] * i.lvl * 100).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
+        return d || 'ПРЕДМЕТ';
     }
 };
 
