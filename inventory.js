@@ -78,16 +78,22 @@ Object.assign(game, {
         this.updateUI();
     },
 
-    sellItem(id){
-        const i=this.state.inventory.find(x=>x.id===id);
-        if(!i||i.type!=='material')return;
-        const p=2,c=i.count||1;
-        this.state.coins+=p*c;
-        if(c>1)i.count-=c;
-        else this.state.inventory=this.state.inventory.filter(x=>x.id!==id);
-        this.msg(`Продано! +${p*c} 💰`);
-        this.updateUI();
-    },
+sellItem(id) {
+    const i = this.state.inventory.find(x => x.id === id);
+    if (!i || i.type !== 'material') return;
+
+    const pricePer = 2; // цена за штуку
+    const amount = i.count || 1;
+    const totalCoins = pricePer * amount;
+
+    this.state.coins += totalCoins;
+
+    // Удаляем предмет полностью (даже если count был 1)
+    this.state.inventory = this.state.inventory.filter(x => x.id !== id);
+
+    this.msg(`Продано ${amount} ${i.name}! +${totalCoins} 💰`);
+    this.updateUI();
+},
 
     toggleEquip(id){
         const i=this.state.inventory.find(x=>x.id===id);
