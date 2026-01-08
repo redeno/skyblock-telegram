@@ -110,11 +110,3 @@ function renderUpdates() {
     modal.innerHTML = html;
 }
 
-// Рендерим при открытии модалки
-const originalShowModal = game.showModal;
-game.showModal = function(id) {
-    originalShowModal.call(this, id);
-    if (id === 'updatesModal') {
-        renderUpdates();
-    }
-};
