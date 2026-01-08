@@ -1,4 +1,4 @@
-// dungeon.js — финальная версия с правильной удачей (mf / 100)
+// dungeon.js — обновлённый XP по формуле (этаж * множитель)
 
 const dungeonConfig = {
     1: {
@@ -147,7 +147,10 @@ Object.assign(game, {
         this.dungeon.pHp -= actualDmg;
 
         if (this.dungeon.mobHp <= 0) {
-            this.addXp('combat', isBoss ? 50 : 20);
+            // НОВАЯ ФОРМУЛА XP ЗА МОБА
+            const mobXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
+            this.addXp('combat', mobXp);
+
             this.dungeon.mobIdx++;
             if (this.dungeon.mobIdx >= 4) {
                 this.giveDungeonReward();
@@ -196,9 +199,12 @@ Object.assign(game, {
         let coins = Math.floor(Math.random() * (r.coins_max - r.coins_min + 1) + r.coins_min);
         coins = Math.floor(coins * (1 + s.gold_bonus / 100));
         this.state.coins += coins;
-        this.addXp('dungeons', this.dungeon.floor * 100);
 
-        // Правильная удача: +1% за каждые 100 mf
+        // НОВАЯ ФОРМУЛА XP ЗА ПРОХОЖДЕНИЕ ЭТАЖА
+        const dungeonXp = this.dungeon.floor * 200; // (этаж + этаж) * 100
+        this.addXp('dungeons', dungeonXp);
+
+        // Дропы
         r.drops?.forEach(drop => {
             let effectiveChance = drop.chance + (s.mf / 100);
             if (Math.random() * 100 < effectiveChance) {
@@ -208,7 +214,6 @@ Object.assign(game, {
             }
         });
 
-        // Апгрейд питомца тоже от удачи
         let upgradeChance = this.dungeon.floor >= 5 ? 5 + (s.mf / 100) : 1 + (s.mf / 100);
         if (Math.random() * 100 < upgradeChance) {
             this.addMaterial('Апгрейд питомца', 'material');
