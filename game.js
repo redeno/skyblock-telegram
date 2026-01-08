@@ -200,10 +200,10 @@ const game = {
     async saveToSupabase() {
     if (!this.playerTelegramId) return;
 
-    const { error } = await supabaseClient
+    // Попытка обновить запись
+    const { data, error } = await supabaseClient
         .from('players')
-        .upsert({
-            telegram_id: this.playerTelegramId,
+        .update({
             coins: this.state.coins,
             next_item_id: this.state.nextItemId,
             class: this.state.class,
@@ -213,14 +213,41 @@ const game = {
             minions: this.state.minions,
             pets: this.state.pets,
             buffs: this.state.buffs
-        }, { onConflict: ['telegram_id'] });  // Указываем onConflict, чтобы избежать дублирования записи
+        })
+        .eq('telegram_id', this.playerTelegramId); // Обновление по уникальному ключу (telegram_id)
 
-    if (error) {
-        console.error('Ошибка сохранения:', error);
+    // Если не удалось обновить (например, записи нет), то вставляем новую
+    if (error && error.code !== 'PGRST116') {
+        console.error('Ошибка обновления:', error);
+        this.msg('Ошибка обновления данных');
+    } else if (data.length === 0) {
+        // Если данных не было обновлено (например, если записи не существует), вставляем
+        const { insertError } = await supabaseClient
+            .from('players')
+            .insert({
+                telegram_id: this.playerTelegramId,
+                coins: this.state.coins,
+                next_item_id: this.state.nextItemId,
+                class: this.state.class,
+                skills: this.state.skills,
+                stats: this.state.stats,
+                inventory: this.state.inventory,
+                minions: this.state.minions,
+                pets: this.state.pets,
+                buffs: this.state.buffs
+            });
+
+        if (insertError) {
+            console.error('Ошибка создания нового игрока:', insertError);
+            this.msg('Ошибка создания профиля');
+        } else {
+            console.log('Новый профиль создан!');
+        }
     } else {
-        console.log('Данные успешно сохранены!');
+        console.log('Данные успешно обновлены!');
     }
 }
+
 
 
     async init() {
