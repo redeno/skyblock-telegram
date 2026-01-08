@@ -130,103 +130,108 @@ const game = {
     playerTelegramId: null,
 
     async loadFromSupabase() {
-        if (!this.playerTelegramId) {
-            this.msg('Не удалось получить Telegram ID');
-            this.state = JSON.parse(JSON.stringify(defaultState));
-            this.updateUI();
-            return;
-        }
-
-        // Сначала пытаемся найти существующую запись
-        let { data, error } = await supabaseClient
-            .from('players')
-            .select('*')
-            .eq('telegram_id', this.playerTelegramId)
-            .maybeSingle();  // maybeSingle() — не падает ошибкой, если ничего нет
-
-        if (error && error.code !== 'PGRST116') {
-            console.error('Ошибка Supabase:', error);
-            this.msg('Ошибка связи с сервером');
-            this.state = JSON.parse(JSON.stringify(defaultState));
-            this.updateUI();
-            return;
-        }
-
-        if (data) {
-            // Есть сохранение — загружаем
-            this.state.coins = data.coins ?? 0;
-            this.state.nextItemId = data.next_item_id ?? 10;
-            this.state.class = data.class ?? '';
-            this.state.skills = data.skills ?? defaultState.skills;
-            this.state.stats = data.stats ?? defaultState.stats;
-            this.state.inventory = data.inventory ?? defaultState.inventory;
-            this.state.minions = data.minions ?? defaultState.minions;
-            this.state.pets = data.pets ?? [];
-            this.state.buffs = data.buffs ?? defaultState.buffs;
-            this.msg('Сохранение загружено!');
-        } else {
-            // Нет записи — создаём нового игрока с дефолтными данными
-            const newPlayer = {
-                telegram_id: this.playerTelegramId,
-                coins: 0,
-                next_item_id: 10,
-                class: '',
-                skills: defaultState.skills,
-                stats: defaultState.stats,
-                inventory: defaultState.inventory,
-                minions: defaultState.minions,
-                pets: [],
-                buffs: defaultState.buffs
-            };
-
-            const { error: insertError } = await supabaseClient
-                .from('players')
-                .insert(newPlayer);
-
-            if (insertError) {
-                console.error('Не удалось создать нового игрока:', insertError);
-                this.msg('Ошибка создания профиля');
-                this.state = JSON.parse(JSON.stringify(defaultState));
-            } else {
-                this.state = JSON.parse(JSON.stringify(defaultState));
-                this.msg('Новый профиль создан!');
-            }
-        }
-
+    if (!this.playerTelegramId) {
+        this.msg('Не удалось получить Telegram ID');
+        this.state = JSON.parse(JSON.stringify(defaultState));
         this.updateUI();
-    },
+        return;
+    }
+
+    // Сначала пытаемся найти существующую запись
+    let { data, error } = await supabaseClient
+        .from('players')
+        .select('*')
+        .eq('telegram_id', this.playerTelegramId)
+        .maybeSingle();  // maybeSingle() — не падает ошибкой, если ничего нет
+
+    if (error && error.code !== 'PGRST116') {
+        console.error('Ошибка Supabase:', error);
+        this.msg('Ошибка связи с сервером');
+        this.state = JSON.parse(JSON.stringify(defaultState));
+        this.updateUI();
+        return;
+    }
+
+    if (data) {
+        // Загружаем данные из базы
+        this.state.coins = data.coins ?? 0;
+        this.state.nextItemId = data.next_item_id ?? 10;
+        this.state.class = data.class ?? '';
+        this.state.skills = data.skills ?? defaultState.skills;
+        this.state.stats = data.stats ?? defaultState.stats;
+        this.state.inventory = data.inventory ?? defaultState.inventory;
+        this.state.minions = data.minions ?? defaultState.minions;
+        this.state.pets = data.pets ?? [];
+        this.state.buffs = data.buffs ?? defaultState.buffs;
+        this.msg('Сохранение загружено!');
+    } else {
+        // Если данных нет — создаем нового игрока с дефолтными значениями
+        const newPlayer = {
+            telegram_id: this.playerTelegramId,
+            coins: 0,
+            next_item_id: 10,
+            class: '',
+            skills: defaultState.skills,
+            stats: defaultState.stats,
+            inventory: defaultState.inventory,
+            minions: defaultState.minions,
+            pets: [],
+            buffs: defaultState.buffs
+        };
+
+        const { error: insertError } = await supabaseClient
+            .from('players')
+            .insert(newPlayer); // Используем insert для создания нового игрока
+
+        if (insertError) {
+            console.error('Не удалось создать нового игрока:', insertError);
+            this.msg('Ошибка создания профиля');
+            this.state = JSON.parse(JSON.stringify(defaultState));
+        } else {
+            this.state = JSON.parse(JSON.stringify(defaultState));
+            this.msg('Новый профиль создан!');
+        }
+    }
+
+    this.updateUI();
+}
+
 
     async saveToSupabase() {
-        if (!this.playerTelegramId) return;
+    if (!this.playerTelegramId) return;
 
-        const { error } = await supabaseClient
-            .from('players')
-            .upsert({
-                telegram_id: this.playerTelegramId,
-                coins: this.state.coins,
-                next_item_id: this.state.nextItemId,
-                class: this.state.class,
-                skills: this.state.skills,
-                stats: this.state.stats,
-                inventory: this.state.inventory,
-                minions: this.state.minions,
-                pets: this.state.pets,
-                buffs: this.state.buffs
-            });
+    const { error } = await supabaseClient
+        .from('players')
+        .upsert({
+            telegram_id: this.playerTelegramId,
+            coins: this.state.coins,
+            next_item_id: this.state.nextItemId,
+            class: this.state.class,
+            skills: this.state.skills,
+            stats: this.state.stats,
+            inventory: this.state.inventory,
+            minions: this.state.minions,
+            pets: this.state.pets,
+            buffs: this.state.buffs
+        }, { onConflict: ['telegram_id'] });  // Указываем onConflict, чтобы избежать дублирования записи
 
-        if (error) console.error('Ошибка сохранения:', error);
-    },
+    if (error) {
+        console.error('Ошибка сохранения:', error);
+    } else {
+        console.log('Данные успешно сохранены!');
+    }
+}
+
 
     async init() {
         this.playerTelegramId = tg.initDataUnsafe?.user?.id;
 
         if (!this.playerTelegramId) {
-            // Для теста в обычном браузере (не в Telegram) можно захардкодить свой ID
-            // this.playerTelegramId = 123456789;  // <-- раскомментируй и поставь свой Telegram ID для теста
-            this.msg('Запуск вне Telegram — тестовый режим');
+            this.msg('Не удалось получить Telegram ID');
         }
 
         await this.loadFromSupabase();
+        this.updateUI();
 
         setInterval(() => this.minionTick(), 1000);
         setInterval(() => this.saveToSupabase(), 10000);
