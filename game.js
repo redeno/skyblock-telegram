@@ -269,7 +269,7 @@ async saveToSupabase() {
         await this.loadFromSupabase();
 
         setInterval(() => this.minionTick(), 1000);
-        setInterval(() => this.saveToSupabase(), 10000);
+        setInterval(() => this.saveToSupabase(), 5000);
 
         tg.expand?.();
     },
