@@ -1,6 +1,13 @@
 const tg = window.Telegram?.WebApp || {};
-const SAVE_KEY = 'skyblock_save_v3';
 
+// === SUPABASE ПОДКЛЮЧЕНИЕ ===
+const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_t63MwjVo6ILOZYH64SWORg_S_KlENDS';
+
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// === ДЕФОЛТНОЕ СОСТОЯНИЕ ===
 const defaultState = {
     coins: 0,
     nextItemId: 10,
@@ -120,76 +127,92 @@ const game = {
     lastFilter: 'weapon',
     lastShopFilter: 'weapon',
     messageQueue: [],
+    playerTelegramId: null,
 
-    load() {
-        const saved = localStorage.getItem(SAVE_KEY);
-        if (!saved) { this.state = {...defaultState}; return; }
-        try {
-            let loaded = JSON.parse(saved);
-            const isOld = !loaded.skills?.dungeons || Object.keys(loaded.skills || {}).length === 5;
-            if (isOld) {
-                loaded.skills = loaded.skills || {};
-                loaded.skills.dungeons = {lvl:1,xp:0,next:200,label:'ДАНЖИ'};
-                loaded.stats = loaded.stats || {};
-                if (!loaded.stats.int) loaded.stats.int = 0;
-                if (!loaded.stats.mag_amp) loaded.stats.mag_amp = 0;
-                if (!loaded.class) loaded.class = '';
-                if (!loaded.buffs) loaded.buffs = {godpotion:{endTime:0}};
-                (loaded.inventory || []).forEach(item => {
-                    if (item.type === 'tool' && !item.sub_type) {
-                        const n = item.name.toLowerCase();
-                        if (n.includes('кирка')) item.sub_type = 'pickaxe';
-                        else if (n.includes('мотыга')) item.sub_type = 'hoe';
-                        else if (n.includes('удочка')) item.sub_type = 'rod';
-                        else if (n.includes('топор')) item.sub_type = 'axe';
-                        else item.sub_type = 'pickaxe';
-                    }
-                });
-            }
-            this.state = {...defaultState, ...loaded};
-            this.state.skills = {...defaultState.skills, ...this.state.skills};
-            this.state.stats = {...defaultState.stats, ...this.state.stats};
-            this.state.buffs = {...defaultState.buffs, ...this.state.buffs};
-            this.state.pets = loaded.pets || [];
-            this.save();
-        } catch (e) {
-            console.error(e);
-            this.state = {...defaultState};
+    async loadFromSupabase() {
+        if (!this.playerTelegramId) return;
+
+        const { data, error } = await supabaseClient
+            .from('players')
+            .select('*')
+            .eq('telegram_id', this.playerTelegramId)
+            .single();
+
+        if (error && error.code === 'PGRST116') { // нет записи
+            await supabaseClient
+                .from('players')
+                .insert({ telegram_id: this.playerTelegramId });
+            this.state = JSON.parse(JSON.stringify(defaultState));
+        } else if (error) {
+            console.error('Ошибка загрузки:', error);
+            this.msg('Ошибка загрузки сохранения');
+            this.state = JSON.parse(JSON.stringify(defaultState));
+        } else {
+            this.state.coins = data.coins || 0;
+            this.state.nextItemId = data.next_item_id || 10;
+            this.state.class = data.class || '';
+            this.state.skills = data.skills || defaultState.skills;
+            this.state.stats = data.stats || defaultState.stats;
+            this.state.inventory = data.inventory || defaultState.inventory;
+            this.state.minions = data.minions || defaultState.minions;
+            this.state.pets = data.pets || [];
+            this.state.buffs = data.buffs || defaultState.buffs;
         }
     },
 
-    save() { 
-        localStorage.setItem(SAVE_KEY, JSON.stringify(this.state)); 
+    async saveToSupabase() {
+        if (!this.playerTelegramId) return;
+
+        const { error } = await supabaseClient
+            .from('players')
+            .upsert({
+                telegram_id: this.playerTelegramId,
+                coins: this.state.coins,
+                next_item_id: this.state.nextItemId,
+                class: this.state.class,
+                skills: this.state.skills,
+                stats: this.state.stats,
+                inventory: this.state.inventory,
+                minions: this.state.minions,
+                pets: this.state.pets,
+                buffs: this.state.buffs
+            });
+
+        if (error) console.error('Ошибка сохранения:', error);
     },
 
-    init() {
-        this.load();
+    async init() {
+        this.playerTelegramId = tg.initDataUnsafe?.user?.id;
+
+        if (!this.playerTelegramId) {
+            this.msg('Не удалось получить Telegram ID');
+        }
+
+        await this.loadFromSupabase();
         this.updateUI();
+
         setInterval(() => this.minionTick(), 1000);
-        setInterval(() => this.save(), 5000);
+        setInterval(() => this.saveToSupabase(), 10000);
+
         tg.expand?.();
     },
 
-msg(t) {
-    if (this.messageQueue.includes(t)) return;
-    this.messageQueue.push(t);
-
-    // Полностью безопасный вызов showAlert с фолбэком
-    try {
-        if (tg && typeof tg.showAlert === 'function') {
-            tg.showAlert(t);
-        } else {
-            throw new Error("showAlert not available");
+    msg(t) {
+        if (this.messageQueue.includes(t)) return;
+        this.messageQueue.push(t);
+        try {
+            if (tg && typeof tg.showAlert === 'function') {
+                tg.showAlert(t);
+            } else {
+                throw new Error("showAlert not available");
+            }
+        } catch (e) {
+            alert(t);
         }
-    } catch (e) {
-        // Фолбэк на обычный alert — выглядит почти идентично и без ошибок
-        alert(t);
-    }
-
-    setTimeout(() => {
-        this.messageQueue = this.messageQueue.filter(m => m !== t);
-    }, 5000);
-},
+        setTimeout(() => {
+            this.messageQueue = this.messageQueue.filter(m => m !== t);
+        }, 5000);
+    },
 
     addMaterial(name, type = 'material') {
         const existing = this.state.inventory.find(i => i.name === name && i.type === type);
@@ -278,7 +301,8 @@ msg(t) {
         if (document.getElementById('pen').classList.contains('active')) this.renderPenList();
         if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
         document.getElementById('class-select').value = this.state.class;
-        this.save();
+
+        this.saveToSupabase();
     },
 
     renderPenList() {
@@ -348,10 +372,6 @@ msg(t) {
         this.state.pets.splice(idx, 1);
         this.msg(`${pet.name} продан!`);
         this.updateUI();
-    },
-
-    getEquippedPet(skillKey) {
-        return this.state.pets.find(pet => pet.equipped && pet.skill === skillKey);
     },
 
     finishAction() {
@@ -658,8 +678,8 @@ msg(t) {
         }
     },
 
-    closeModal(id) { 
-        document.getElementById(id).style.display = 'none'; 
+    closeModal(id) {
+        document.getElementById(id).style.display = 'none';
     },
 
     setClass(val) {
