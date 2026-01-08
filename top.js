@@ -1,8 +1,7 @@
-// top.js — топ игроков по разделам (с реальными @username из Telegram)
+// top.js — топ игроков по разделам (упрощённые лейблы)
 
 const TOP_LIMIT = 50;
 
-// Функция загрузки топа (добавляем в объект game, чтобы onclick работал)
 game.loadTop = async function(type = 'rich') {
     const listEl = document.getElementById('lead-list');
     listEl.innerHTML = '<div style="text-align:center;color:#666">Загрузка топа...</div>';
@@ -10,9 +9,7 @@ game.loadTop = async function(type = 'rich') {
     let data = [];
     let error = null;
 
-    // Общий запрос для всех типов — берём нужные поля + username
     if (type === 'level') {
-        // Общий уровень — считаем на клиенте
         const { data: rawData, error: rawError } = await supabaseClient
             .from('players')
             .select('skills, username');
@@ -31,7 +28,6 @@ game.loadTop = async function(type = 'rich') {
             })).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)).slice(0, TOP_LIMIT);
         }
     } else if (type === 'rich') {
-        // Самые богатые
         const { data: rawData, error: rawError } = await supabaseClient
             .from('players')
             .select('coins, username')
@@ -46,7 +42,6 @@ game.loadTop = async function(type = 'rich') {
             }));
         }
     } else if (type === 'dungeons') {
-        // Лучшие в данжах — сортируем на клиенте
         const { data: rawData, error: rawError } = await supabaseClient
             .from('players')
             .select('skills, username');
@@ -72,13 +67,12 @@ game.loadTop = async function(type = 'rich') {
     }
 
     let html = '';
-    let label = type === 'rich' ? '💰' : type === 'dungeons' ? '💀 ДАНЖИ LVL' : '🌟 SB LVL';
+    let label = type === 'rich' ? '💰' : type === 'dungeons' ? '💀 LVL' : '🌟 LVL';
 
     data.forEach((player, index) => {
         const place = index + 1;
         const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `${place}.`;
 
-        // Ник: @username если есть, иначе @ID (но telegram_id не берём, если нет username — показываем "Аноним")
         const nick = player.username ? (player.username.startsWith('@') ? player.username : `@${player.username}`) : 'Аноним';
 
         const value = type === 'rich' ? Math.floor(player.value).toLocaleString() : player.value;
@@ -98,7 +92,7 @@ function setActiveTab(tabElement) {
     tabElement.classList.add('active');
 }
 
-// Открытие модалки — по умолчанию топ богатых
+// Открытие модалки
 const originalShowModal = game.showModal;
 game.showModal = function(id) {
     originalShowModal.call(game, id);
