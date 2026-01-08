@@ -501,18 +501,16 @@ const game = {
         this.updateUI();
     },
 
-openChest(id){
-    const i=this.state.inventory.find(x=>x.id===id);
-    if(!i||i.type!=='chest')return;
-    const floorMatch = i.name.match(/\d+/);
-    const floor = floorMatch ? parseInt(floorMatch[0]) : 1;
-    const r = dungeonRewards[floor] || dungeonRewards[1];
-    const coins = Math.floor(Math.random() * (r.coins_max - r.coins_min + 1) + r.coins_min);
-    this.state.coins += coins;
-    // ... удаление сундука
-    this.msg(`+${coins} 💰 из сундука!`);
-    this.updateUI();
-},
+    openChest(id){
+        const i=this.state.inventory.find(x=>x.id===id);
+        if(!i||i.type!=='chest')return;
+        const coins = 1000; // простая награда без данжей
+        this.state.coins += coins;
+        if (i.count > 1) i.count--;
+        else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
+        this.msg(`+${coins} 💰 из сундука!`);
+        this.updateUI();
+    },
 
     sellItem(id){
         const i=this.state.inventory.find(x=>x.id===id);
