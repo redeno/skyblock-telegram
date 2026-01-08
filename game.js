@@ -163,32 +163,37 @@ const game = {
             this.state.buffs = data.buffs ?? defaultState.buffs;
             this.msg('Сохранение загружено!');
         } else {
-            const newPlayer = {
-                telegram_id: this.playerTelegramId,
-                coins: 0,
-                next_item_id: 10,
-                class: '',
-                skills: defaultState.skills,
-                stats: defaultState.stats,
-                inventory: defaultState.inventory,
-                minions: defaultState.minions,
-                pets: [],
-                buffs: defaultState.buffs
-            };
+    // Если данных нет — создаем нового игрока
+    const tgUser = tg.initDataUnsafe?.user;
+    const username = tgUser?.username ? tgUser.username : null; // @username или null
 
-            const { error: insertError } = await supabaseClient
-                .from('players')
-                .insert(newPlayer);
+    const newPlayer = {
+        telegram_id: this.playerTelegramId,
+        username: username,  // ← новое поле
+        coins: 0,
+        next_item_id: 10,
+        class: '',
+        skills: defaultState.skills,
+        stats: defaultState.stats,
+        inventory: defaultState.inventory,
+        minions: defaultState.minions,
+        pets: [],
+        buffs: defaultState.buffs
+    };
 
-            if (insertError) {
-                console.error('Не удалось создать нового игрока:', insertError);
-                this.msg('Ошибка создания профиля');
-                this.state = JSON.parse(JSON.stringify(defaultState));
-            } else {
-                this.state = JSON.parse(JSON.stringify(defaultState));
-                this.msg('Новый профиль создан!');
-            }
-        }
+    const { error: insertError } = await supabaseClient
+        .from('players')
+        .insert(newPlayer);
+
+    if (insertError) {
+        console.error('Не удалось создать нового игрока:', insertError);
+        this.msg('Ошибка создания профиля');
+        this.state = JSON.parse(JSON.stringify(defaultState));
+    } else {
+        this.state = JSON.parse(JSON.stringify(defaultState));
+        this.msg('Новый профиль создан!');
+    }
+}
 
         this.updateUI();
     },
