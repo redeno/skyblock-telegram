@@ -1,11 +1,11 @@
 // skills.js — множитель 1.4 для данжей
 
 const skillConfig = {
-    mining: { baseNext: 100, multiplier: 1.6 },
-    farming: { baseNext: 100, multiplier: 1.6 },
-    fishing: { baseNext: 100, multiplier: 1.6 },
-    combat: { baseNext: 100, multiplier: 1.6 },
-    foraging: { baseNext: 100, multiplier: 1.6 },
+    mining: { baseNext: 100, multiplier: 1.5 },
+    farming: { baseNext: 100, multiplier: 1.5 },
+    fishing: { baseNext: 100, multiplier: 1.5 },
+    combat: { baseNext: 100, multiplier: 1.5 },
+    foraging: { baseNext: 100, multiplier: 1.5 },
     dungeons: { baseNext: 200, multiplier: 1.4 } // 1.4 как просил
 };
 
