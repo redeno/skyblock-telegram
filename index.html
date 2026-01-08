@@ -89,19 +89,22 @@
         </div>
 
         <!-- Лут после данжа -->
-        <div id="loot-screen" class="screen">
-            <h2 style="text-align:center;color:var(--accent)">ПОБЕДА!</h2>
-            <p style="text-align:center;font-size:1.2rem">🎁 Сундук добавлен в инвентарь!</p>
-            <div id="extra-chests" style="display:none;">
-                <h3 style="text-align:center">Купить доп. сундук?</h3>
-                <div class="item-actions">
-                    <button class="act-btn" onclick="game.buyExtraChest(1)">Обычный (3м)</button>
-                    <button class="act-btn" onclick="game.buyExtraChest(2)">Эпический (5м)</button>
-                    <button class="act-btn" onclick="game.buyExtraChest(3)">Элитный (10м)</button>
-                </div>
-            </div>
-            <button class="cooldown-btn" onclick="game.switchTab('portal')">ВЕРНУТЬСЯ НА ПОРТАЛ</button>
+<div id="loot-screen" class="screen">
+    <h2 style="text-align:center;color:var(--accent)">ПОБЕДА!</h2>
+    <p style="text-align:center;font-size:1.2rem">🎁 Сундук добавлен в инвентарь!</p>
+    <div id="extra-chests" style="display:none;">
+        <h3 style="text-align:center">Купить доп. сундук?</h3>
+        <div class="item-actions">
+            <button class="act-btn" onclick="game.buyExtraChest(1)">Обычный (3м)</button>
+            <button class="act-btn" onclick="game.buyExtraChest(2)">Эпический (5м)</button>
+            <button class="act-btn" onclick="game.buyExtraChest(3)">Элитный (10м)</button>
         </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
+        <button class="cooldown-btn" onclick="game.switchTab('portal')">ВЕРНУТЬСЯ НА ПОРТАЛ</button>
+        <button class="cooldown-btn" style="background:var(--green)" onclick="game.repeatDungeon()">ПОВТОРИТЬ ДАНЖ</button>
+    </div>
+</div>
 
         <!-- Магазин -->
         <div id="shop" class="screen">
@@ -235,10 +238,8 @@
     <!-- Подключаем основной скрипт игры -->
     <script src="game.js"></script>
     <script src="top.js"></script>
-    <script src="dungeon.js"></script>
+<script src="dungeon.js"></script>
 </body>
 </html>
-
-
 
 
