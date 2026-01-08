@@ -116,13 +116,11 @@ const game = {
             this.updateUI();
             return;
         }
-
         let { data, error } = await supabaseClient
             .from('players')
             .select('*')
             .eq('telegram_id', this.playerTelegramId)
             .maybeSingle();
-
         if (error && error.code !== 'PGRST116') {
             console.error('Ошибка Supabase:', error);
             this.msg('Ошибка связи с сервером');
@@ -130,7 +128,6 @@ const game = {
             this.updateUI();
             return;
         }
-
         if (data) {
             this.state.coins = data.coins ?? 0;
             this.state.nextItemId = data.next_item_id ?? 10;
@@ -145,7 +142,6 @@ const game = {
         } else {
             const tgUser = tg.initDataUnsafe?.user;
             const username = tgUser?.username ? tgUser.username : null;
-
             const newPlayer = {
                 telegram_id: this.playerTelegramId,
                 username: username,
@@ -159,11 +155,9 @@ const game = {
                 pets: [],
                 buffs: defaultState.buffs
             };
-
             const { error: insertError } = await supabaseClient
                 .from('players')
                 .insert(newPlayer);
-
             if (insertError) {
                 console.error('Не удалось создать нового игрока:', insertError);
                 this.msg('Ошибка создания профиля');
@@ -173,13 +167,12 @@ const game = {
                 this.msg('Новый профиль создан!');
             }
         }
-
+        this.initSkills();
         this.updateUI();
     },
 
     saveToSupabase: async function() {
         if (!this.playerTelegramId) return;
-
         const { error } = await supabaseClient
             .from('players')
             .upsert({
@@ -194,22 +187,17 @@ const game = {
                 pets: this.state.pets,
                 buffs: this.state.buffs
             }, { onConflict: 'telegram_id' });
-
         if (error) console.error('Ошибка сохранения:', error);
     },
 
     init: async function() {
         this.playerTelegramId = tg.initDataUnsafe?.user?.id;
-
         if (!this.playerTelegramId) {
             this.msg('Запуск вне Telegram — тестовый режим');
         }
-
         await this.loadFromSupabase();
-
         setInterval(() => this.minionTick(), 1000);
         setInterval(() => this.saveToSupabase(), 10000);
-
         tg.expand?.();
     },
 
@@ -224,25 +212,6 @@ const game = {
         setTimeout(() => {
             this.messageQueue = this.messageQueue.filter(m => m !== t);
         }, 5000);
-    },
-
-    addMaterial(name, type = 'material') {
-        const existing = this.state.inventory.find(i => i.name === name && i.type === type);
-        if (existing) existing.count = (existing.count || 1) + 1;
-        else this.state.inventory.push({id: this.state.nextItemId++, name, type, count: 1});
-    },
-
-    addXp(skillKey, amount) {
-        const sk = this.state.skills[skillKey];
-        const petBonus = this.calcPetBonus(skillKey);
-        amount *= (1 + petBonus / 100);
-        sk.xp += amount;
-        if (sk.xp >= sk.next) {
-            sk.lvl++;
-            sk.xp = 0;
-            sk.next *= 1.6;
-            this.msg(`LEVEL UP! ${sk.label} ${sk.lvl}`);
-        }
     },
 
     calcStats(inDungeon = false) {
@@ -309,15 +278,16 @@ const game = {
         this.state.pets.forEach((pet, idx) => {
             const rarity = pet.rarity.toUpperCase();
             const bonus = (petRarityBonuses[pet.rarity] * pet.lvl * 100).toFixed(1);
-            l.innerHTML += `<div class="card">
-                <b>${pet.name} (${rarity}, LVL ${pet.lvl})</b><br>
-                <small>+${bonus}% XP в ${pet.skill.toUpperCase()}</small><br>
-                <div class="item-actions">
-                    <button class="act-btn" onclick="game.toggleEquipPet(${idx})">${pet.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
-                    <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
-                    <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(pet.cost / 2)}💰)</button>
-                </div>
-            </div>`;
+            l.innerHTML += `
+                <div class="card">
+                    <b>${pet.name} (${rarity}, LVL ${pet.lvl})</b><br>
+                    <small>+${bonus}% XP в ${pet.skill.toUpperCase()}</small><br>
+                    <div class="item-actions">
+                        <button class="act-btn" onclick="game.toggleEquipPet(${idx})">${pet.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
+                        <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
+                        <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(pet.cost / 2)}💰)</button>
+                    </div>
+                </div>`;
         });
         if (!this.state.pets.length) l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто</div>';
     },
@@ -461,75 +431,9 @@ const game = {
             this.state.pets.push({...i, equipped:false});
             this.msg(`${i.name} куплен и добавлен в Загон!`);
         } else {
-            this.state.inventory.push({...i,id:this.state.nextItemId++,equipped:false});
+            this.addMaterial(i.name, i.type); // теперь добавление через inventory.js
             this.msg(`${i.name} куплен!`);
         }
-        this.updateUI();
-    },
-
-    filterInv(t,e){
-        document.querySelectorAll('.inv-tab').forEach(x=>x.classList.remove('active'));
-        e.classList.add('active');
-        this.lastFilter=t;
-        this.renderInvList(t);
-    },
-
-    renderInvList(t){
-        const l=document.getElementById('inv-list');
-        l.innerHTML='';
-        const items = t === 'pet' ? this.state.pets : this.state.inventory.filter(i=>i.type===t);
-        if(!items.length){l.innerHTML='<div class="card" style="text-align:center;color:#666">Пусто</div>';return;}
-        items.forEach((i, idx)=>{
-            const c=i.count>1?` (${i.count})`:'';let a='';
-            if (t === 'pet') {
-                a = `<button class="act-btn" onclick="game.toggleEquipPet(${idx})">${i.equipped?'СНЯТЬ':'НАДЕТЬ'}</button><button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button><button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost/2)}💰)</button>`;
-            } else if(i.type==='material') a=`<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (2💰/шт)</button>`;
-            else if(i.type==='chest')a=`<button class="act-btn" onclick="game.openChest(${i.id})">ОТКРЫТЬ</button>`;
-            else if(['weapon','armor','tool','accessory'].includes(i.type))a=`<button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped?'СНЯТЬ':'НАДЕТЬ'}</button>`;
-            else if(i.type==='potion'&&i.name==='GodPotion')a=`<button class="act-btn" onclick="game.activateGodPotion(${i.id})">АКТИВИРОВАТЬ</button>`;
-            l.innerHTML+=`<div class="card"><b>${i.name}${c}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions">${a}</div></div>`;
-        });
-    },
-
-    activateGodPotion(id){
-        const i=this.state.inventory.find(x=>x.id===id);
-        if(!i||i.name!=='GodPotion')return;
-        if(Date.now()<this.state.buffs.godpotion.endTime){this.msg('Уже активен!');return;}
-        this.state.buffs.godpotion.endTime=Date.now()+86400000;
-        this.state.inventory=this.state.inventory.filter(x=>x.id!==id);
-        this.msg('GodPotion на 24 часа!');
-        this.updateUI();
-    },
-
-    openChest(id){
-        const i=this.state.inventory.find(x=>x.id===id);
-        if(!i||i.type!=='chest')return;
-        const coins = 1000; // простая награда без данжей
-        this.state.coins += coins;
-        if (i.count > 1) i.count--;
-        else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-        this.msg(`+${coins} 💰 из сундука!`);
-        this.updateUI();
-    },
-
-    sellItem(id){
-        const i=this.state.inventory.find(x=>x.id===id);
-        if(!i||i.type!=='material')return;
-        const p=2,c=i.count||1;
-        this.state.coins+=p*c;
-        if(c>1)i.count-=c;
-        else this.state.inventory=this.state.inventory.filter(x=>x.id!==id);
-        this.msg(`Продано! +${p*c} 💰`);
-        this.updateUI();
-    },
-
-    toggleEquip(id){
-        const i=this.state.inventory.find(x=>x.id===id);
-        if(!i||!['weapon','armor','tool','accessory'].includes(i.type))return;
-        if(i.type==='weapon')this.state.inventory.forEach(x=>{if(x.type==='weapon'&&x.id!==id)x.equipped=false;});
-        if(i.type==='armor')this.state.inventory.forEach(x=>{if(x.type==='armor'&&x.id!==id)x.equipped=false;});
-        if(i.type==='tool')this.state.inventory.forEach(x=>{if(x.type==='tool'&&x.sub_type===i.sub_type&&x.id!==id)x.equipped=false;});
-        i.equipped=!i.equipped;
         this.updateUI();
     },
 
@@ -590,27 +494,7 @@ const game = {
             prog.style.width = '0%';
             this.finishAction();
         }, 1520);
-    },
-
-    getItemDesc(i) {
-        let d = '';
-        if (i.str) d += `+${i.str} СИЛЫ `;
-        if (i.def) d += `+${i.def} БРОНИ `;
-        if (i.cc) d += `+${i.cc}% КРИТ ШАНС `;
-        if (i.cd) d += `+${i.cd}% КРИТ УРОН `;
-        if (i.mf) d += `+${i.mf} УДАЧИ `;
-        if (i.int) d += `+${i.int} ИНТЕЛЛЕКТА `;
-        if (i.mag_amp) d += `+${i.mag_amp} МАГ УСИЛЕНИЯ `;
-        if (i.xp_bonus) d += `+${i.xp_bonus}% ОПЫТА `;
-        if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
-        if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
-        if (i.fast) d += 'БЫСТРАЯ ';
-        if (i.dynamic_str === 'midas') d += 'МИДАС ';
-        if (i.magic) d += 'МАГИЧЕСКОЕ ';
-        if (i.type === 'pet') d += `+${(petRarityBonuses[i.rarity] * i.lvl * 100).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
-        return d || 'ПРЕДМЕТ';
     }
 };
 
 game.init();
-this.initSkills();
