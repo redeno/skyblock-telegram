@@ -194,7 +194,7 @@ const game = {
     }
 
     this.updateUI();
-}
+},
 
 
     async saveToSupabase() {
@@ -246,7 +246,7 @@ const game = {
     } else {
         console.log('Данные успешно обновлены!');
     }
-}
+},
 
 
 
