@@ -193,12 +193,50 @@ const game = {
         this.updateUI();
     },
 
-    saveToSupabase: async function() {
-        if (!this.playerTelegramId) return;
+async saveToSupabase() {
+    if (!this.playerTelegramId) return;
 
-        const { error } = await supabaseClient
+    // Проверка, существует ли запись с этим telegram_id
+    let { data, error } = await supabaseClient
+        .from('players')
+        .select('*')
+        .eq('telegram_id', this.playerTelegramId)
+        .maybeSingle(); // maybeSingle() не выбрасывает ошибку, если данных нет
+
+    if (error) {
+        console.error('Ошибка при загрузке данных:', error);
+        this.msg('Ошибка связи с сервером');
+        return;
+    }
+
+    // Если запись существует — обновляем
+    if (data) {
+        const { error: updateError } = await supabaseClient
             .from('players')
-            .upsert({
+            .update({
+                coins: this.state.coins,
+                next_item_id: this.state.nextItemId,
+                class: this.state.class,
+                skills: this.state.skills,
+                stats: this.state.stats,
+                inventory: this.state.inventory,
+                minions: this.state.minions,
+                pets: this.state.pets,
+                buffs: this.state.buffs
+            })
+            .eq('telegram_id', this.playerTelegramId);  // Указываем конкретно telegram_id для обновления
+
+        if (updateError) {
+            console.error('Ошибка обновления:', updateError);
+            this.msg('Ошибка при обновлении данных');
+        } else {
+            console.log('Данные успешно обновлены!');
+        }
+    } else {
+        // Если записи нет, вставляем новую
+        const { error: insertError } = await supabaseClient
+            .from('players')
+            .insert({
                 telegram_id: this.playerTelegramId,
                 coins: this.state.coins,
                 next_item_id: this.state.nextItemId,
@@ -207,11 +245,19 @@ const game = {
                 stats: this.state.stats,
                 inventory: this.state.inventory,
                 minions: this.state.minions,
-                pets: this.state.pets
+                pets: this.state.pets,
+                buffs: this.state.buffs
             });
 
-        if (error) console.error('Ошибка сохранения:', error);
-    },
+        if (insertError) {
+            console.error('Не удалось создать нового игрока:', insertError);
+            this.msg('Ошибка создания профиля');
+        } else {
+            console.log('Новый профиль создан!');
+        }
+    }
+}
+,
 
     init: async function() {
         this.playerTelegramId = tg.initDataUnsafe?.user?.id;
