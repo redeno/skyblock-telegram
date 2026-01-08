@@ -115,7 +115,7 @@ Object.assign(game, {
     },
 
     startDungeon(floor) {
-        const req = (floor - 1) * 5 + 1;
+        const req = (floor - 1) * 5;
         if (this.state.skills.dungeons.lvl < req) {
             this.msg(`Требуется уровень ДАНЖЕЙ ${req}`);
             return;
