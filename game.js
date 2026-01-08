@@ -207,8 +207,7 @@ const game = {
                 stats: this.state.stats,
                 inventory: this.state.inventory,
                 minions: this.state.minions,
-                pets: this.state.pets,
-                buffs: this.state.buffs
+                pets: this.state.pets
             });
 
         if (error) console.error('Ошибка сохранения:', error);
