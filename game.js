@@ -433,19 +433,24 @@ const game = {
         });
     },
 
-    buyShopItem(t,x){
-        const i=shopItems[t][x];
-        if(this.state.coins<i.cost){this.msg('Не хватает монет!');return;}
-        this.state.coins-=i.cost;
-        if (i.type === 'pet') {
-            this.state.pets.push({...i, equipped:false});
-            this.msg(`${i.name} куплен и добавлен в Загон!`);
-        } else {
-            this.addMaterial(i.name, i.type); // теперь добавление через inventory.js
-            this.msg(`${i.name} куплен!`);
-        }
-        this.updateUI();
-    },
+buyShopItem(t,x){
+    const i = shopItems[t][x];
+    if(this.state.coins < i.cost){this.msg('Не хватает монет!');return;}
+    this.state.coins -= i.cost;
+
+    if (i.type === 'pet') {
+        this.state.pets.push({...i, equipped:false});
+        this.msg(`${i.name} куплен и добавлен в Загон!`);
+    } else {
+        // Копируем ВСЕ статы из shopItems
+        this.addMaterial(i.name, i.type);
+        const newItem = this.state.inventory[this.state.inventory.length - 1]; // последний добавленный
+        Object.assign(newItem, i); // копируем str, def, mf и т.д.
+        delete newItem.cost; // убираем цену из предмета
+        this.msg(`${i.name} куплен!`);
+    }
+    this.updateUI();
+},
 
     switchTab(id, el) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
