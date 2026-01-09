@@ -249,30 +249,38 @@ const game = {
     },
 
     updateUI() {
-        const s = this.calcStats(false);
-        document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
-        document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
-        const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
-        document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
-        document.getElementById('stats-display').innerHTML = `
-            <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${Math.floor(s.hp)}</span></div>
-            <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${Math.floor(s.str)}</span></div>
-            <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${Math.floor(s.def)}</span></div>
-            <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${Math.floor(s.cc)}%</span></div>
-            <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${Math.floor(s.cd)}%</span></div>
-            <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${Math.floor(s.mf)}</span></div>
-            <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
-            <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>`;
-        this.renderMinions();
-        if (typeof this.renderInvList === 'function') {
-    this.renderInvList(this.lastFilter);
-}
-        if (document.getElementById('shop').classList.contains('active')) this.renderShopList(this.lastShopFilter);
-        if (document.getElementById('pen').classList.contains('active')) this.renderPenList();
-        if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
-        document.getElementById('class-select').value = this.state.class;
-        this.saveToSupabase();
-    },
+    const s = this.calcStats(false);
+    document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
+    document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
+    const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
+    document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
+    document.getElementById('stats-display').innerHTML = `
+        <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${Math.floor(s.hp)}</span></div>
+        <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${Math.floor(s.str)}</span></div>
+        <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${Math.floor(s.def)}</span></div>
+        <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${Math.floor(s.cc)}%</span></div>
+        <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${Math.floor(s.cd)}%</span></div>
+        <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${Math.floor(s.mf)}</span></div>
+        <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
+        <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>`;
+
+    this.renderMinions();
+
+    // Защита от ошибок — если inventory.js ещё не загрузился
+    if (typeof this.renderInvList === 'function') {
+        this.renderInvList(this.lastFilter);
+    }
+    if (document.getElementById('shop')?.classList.contains('active') && typeof this.renderShopList === 'function') {
+        this.renderShopList(this.lastShopFilter);
+    }
+    if (document.getElementById('pen')?.classList.contains('active') && typeof this.renderPenList === 'function') {
+        this.renderPenList();
+    }
+
+    if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
+    document.getElementById('class-select').value = this.state.class;
+    this.saveToSupabase();
+},
 
     renderPenList() {
         const l = document.getElementById('pen-list');
