@@ -264,7 +264,9 @@ const game = {
             <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
             <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>`;
         this.renderMinions();
-        this.renderInvList(this.lastFilter);
+        if (typeof this.renderInvList === 'function') {
+    this.renderInvList(this.lastFilter);
+}
         if (document.getElementById('shop').classList.contains('active')) this.renderShopList(this.lastShopFilter);
         if (document.getElementById('pen').classList.contains('active')) this.renderPenList();
         if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
