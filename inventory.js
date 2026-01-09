@@ -33,22 +33,43 @@ Object.assign(game, {
         this.renderInvList(t);
     },
 
-    renderInvList(t){
-        const l=document.getElementById('inv-list');
-        l.innerHTML='';
-        const items = t === 'pet' ? this.state.pets : this.state.inventory.filter(i=>i.type===t);
-        if(!items.length){l.innerHTML='<div class="card" style="text-align:center;color:#666">Пусто</div>';return;}
-        items.forEach((i, idx)=>{
-            const c=i.count>1?` (${i.count})`:'';let a='';
-            if (t === 'pet') {
-                a = `<button class="act-btn" onclick="game.toggleEquipPet(${idx})">${i.equipped?'СНЯТЬ':'НАДЕТЬ'}</button><button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button><button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost/2)}💰)</button>`;
-            } else if(i.type==='material') a=`<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (2💰/шт)</button>`;
-            else if(i.type==='chest')a=`<button class="act-btn" onclick="game.openChest(${i.id})">ОТКРЫТЬ</button>`;
-            else if(['weapon','armor','tool','accessory'].includes(i.type))a=`<button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped?'СНЯТЬ':'НАДЕТЬ'}</button>`;
-            else if(i.type==='potion'&&i.name==='GodPotion')a=`<button class="act-btn" onclick="game.activateGodPotion(${i.id})">АКТИВИРОВАТЬ</button>`;
-            l.innerHTML+=`<div class="card"><b>${i.name}${c}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions">${a}</div></div>`;
-        });
-    },
+renderInvList(t){
+    const l = document.getElementById('inv-list');
+    l.innerHTML = '';
+    const items = t === 'pet' ? this.state.pets : this.state.inventory.filter(i=>i.type===t);
+    if(!items.length){
+        l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто</div>';
+        return;
+    }
+    items.forEach((i, idx)=>{
+        const c = i.count > 1 ? ` (${i.count})` : '';
+        let desc = this.getItemDesc(i);
+        let a = '';
+
+        if (t === 'pet') {
+            a = `
+                <button class="act-btn" onclick="game.toggleEquipPet(${idx})">${i.equipped?'СНЯТЬ':'НАДЕТЬ'}</button>
+                <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
+                <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost/2)}💰)</button>
+            `;
+        } else if(i.type==='material') {
+            a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ ВСЁ (${2 * (i.count || 1)}💰)</button>`;
+        } else if(i.type==='chest') {
+            a = `<button class="act-btn" onclick="game.openChest(${i.id})">ОТКРЫТЬ</button>`;
+        } else if(['weapon','armor','tool','accessory'].includes(i.type)) {
+            a = `<button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped?'СНЯТЬ':'НАДЕТЬ'}</button>`;
+        } else if(i.type==='potion' && i.name==='GodPotion') {
+            a = `<button class="act-btn" onclick="game.activateGodPotion(${i.id})">АКТИВИРОВАТЬ</button>`;
+        }
+
+        l.innerHTML += `
+            <div class="card">
+                <b>${i.name}${c}</b><br>
+                <small style="color:#0f0; font-weight:bold">${desc || 'Без бонусов'}</small>
+                <div class="item-actions">${a}</div>
+            </div>`;
+    });
+}
 
     activateGodPotion(id){
         const i=this.state.inventory.find(x=>x.id===id);
