@@ -60,8 +60,9 @@ Object.assign(game, {
                     <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
                     <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost / 2)}💰)</button>
                 `;
-            } else if (i.type === 'material' || i.type === 'accessory') { // талисманы как материалы
-                a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ ВСЁ (${2 * (i.count || 1)}💰)</button>`;
+            } } else if(i.type==='material') {
+                const price = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
+                a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${price * (i.count || 1)}💰)</button>`;
             } else if (i.type === 'chest') {
                 a = `<button class="act-btn" onclick="game.openChest(${i.id})">ОТКРЫТЬ</button>`;
             } else if (['weapon','armor','tool'].includes(i.type)) {
