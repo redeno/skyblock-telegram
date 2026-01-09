@@ -249,38 +249,35 @@ const game = {
     },
 
     updateUI() {
-    const s = this.calcStats(false);
-    document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
-    document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
-    const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
-    document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
-    document.getElementById('stats-display').innerHTML = `
-        <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${Math.floor(s.hp)}</span></div>
-        <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${Math.floor(s.str)}</span></div>
-        <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${Math.floor(s.def)}</span></div>
-        <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${Math.floor(s.cc)}%</span></div>
-        <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${Math.floor(s.cd)}%</span></div>
-        <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${Math.floor(s.mf)}</span></div>
-        <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
-        <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>`;
-
-    this.renderMinions();
-
-    // Защита от ошибок — если inventory.js ещё не загрузился
-    if (typeof this.renderInvList === 'function') {
-        this.renderInvList(this.lastFilter);
-    }
-    if (document.getElementById('shop')?.classList.contains('active') && typeof this.renderShopList === 'function') {
-        this.renderShopList(this.lastShopFilter);
-    }
-    if (document.getElementById('pen')?.classList.contains('active') && typeof this.renderPenList === 'function') {
-        this.renderPenList();
-    }
-
-    if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
-    document.getElementById('class-select').value = this.state.class;
-    this.saveToSupabase();
-},
+        const s = this.calcStats(false);
+        document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
+        document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
+        const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
+        document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
+        document.getElementById('stats-display').innerHTML = `
+            <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${Math.floor(s.hp)}</span></div>
+            <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${Math.floor(s.str)}</span></div>
+            <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${Math.floor(s.def)}</span></div>
+            <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${Math.floor(s.cc)}%</span></div>
+            <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${Math.floor(s.cd)}%</span></div>
+            <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${Math.floor(s.mf)}</span></div>
+            <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
+            <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>`;
+        this.renderMinions();
+        // Защита от ошибок — если inventory.js ещё не загрузился
+        if (typeof this.renderInvList === 'function') {
+            this.renderInvList(this.lastFilter);
+        }
+        if (document.getElementById('shop')?.classList.contains('active') && typeof this.renderShopList === 'function') {
+            this.renderShopList(this.lastShopFilter);
+        }
+        if (document.getElementById('pen')?.classList.contains('active') && typeof this.renderPenList === 'function') {
+            this.renderPenList();
+        }
+        if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
+        document.getElementById('class-select').value = this.state.class;
+        this.saveToSupabase();
+    },
 
     renderPenList() {
         const l = document.getElementById('pen-list');
@@ -433,24 +430,23 @@ const game = {
         });
     },
 
-buyShopItem(t,x){
-    const i = shopItems[t][x];
-    if(this.state.coins < i.cost){this.msg('Не хватает монет!');return;}
-    this.state.coins -= i.cost;
-
-    if (i.type === 'pet') {
-        this.state.pets.push({...i, equipped:false});
-        this.msg(`${i.name} куплен и добавлен в Загон!`);
-    } else {
-        // Копируем ВСЕ статы из shopItems
-        this.addMaterial(i.name, i.type);
-        const newItem = this.state.inventory[this.state.inventory.length - 1]; // последний добавленный
-        Object.assign(newItem, i); // копируем str, def, mf и т.д.
-        delete newItem.cost; // убираем цену из предмета
-        this.msg(`${i.name} куплен!`);
-    }
-    this.updateUI();
-},
+    buyShopItem(t,x){
+        const i = shopItems[t][x];
+        if(this.state.coins < i.cost){this.msg('Не хватает монет!');return;}
+        this.state.coins -= i.cost;
+        if (i.type === 'pet') {
+            this.state.pets.push({...i, equipped:false});
+            this.msg(`${i.name} куплен и добавлен в Загон!`);
+        } else {
+            // Копируем ВСЕ статы из shopItems
+            this.addMaterial(i.name, i.type);
+            const newItem = this.state.inventory[this.state.inventory.length - 1]; // последний добавленный
+            Object.assign(newItem, i); // копируем str, def, mf и т.д.
+            delete newItem.cost; // убираем цену из предмета
+            this.msg(`${i.name} куплен!`);
+        }
+        this.updateUI();
+    },
 
     switchTab(id, el) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -463,6 +459,7 @@ buyShopItem(t,x){
 
     showModal(id) {
         document.getElementById(id).style.display = 'block';
+
         if (id === 'skillsModal') {
             let html = '';
             Object.values(this.state.skills).forEach(sk => {
@@ -470,6 +467,17 @@ buyShopItem(t,x){
                 html += `<div class="card"><b>${sk.label} LVL ${sk.lvl}</b><br><small>${Math.floor(sk.xp)} / ${Math.floor(sk.next)} XP</small><div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${progress}%;background:var(--green)"></div></div></div>`;
             });
             document.getElementById('skills-content').innerHTML = html;
+        }
+
+        // Добавляем рендер обновлений для модалки "ОБНОВЛЕНИЯ"
+        if (id === 'updatesModal') {
+            if (typeof renderUpdates === 'function') {
+                renderUpdates();  // ← вызов функции из News.js
+            } else {
+                // Если News.js ещё не загрузился — показываем заглушку
+                document.getElementById('updatesModal').innerHTML = 
+                    '<div style="text-align:center;color:#666;padding:20px;">Обновления загружаются...</div>';
+            }
         }
     },
 
