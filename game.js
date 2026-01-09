@@ -498,3 +498,4 @@ const game = {
 };
 
 game.init();
+this.renderInvList(this.lastFilter);
