@@ -93,5 +93,4 @@ sellItem(id) {
         this.updateUI();
     }
 });
-а
-this.renderInvList(this.lastFilter); это че куда вставитьв game.js
+this.renderInvList(this.lastFilter);
