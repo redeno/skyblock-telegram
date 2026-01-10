@@ -33,8 +33,7 @@ const defaultState = {
         foraging_exp_bonus:0,
         farming_fortune:0,
         farming_exp_bonus:0,
-        fishing_speed:0,
-        fishing_double_chance:0
+        fishing_exp_bonus:0,  // ← Заменил fishing_speed на fishing_exp_bonus
     },
     class: '',
     buffs: {godpotion:{endTime:0}},
@@ -68,15 +67,15 @@ const shopItems = {
         {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:2000},
         {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:2000},
         {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:2000},
-        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_double_chance:5,cost:2000},
+        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:5,cost:2000},
         {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:20,cost:10000},
         {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:20,cost:10000},
         {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:20,cost:10000},
-        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_double_chance:10,cost:100000},
-        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',fishing_double_chance:50,fast:true,cost:1000000},
-        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_double_chance:30,xp_bonus:5,cost:25000000},
-        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_double_chance:50,triple_chance:25,xp_bonus:10,cost:100000000},
-        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_double_chance:100,triple_chance:25,xp_bonus:20,cost:500000000}
+        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:10,cost:100000},
+        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:50,fast:true,cost:1000000},
+        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:30,cost:25000000},
+        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_exp_bonus:50,triple_chance:25,cost:100000000},
+        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_exp_bonus:100,triple_chance:25,cost:500000000}
     ],
     accessory: [
         {name:'Талисман удачи',type:'accessory',mf:10,cost:10000},
@@ -191,8 +190,7 @@ const game = {
             foraging_exp_bonus: game.state.stats.foraging_exp_bonus ?? 0,
             farming_fortune: game.state.stats.farming_fortune ?? 0,
             farming_exp_bonus: game.state.stats.farming_exp_bonus ?? 0,
-            fishing_speed: game.state.stats.fishing_speed ?? 0,
-            fishing_double_chance: game.state.stats.fishing_double_chance ?? 0,
+            fishing_exp_bonus: game.state.stats.fishing_exp_bonus ?? 0,
             magic_res: game.state.stats.magic_res ?? 0
         });
         this.updateUI();
@@ -245,7 +243,7 @@ const game = {
         let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
         this.state.inventory.forEach(i => {
             if (i.equipped) {
-                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res','mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus','farming_fortune','farming_exp_bonus','fishing_speed','fishing_double_chance'].forEach(st => {
+                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res','mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus','farming_fortune','farming_exp_bonus','fishing_exp_bonus'].forEach(st => {
                     if (i[st]) s[st] += i[st];
                 });
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
@@ -283,58 +281,54 @@ const game = {
         document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
         document.getElementById('stats-display').innerHTML = `
             <div class="stat-row">
-                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp)}</span>
+                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str)}</span>
+                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def)}</span>
+                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc)}%</span>
+                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc || 0)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd)}%</span>
+                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd || 0)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf)}</span>
+                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int)}</span>
+                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span>
+                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res)}%</span>
+                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune)}</span>
+                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune)}</span>
+                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">🌲 ФОРАЖ ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune)}</span>
+                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune || 0)}</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ</span> <span class="stat-val">${Math.floor(s.fishing_speed)}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">🎣 ДВОЙНОЙ ШАНС</span> <span class="stat-val">${Math.floor(s.fishing_double_chance)}%</span>
+                <span class="stat-label">🎣 ФИШИНГ ОПЫТ</span> <span class="stat-val">${(s.fishing_exp_bonus || 0).toFixed(1)}%</span>
             </div>
         `;
-
         const equippedPet = this.state.pets.find(p => p.equipped);
         let petHtml = '';
         if (equippedPet) {
@@ -357,9 +351,7 @@ const game = {
                 </div>
             `;
         }
-
         document.getElementById('stats-display').innerHTML += petHtml;
-
         this.renderMinions();
         if (typeof this.renderInvList === 'function') {
             this.renderInvList(this.lastFilter);
@@ -445,59 +437,58 @@ const game = {
         this.updateUI();
     },
 
-finishAction() {
-    const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging'};
-    const skillKey = map[this.currentLoc];
-    const skill = this.state.skills[skillKey];
-    const gain = 15 * skill.lvl;
-    this.state.coins += gain;
+    finishAction() {
+        const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging'};
+        const skillKey = map[this.currentLoc];
+        const skill = this.state.skills[skillKey];
+        const gain = 15 * skill.lvl;
+        this.state.coins += gain;
 
-    // ← Самое важное: получаем статы здесь!
-    const s = this.calcStats(false);
+        const s = this.calcStats(false);
 
-    const base_xp = 20;
-    let exp_bonus = 0;
-    let fortune = 0;
-    let amount = 1;
+        const base_xp = 20;
+        let exp_bonus = 0;
+        let fortune = 0;
+        let amount = 1;
 
-    if (this.currentLoc === 'mine') {
-        exp_bonus = s.mining_exp_bonus || 0;
-        fortune = s.mining_fortune || 0;
-    } else if (this.currentLoc === 'farm') {
-        exp_bonus = s.farming_exp_bonus || 0;
-        fortune = s.farming_fortune || 0;
-    } else if (this.currentLoc === 'fish') {
-        exp_bonus = s.fishing_exp_bonus || 0;
-        fortune = s.fishing_double_chance || 0;  // ← для рыбалки это шанс удвоения
-    } else if (this.currentLoc === 'forage') {
-        exp_bonus = s.foraging_exp_bonus || 0;
-        fortune = s.foraging_fortune || 0;
-    }
+        if (this.currentLoc === 'mine') {
+            exp_bonus = s.mining_exp_bonus || 0;
+            fortune = s.mining_fortune || 0;
+        } else if (this.currentLoc === 'farm') {
+            exp_bonus = s.farming_exp_bonus || 0;
+            fortune = s.farming_fortune || 0;
+        } else if (this.currentLoc === 'fish') {
+            exp_bonus = s.fishing_exp_bonus || 0;
+            fortune = s.fishing_double_chance || 0;  // ← для рыбалки шанс удвоения
+        } else if (this.currentLoc === 'forage') {
+            exp_bonus = s.foraging_exp_bonus || 0;
+            fortune = s.foraging_fortune || 0;
+        }
 
-    const total_xp = base_xp * (1 + exp_bonus / 100);
-    this.addXp(skillKey, total_xp);
+        const total_xp = base_xp * (1 + exp_bonus / 100);
+        this.addXp(skillKey, total_xp);
 
-    const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
+        const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
 
-    const guaranteed = Math.floor(fortune / 100);
-    amount = guaranteed + 1;
-    const chance = fortune % 100;
-    if (Math.random() * 100 < chance) amount++;
+        const guaranteed = Math.floor(fortune / 100);
+        amount = guaranteed + 1;
+        const chance = fortune % 100;
+        if (Math.random() * 100 < chance) amount++;
 
-    const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type);
-    if (equippedTool) {
-        if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
-        else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
-    }
+        const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type);
+        if (equippedTool) {
+            if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
+            else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
+        }
 
-    for (let i = 0; i < amount; i++) this.addMaterial(mat);
+        for (let i = 0; i < amount; i++) this.addMaterial(mat);
 
-    // Опыт теперь умножается на количество выпавших предметов
-    const final_xp = total_xp * amount;
+        const final_xp = total_xp * amount;
 
-    document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
-    this.updateUI();
-},
+        document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
+        this.updateUI();
+    },
+
     renderMinions(){
         const l=document.getElementById('minions-list');l.innerHTML='';
         this.state.minions.forEach((m,i)=>{
