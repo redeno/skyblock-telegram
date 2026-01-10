@@ -301,14 +301,26 @@ const game = {
         const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
         document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
         document.getElementById('stats-display').innerHTML = `
-            <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${Math.floor(s.hp)}</span></div>
-            <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${Math.floor(s.str)}</span></div>
-            <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${Math.floor(s.def)}</span></div>
-            <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${Math.floor(s.cc)}%</span></div>
-            <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${Math.floor(s.cd)}%</span></div>
-            <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${Math.floor(s.mf)}</span></div>
-            <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
-            <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>`;
+    <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${Math.floor(s.hp)}</span></div>
+    <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${Math.floor(s.str)}</span></div>
+    <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${Math.floor(s.def)}</span></div>
+    <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${Math.floor(s.cc)}%</span></div>
+    <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${Math.floor(s.cd)}%</span></div>
+    <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${Math.floor(s.mf)}</span></div>
+    <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
+    <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>
+
+    <!-- Новые статы -->
+    <div><span class="stat-label">🛡️ МАГ ЗАЩИТА:</span> <span class="stat-val">${Math.floor(s.magic_res)}%</span></div>
+    <div><span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА:</span> <span class="stat-val">${Math.floor(s.mining_fortune)}</span></div>
+    <div><span class="stat-label">⛏️ МАЙНИНГ ОПЫТ +:</span> <span class="stat-val">${Math.floor(s.mining_exp_bonus)}%</span></div>
+    <div><span class="stat-label">🌲 ФОРАЖ ФОРТУНА:</span> <span class="stat-val">${Math.floor(s.foraging_fortune)}</span></div>
+    <div><span class="stat-label">🌲 ФОРАЖ ОПЫТ +:</span> <span class="stat-val">${Math.floor(s.foraging_exp_bonus)}%</span></div>
+    <div><span class="stat-label">🌾 ФАРМИНГ ФОРТУНА:</span> <span class="stat-val">${Math.floor(s.farming_fortune)}</span></div>
+    <div><span class="stat-label">🌾 ФАРМИНГ ОПЫТ +:</span> <span class="stat-val">${Math.floor(s.farming_exp_bonus)}%</span></div>
+    <div><span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ:</span> <span class="stat-val">${Math.floor(s.fishing_speed)}</span></div>
+    <div><span class="stat-label">🎣 ДВОЙНОЙ ШАНС:</span> <span class="stat-val">${Math.floor(s.fishing_double_chance)}%</span></div>
+`;
         this.renderMinions();
         // Защита от ошибок — если inventory.js ещё не загрузился
         if (typeof this.renderInvList === 'function') {
