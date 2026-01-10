@@ -215,27 +215,48 @@ const game = {
     },
 
     calcStats(inDungeon = false) {
-        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
-        this.state.inventory.forEach(i => {
-            if (i.equipped) {
-                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus'].forEach(st => {
-                    if (i[st]) s[st] += i[st];
-                });
-                if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
-            }
-        });
-        if (Date.now() < this.state.buffs.godpotion.endTime) {
-            s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
+    // Копируем все старые + явно добавляем новые с 0
+    let s = {
+        ...this.state.stats,  // копируем то, что есть в базе
+        xp_bonus: this.state.stats.xp_bonus ?? 0,
+        gold_bonus: this.state.stats.gold_bonus ?? 0,
+        magic_res: this.state.stats.magic_res ?? 0,
+        mining_fortune: this.state.stats.mining_fortune ?? 0,
+        mining_exp_bonus: this.state.stats.mining_exp_bonus ?? 0,
+        foraging_fortune: this.state.stats.foraging_fortune ?? 0,
+        foraging_exp_bonus: this.state.stats.foraging_exp_bonus ?? 0,
+        farming_fortune: this.state.stats.farming_fortune ?? 0,
+        farming_exp_bonus: this.state.stats.farming_exp_bonus ?? 0,
+        fishing_speed: this.state.stats.fishing_speed ?? 0,
+        fishing_double_chance: this.state.stats.fishing_double_chance ?? 0
+    };
+
+    // Дальше твой код — equipped, баффы, бонусы от навыков
+    this.state.inventory.forEach(i => {
+        if (i.equipped) {
+            ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
+             'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
+             'farming_fortune','farming_exp_bonus','fishing_speed','fishing_double_chance'].forEach(st => {
+                if (i[st] !== undefined) s[st] += i[st];
+            });
+            if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
         }
-        s.def += 2 * (this.state.skills.mining.lvl - 1);
-        s.hp += 2 * (this.state.skills.farming.lvl - 1);
-        s.str += 2 * (this.state.skills.foraging.lvl - 1);
-        s.hp += 1 * (this.state.skills.fishing.lvl - 1);
-        s.int += 1 * (this.state.skills.fishing.lvl - 1);
-        s.str += 2 * (this.state.skills.combat.lvl - 1);
-        s.cd += 2 * (this.state.skills.combat.lvl - 1);
-        return s;
-    },
+    });
+
+    if (Date.now() < this.state.buffs.godpotion.endTime) {
+        s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
+    }
+
+    s.def += 2 * (this.state.skills.mining.lvl - 1);
+    s.hp += 2 * (this.state.skills.farming.lvl - 1);
+    s.str += 2 * (this.state.skills.foraging.lvl - 1);
+    s.hp += 1 * (this.state.skills.fishing.lvl - 1);
+    s.int += 1 * (this.state.skills.fishing.lvl - 1);
+    s.str += 2 * (this.state.skills.combat.lvl - 1);
+    s.cd += 2 * (this.state.skills.combat.lvl - 1);
+
+    return s;
+},
 
     calcPetBonus(skillKey) {
         let bonus = 0;
