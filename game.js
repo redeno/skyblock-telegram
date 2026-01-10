@@ -342,22 +342,22 @@ loadFromSupabase: async function() {
                 <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
+                <span class="stat-label">⛏️ Майнинг ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">⛏️ Майнинг ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
+                <span class="stat-label">🌲 Лесная ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 ФОРАЖ ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">🌲 Лесной ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune || 0)}</span>
+                <span class="stat-label">🌾 Фарминг ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">🌾 Фарминг ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ</span> <span class="stat-val">${Math.floor(s.fishing_speed || 0)}</span>
