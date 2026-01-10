@@ -445,45 +445,59 @@ const game = {
         this.updateUI();
     },
 
-    finishAction() {
-        const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging'};
-        const skillKey = map[this.currentLoc];
-        const skill = this.state.skills[skillKey];
-        const gain = 15 * skill.lvl;
-        this.state.coins += gain;
-        const base_xp = 20;
-        let exp_bonus = 0;
-        let fortune = 0;
-        let amount = 1;
-        if (this.currentLoc === 'mine') {
-            exp_bonus = s.mining_exp_bonus;
-            fortune = s.mining_fortune;
-        } else if (this.currentLoc === 'farm') {
-            exp_bonus = s.farming_exp_bonus;
-            fortune = s.farming_fortune;
-        } else if (this.currentLoc === 'fish') {
-            exp_bonus = s.fishing_exp_bonus;
-            fortune = s.fishing_double_chance;
-        } else if (this.currentLoc === 'forage') {
-            exp_bonus = s.foraging_exp_bonus;
-            fortune = s.foraging_fortune;
-        }
-        const total_xp = base_xp * (1 + exp_bonus / 100);
-        this.addXp(skillKey, total_xp);
-        const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
-        const guaranteed = Math.floor(fortune / 100);
-        amount = guaranteed + 1;
-        const chance = fortune % 100;
-        if (Math.random() * 100 < chance) amount++;
-        const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type);
-        if (equippedTool) {
-            if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
-            else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
-        }
-        for (let i = 0; i < amount; i++) this.addMaterial(mat);
-        document.getElementById('loc-log').innerText = `+${gain} 💰 | +${total_xp.toFixed(1)} XP | +${amount} ${mat}`;
-        this.updateUI();
-    },
+finishAction() {
+    const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging'};
+    const skillKey = map[this.currentLoc];
+    const skill = this.state.skills[skillKey];
+    const gain = 15 * skill.lvl;
+    this.state.coins += gain;
+
+    // ← ДОБАВИЛ ЭТУ СТРОКУ
+    const s = this.calcStats(false);
+
+    const base_xp = 20;
+    let exp_bonus = 0;
+    let fortune = 0;
+    let amount = 1;
+
+    if (this.currentLoc === 'mine') {
+        exp_bonus = s.mining_exp_bonus;
+        fortune = s.mining_fortune;
+    } else if (this.currentLoc === 'farm') {
+        exp_bonus = s.farming_exp_bonus;
+        fortune = s.farming_fortune;
+    } else if (this.currentLoc === 'fish') {
+        exp_bonus = s.fishing_exp_bonus;
+        fortune = s.fishing_double_chance; // для рыбалки
+    } else if (this.currentLoc === 'forage') {
+        exp_bonus = s.foraging_exp_bonus;
+        fortune = s.foraging_fortune;
+    }
+
+    const total_xp = base_xp * (1 + exp_bonus / 100);
+    this.addXp(skillKey, total_xp);
+
+    const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
+
+    const guaranteed = Math.floor(fortune / 100);
+    amount = guaranteed + 1;
+    const chance = fortune % 100;
+    if (Math.random() * 100 < chance) amount++;
+
+    const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type);
+    if (equippedTool) {
+        if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
+        else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
+    }
+
+    for (let i = 0; i < amount; i++) this.addMaterial(mat);
+
+    // Опыт = количество предметов (если 2 рыбы — 40 XP)
+    const final_xp = total_xp * amount;
+
+    document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
+    this.updateUI();
+},
 
     renderMinions(){
         const l=document.getElementById('minions-list');l.innerHTML='';
