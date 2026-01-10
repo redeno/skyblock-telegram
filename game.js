@@ -19,7 +19,7 @@ const defaultState = {
         foraging: {lvl:1,xp:0,next:100,label:'ЛЕС'},
         dungeons: {lvl:1,xp:0,next:200,label:'ДАНЖИ'}
     },
-    stats: {hp:100,str:10,def:0,cc:5,cd:50,mf:0,int:0,mag_amp:0,magic_res:0},
+    stats: {hp:100,str:10,def:0,cc:5,cd:50,mf:0,int:0,mag_amp:0,magic_res:0,mining_fortune:0,mining_exp_bonus:0,foraging_fortune:0,foraging_exp_bonus:0,farming_fortune:0,farming_exp_bonus:0,fishing_speed:0,fishing_double_chance:0},
     class: '',
     buffs: {godpotion:{endTime:0}},
     inventory: [
