@@ -19,30 +19,12 @@ const defaultState = {
         foraging: {lvl:1,xp:0,next:100,label:'ЛЕС'},
         dungeons: {lvl:1,xp:0,next:200,label:'ДАНЖИ'}
     },
-    stats: {
-        hp:100,
-        str:10,
-        def:0,
-        cc:5,
-        cd:50,
-        mf:0,
-        int:0,
-        mag_amp:0,
-        magic_res:0,              // Новое: сопротивление магическому урону
-        mining_fortune:0,         // Майнинг фортуна
-        mining_exp_bonus:0,       // Бонус опыта в майнинге
-        foraging_fortune:0,
-        foraging_exp_bonus:0,
-        farming_fortune:0,
-        farming_exp_bonus:0,
-        fishing_speed:0,
-        fishing_double_chance:0
-    },
+    stats: {hp:100,str:10,def:0,cc:5,cd:50,mf:0,int:0,mag_amp:0,magic_res:0},
     class: '',
     buffs: {godpotion:{endTime:0}},
     inventory: [
         {id:1,name:'Старый меч',type:'weapon',str:15,equipped:false},
-        {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:5,equipped:true}
+        {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',equipped:true}
     ],
     minions: [
         {id:'wheat',name:'ПШЕНИЧНЫЙ',cost:50,count:0,stored:0,rate:0.5},
@@ -67,18 +49,18 @@ const shopItems = {
         {name:'ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000}
     ],
     tool: [
-        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,double_chance:5,cost:2000},
-        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,double_chance:5,cost:2000},
-        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,double_chance:5,cost:2000},
-        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_double_chance:5,cost:2000},
-        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:20,double_chance:10,cost:10000},
-        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:20,double_chance:10,cost:10000},
-        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:20,double_chance:10,cost:10000},
-        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_double_chance:10,cost:100000},
-        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',fishing_double_chance:50,fast:true,cost:1000000},
-        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_double_chance:30,xp_bonus:5,cost:25000000},
-        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_double_chance:50,triple_chance:25,xp_bonus:10,cost:100000000},
-        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_double_chance:100,triple_chance:25,xp_bonus:20,cost:500000000}
+        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',double_chance:5,cost:2000},
+        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',double_chance:5,cost:2000},
+        {name:'Деревянный топор',type:'tool',sub_type:'axe',double_chance:5,cost:2000},
+        {name:'Обычная удочка',type:'tool',sub_type:'rod',double_chance:5,cost:2000},
+        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',double_chance:10,cost:10000},
+        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',double_chance:10,cost:10000},
+        {name:'Каменный топор',type:'tool',sub_type:'axe',double_chance:10,cost:10000},
+        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',double_chance:10,cost:100000},
+        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',double_chance:50,fast:true,cost:1000000},
+        {name:'Великая удочка',type:'tool',sub_type:'rod',double_chance:30,xp_bonus:5,cost:25000000},
+        {name:'Удочка гиганта',type:'tool',sub_type:'rod',double_chance:50,triple_chance:25,xp_bonus:10,cost:100000000},
+        {name:'Удочка героя',type:'tool',sub_type:'rod',double_chance:100,triple_chance:25,xp_bonus:20,cost:500000000}
     ],
     accessory: [
         {name:'Талисман удачи',type:'accessory',mf:10,cost:10000},
@@ -232,40 +214,19 @@ const game = {
         }, 5000);
     },
 
-    addMaterial(name, type = 'material') {
-        const existing = this.state.inventory.find(i => i.name === name && i.type === type);
-        if (existing) {
-            existing.count = (existing.count || 1) + 1;
-        } else {
-            this.state.inventory.push({
-                id: this.state.nextItemId++,
-                name,
-                type,
-                count: 1,
-                equipped: false
-            });
-        }
-    },
-
     calcStats(inDungeon = false) {
         let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
-
         this.state.inventory.forEach(i => {
             if (i.equipped) {
-                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
-                 'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
-                 'farming_fortune','farming_exp_bonus','fishing_speed','fishing_double_chance'].forEach(st => {
+                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus'].forEach(st => {
                     if (i[st]) s[st] += i[st];
                 });
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
-
         if (Date.now() < this.state.buffs.godpotion.endTime) {
             s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
         }
-
-        // Старые бонусы от навыков (боевые статы)
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -273,13 +234,6 @@ const game = {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
-
-        // Новые бонусы от навыков (фортуна и опыт)
-        s.mining_fortune += 3 * (this.state.skills.mining.lvl - 1);
-        s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
-        s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
-        s.fishing_double_chance += 3 * (this.state.skills.fishing.lvl - 1);
-
         return s;
     },
 
@@ -300,29 +254,90 @@ const game = {
         document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
         const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
         document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
-        document.getElementById('stats-display').innerHTML = `
-    <div><span class="stat-label">❤️ ЗДОРОВЬЕ:</span> <span class="stat-val">${Math.floor(s.hp)}</span></div>
-    <div><span class="stat-label">⚔️ СИЛА:</span> <span class="stat-val">${Math.floor(s.str)}</span></div>
-    <div><span class="stat-label">🛡️ БРОНЯ:</span> <span class="stat-val">${Math.floor(s.def)}</span></div>
-    <div><span class="stat-label">💥 КРИТ ШАНС:</span> <span class="stat-val">${Math.floor(s.cc)}%</span></div>
-    <div><span class="stat-label">🔥 КРИТ УРОН:</span> <span class="stat-val">${Math.floor(s.cd)}%</span></div>
-    <div><span class="stat-label">🍀 УДАЧА:</span> <span class="stat-val">${Math.floor(s.mf)}</span></div>
-    <div><span class="stat-label">🧠 ИНТЕЛЛЕКТ:</span> <span class="stat-val">${Math.floor(s.int)}</span></div>
-    <div><span class="stat-label">🔮 МАГ УСИЛЕНИЕ:</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span></div>
 
-    <!-- Новые статы -->
-    <div><span class="stat-label">🛡️ МАГ ЗАЩИТА:</span> <span class="stat-val">${Math.floor(s.magic_res)}%</span></div>
-    <div><span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА:</span> <span class="stat-val">${Math.floor(s.mining_fortune)}</span></div>
-    <div><span class="stat-label">⛏️ МАЙНИНГ ОПЫТ +:</span> <span class="stat-val">${Math.floor(s.mining_exp_bonus)}%</span></div>
-    <div><span class="stat-label">🌲 ФОРАЖ ФОРТУНА:</span> <span class="stat-val">${Math.floor(s.foraging_fortune)}</span></div>
-    <div><span class="stat-label">🌲 ФОРАЖ ОПЫТ +:</span> <span class="stat-val">${Math.floor(s.foraging_exp_bonus)}%</span></div>
-    <div><span class="stat-label">🌾 ФАРМИНГ ФОРТУНА:</span> <span class="stat-val">${Math.floor(s.farming_fortune)}</span></div>
-    <div><span class="stat-label">🌾 ФАРМИНГ ОПЫТ +:</span> <span class="stat-val">${Math.floor(s.farming_exp_bonus)}%</span></div>
-    <div><span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ:</span> <span class="stat-val">${Math.floor(s.fishing_speed)}</span></div>
-    <div><span class="stat-label">🎣 ДВОЙНОЙ ШАНС:</span> <span class="stat-val">${Math.floor(s.fishing_double_chance)}%</span></div>
-`;
+        // Главный блок статов — как на твоём скрине
+        document.getElementById('stats-display').innerHTML = `
+            <div class="stat-row">
+                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${s.mining_exp_bonus.toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌲 ФОРАЖ ОПЫТ</span> <span class="stat-val">${s.foraging_exp_bonus.toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${s.farming_exp_bonus.toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ</span> <span class="stat-val">${Math.floor(s.fishing_speed)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🎣 ДВОЙНОЙ ШАНС</span> <span class="stat-val">${Math.floor(s.fishing_double_chance)}%</span>
+            </div>
+        `;
+
+        // Питомец (если надет)
+        const equippedPet = this.state.pets.find(p => p.equipped);
+        let petHtml = '';
+        if (equippedPet) {
+            const rarityColor = {
+                common: '#aaaaaa',
+                rare: '#00ff00',
+                epic: '#ff00ff',
+                legendary: '#ffaa00'
+            }[equippedPet.rarity] || '#ffffff';
+            const progress = (equippedPet.xp / equippedPet.next * 100).toFixed(1);
+            petHtml = `
+                <div class="pet-row" style="margin-top:15px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;">
+                    <div style="color:${rarityColor};font-weight:bold;">
+                        ${equippedPet.rarity.toUpperCase()} ${equippedPet.name} LVL ${equippedPet.lvl}
+                    </div>
+                    <div class="hp-bar" style="margin:5px 0;">
+                        <div class="hp-fill" style="width:${progress}%;background:${rarityColor}"></div>
+                    </div>
+                    <small style="color:#0f0">+${(petRarityBonuses[equippedPet.rarity] * equippedPet.lvl * 100).toFixed(1)}% XP</small>
+                </div>
+            `;
+        }
+
+        // Добавляем питомца под статы
+        document.getElementById('stats-display').innerHTML += petHtml;
+
         this.renderMinions();
-        // Защита от ошибок — если inventory.js ещё не загрузился
         if (typeof this.renderInvList === 'function') {
             this.renderInvList(this.lastFilter);
         }
@@ -336,7 +351,6 @@ const game = {
         document.getElementById('class-select').value = this.state.class;
         this.saveToSupabase();
     },
-
     renderPenList() {
         const l = document.getElementById('pen-list');
         l.innerHTML = '';
