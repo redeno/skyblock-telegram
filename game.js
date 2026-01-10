@@ -19,12 +19,30 @@ const defaultState = {
         foraging: {lvl:1,xp:0,next:100,label:'ЛЕС'},
         dungeons: {lvl:1,xp:0,next:200,label:'ДАНЖИ'}
     },
-    stats: {hp:100,str:10,def:0,cc:5,cd:50,mf:0,int:0,mag_amp:0},
+    stats: {
+        hp:100,
+        str:10,
+        def:0,
+        cc:5,
+        cd:50,
+        mf:0,
+        int:0,
+        mag_amp:0,
+        magic_res:0,              // Новое: сопротивление магическому урону
+        mining_fortune:0,         // Майнинг фортуна
+        mining_exp_bonus:0,       // Бонус опыта в майнинге
+        foraging_fortune:0,
+        foraging_exp_bonus:0,
+        farming_fortune:0,
+        farming_exp_bonus:0,
+        fishing_speed:0,
+        fishing_double_chance:0
+    },
     class: '',
     buffs: {godpotion:{endTime:0}},
     inventory: [
         {id:1,name:'Старый меч',type:'weapon',str:15,equipped:false},
-        {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',equipped:true}
+        {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:5,equipped:true}
     ],
     minions: [
         {id:'wheat',name:'ПШЕНИЧНЫЙ',cost:50,count:0,stored:0,rate:0.5},
@@ -49,18 +67,18 @@ const shopItems = {
         {name:'ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000}
     ],
     tool: [
-        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',double_chance:5,cost:2000},
-        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',double_chance:5,cost:2000},
-        {name:'Деревянный топор',type:'tool',sub_type:'axe',double_chance:5,cost:2000},
-        {name:'Обычная удочка',type:'tool',sub_type:'rod',double_chance:5,cost:2000},
-        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',double_chance:10,cost:10000},
-        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',double_chance:10,cost:10000},
-        {name:'Каменный топор',type:'tool',sub_type:'axe',double_chance:10,cost:10000},
-        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',double_chance:10,cost:100000},
-        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',double_chance:50,fast:true,cost:1000000},
-        {name:'Великая удочка',type:'tool',sub_type:'rod',double_chance:30,xp_bonus:5,cost:25000000},
-        {name:'Удочка гиганта',type:'tool',sub_type:'rod',double_chance:50,triple_chance:25,xp_bonus:10,cost:100000000},
-        {name:'Удочка героя',type:'tool',sub_type:'rod',double_chance:100,triple_chance:25,xp_bonus:20,cost:500000000}
+        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,double_chance:5,cost:2000},
+        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,double_chance:5,cost:2000},
+        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,double_chance:5,cost:2000},
+        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_double_chance:5,cost:2000},
+        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:20,double_chance:10,cost:10000},
+        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:20,double_chance:10,cost:10000},
+        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:20,double_chance:10,cost:10000},
+        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_double_chance:10,cost:100000},
+        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',fishing_double_chance:50,fast:true,cost:1000000},
+        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_double_chance:30,xp_bonus:5,cost:25000000},
+        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_double_chance:50,triple_chance:25,xp_bonus:10,cost:100000000},
+        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_double_chance:100,triple_chance:25,xp_bonus:20,cost:500000000}
     ],
     accessory: [
         {name:'Талисман удачи',type:'accessory',mf:10,cost:10000},
@@ -91,7 +109,7 @@ const petRarityBonuses = {
 const petUpgradeCosts = {
     rare: {coins:0, resources:32},
     epic: {coins:250000, resources:256},
-    legendary: {coins:5000000, resources:1000, upgradeItem:1}
+    legendary: {coins:8000000, resources:1000, upgradeItem:1}
 };
 
 const petResourceMap = {
@@ -214,19 +232,40 @@ const game = {
         }, 5000);
     },
 
+    addMaterial(name, type = 'material') {
+        const existing = this.state.inventory.find(i => i.name === name && i.type === type);
+        if (existing) {
+            existing.count = (existing.count || 1) + 1;
+        } else {
+            this.state.inventory.push({
+                id: this.state.nextItemId++,
+                name,
+                type,
+                count: 1,
+                equipped: false
+            });
+        }
+    },
+
     calcStats(inDungeon = false) {
         let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
+
         this.state.inventory.forEach(i => {
             if (i.equipped) {
-                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus'].forEach(st => {
+                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
+                 'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
+                 'farming_fortune','farming_exp_bonus','fishing_speed','fishing_double_chance'].forEach(st => {
                     if (i[st]) s[st] += i[st];
                 });
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
+
         if (Date.now() < this.state.buffs.godpotion.endTime) {
             s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
         }
+
+        // Старые бонусы от навыков (боевые статы)
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -234,6 +273,13 @@ const game = {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
+
+        // Новые бонусы от навыков (фортуна и опыт)
+        s.mining_fortune += 3 * (this.state.skills.mining.lvl - 1);
+        s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
+        s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
+        s.fishing_double_chance += 3 * (this.state.skills.fishing.lvl - 1);
+
         return s;
     },
 
