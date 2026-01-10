@@ -452,7 +452,7 @@ finishAction() {
     const gain = 15 * skill.lvl;
     this.state.coins += gain;
 
-    // ← ДОБАВИЛ ЭТУ СТРОКУ
+    // ← Самое важное: получаем статы здесь!
     const s = this.calcStats(false);
 
     const base_xp = 20;
@@ -461,17 +461,17 @@ finishAction() {
     let amount = 1;
 
     if (this.currentLoc === 'mine') {
-        exp_bonus = s.mining_exp_bonus;
-        fortune = s.mining_fortune;
+        exp_bonus = s.mining_exp_bonus || 0;
+        fortune = s.mining_fortune || 0;
     } else if (this.currentLoc === 'farm') {
-        exp_bonus = s.farming_exp_bonus;
-        fortune = s.farming_fortune;
+        exp_bonus = s.farming_exp_bonus || 0;
+        fortune = s.farming_fortune || 0;
     } else if (this.currentLoc === 'fish') {
-        exp_bonus = s.fishing_exp_bonus;
-        fortune = s.fishing_double_chance; // для рыбалки
+        exp_bonus = s.fishing_exp_bonus || 0;
+        fortune = s.fishing_double_chance || 0;  // ← для рыбалки это шанс удвоения
     } else if (this.currentLoc === 'forage') {
-        exp_bonus = s.foraging_exp_bonus;
-        fortune = s.foraging_fortune;
+        exp_bonus = s.foraging_exp_bonus || 0;
+        fortune = s.foraging_fortune || 0;
     }
 
     const total_xp = base_xp * (1 + exp_bonus / 100);
@@ -492,13 +492,12 @@ finishAction() {
 
     for (let i = 0; i < amount; i++) this.addMaterial(mat);
 
-    // Опыт = количество предметов (если 2 рыбы — 40 XP)
+    // Опыт теперь умножается на количество выпавших предметов
     const final_xp = total_xp * amount;
 
     document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
     this.updateUI();
 },
-
     renderMinions(){
         const l=document.getElementById('minions-list');l.innerHTML='';
         this.state.minions.forEach((m,i)=>{
