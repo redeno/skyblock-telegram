@@ -65,18 +65,18 @@ const shopItems = {
         {name:'ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000}
     ],
     tool: [
-        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',double_chance:5,cost:2000},
-        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',double_chance:5,cost:2000},
-        {name:'Деревянный топор',type:'tool',sub_type:'axe',double_chance:5,cost:2000},
-        {name:'Обычная удочка',type:'tool',sub_type:'rod',double_chance:5,cost:2000},
-        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',double_chance:10,cost:10000},
-        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',double_chance:10,cost:10000},
-        {name:'Каменный топор',type:'tool',sub_type:'axe',double_chance:10,cost:10000},
-        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',double_chance:10,cost:100000},
-        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',double_chance:50,fast:true,cost:1000000},
-        {name:'Великая удочка',type:'tool',sub_type:'rod',double_chance:30,xp_bonus:5,cost:25000000},
-        {name:'Удочка гиганта',type:'tool',sub_type:'rod',double_chance:50,triple_chance:25,xp_bonus:10,cost:100000000},
-        {name:'Удочка героя',type:'tool',sub_type:'rod',double_chance:100,triple_chance:25,xp_bonus:20,cost:500000000}
+        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:2000},
+        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:2000},
+        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:2000},
+        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_double_chance:5,cost:2000},
+        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:20,cost:10000},
+        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:20,cost:10000},
+        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:20,cost:10000},
+        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_double_chance:10,cost:100000},
+        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',fishing_double_chance:50,fast:true,cost:1000000},
+        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_double_chance:30,xp_bonus:5,cost:25000000},
+        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_double_chance:50,triple_chance:25,xp_bonus:10,cost:100000000},
+        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_double_chance:100,triple_chance:25,xp_bonus:20,cost:500000000}
     ],
     accessory: [
         {name:'Талисман удачи',type:'accessory',mf:10,cost:10000},
@@ -125,81 +125,78 @@ const game = {
     messageQueue: [],
     playerTelegramId: null,
 
-loadFromSupabase: async function() {
-    if (!this.playerTelegramId) {
-        this.msg('Не удалось получить Telegram ID');
-        this.state = JSON.parse(JSON.stringify(defaultState));
-        this.updateUI();
-        return;
-    }
-    let { data, error } = await supabaseClient
-        .from('players')
-        .select('*')
-        .eq('telegram_id', this.playerTelegramId)
-        .maybeSingle();
-    if (error && error.code !== 'PGRST116') {
-        console.error('Ошибка Supabase:', error);
-        this.msg('Ошибка связи с сервером');
-        this.state = JSON.parse(JSON.stringify(defaultState));
-        this.updateUI();
-        return;
-    }
-    if (data) {
-        this.state.coins = data.coins ?? 0;
-        this.state.nextItemId = data.next_item_id ?? 10;
-        this.state.class = data.class ?? '';
-        this.state.skills = data.skills ?? defaultState.skills;
-        this.state.stats = data.stats ?? defaultState.stats;
-        this.state.inventory = data.inventory ?? defaultState.inventory;
-        this.state.minions = data.minions ?? defaultState.minions;
-        this.state.pets = data.pets ?? [];
-        this.state.buffs = data.buffs ?? defaultState.buffs;
-        this.msg('Сохранение загружено!');
-    } else {
-        const tgUser = tg.initDataUnsafe?.user;
-        const username = tgUser?.username ? tgUser.username : null;
-        const newPlayer = {
-            telegram_id: this.playerTelegramId,
-            username: username,
-            coins: 0,
-            next_item_id: 10,
-            class: '',
-            skills: defaultState.skills,
-            stats: defaultState.stats,
-            inventory: defaultState.inventory,
-            minions: defaultState.minions,
-            pets: [],
-            buffs: defaultState.buffs
-        };
-        const { error: insertError } = await supabaseClient
-            .from('players')
-            .insert(newPlayer);
-        if (insertError) {
-            console.error('Не удалось создать нового игрока:', insertError);
-            this.msg('Ошибка создания профиля');
+    loadFromSupabase: async function() {
+        if (!this.playerTelegramId) {
+            this.msg('Не удалось получить Telegram ID');
             this.state = JSON.parse(JSON.stringify(defaultState));
-        } else {
-            this.state = JSON.parse(JSON.stringify(defaultState));
-            this.msg('Новый профиль создан!');
+            this.updateUI();
+            return;
         }
-    }
-    this.initSkills();
-
-    // ←←← ВСТАВЬ ЗДЕСЬ (сразу после загрузки, перед первым updateUI)
-    Object.assign(game.state.stats, {
-        mining_fortune: game.state.stats.mining_fortune ?? 0,
-        mining_exp_bonus: game.state.stats.mining_exp_bonus ?? 0,
-        foraging_fortune: game.state.stats.foraging_fortune ?? 0,
-        foraging_exp_bonus: game.state.stats.foraging_exp_bonus ?? 0,
-        farming_fortune: game.state.stats.farming_fortune ?? 0,
-        farming_exp_bonus: game.state.stats.farming_exp_bonus ?? 0,
-        fishing_speed: game.state.stats.fishing_speed ?? 0,
-        fishing_double_chance: game.state.stats.fishing_double_chance ?? 0,
-        magic_res: game.state.stats.magic_res ?? 0
-    });
-
-    this.updateUI();
-},
+        let { data, error } = await supabaseClient
+            .from('players')
+            .select('*')
+            .eq('telegram_id', this.playerTelegramId)
+            .maybeSingle();
+        if (error && error.code !== 'PGRST116') {
+            console.error('Ошибка Supabase:', error);
+            this.msg('Ошибка связи с сервером');
+            this.state = JSON.parse(JSON.stringify(defaultState));
+            this.updateUI();
+            return;
+        }
+        if (data) {
+            this.state.coins = data.coins ?? 0;
+            this.state.nextItemId = data.next_item_id ?? 10;
+            this.state.class = data.class ?? '';
+            this.state.skills = data.skills ?? defaultState.skills;
+            this.state.stats = data.stats ?? defaultState.stats;
+            this.state.inventory = data.inventory ?? defaultState.inventory;
+            this.state.minions = data.minions ?? defaultState.minions;
+            this.state.pets = data.pets ?? [];
+            this.state.buffs = data.buffs ?? defaultState.buffs;
+            this.msg('Сохранение загружено!');
+        } else {
+            const tgUser = tg.initDataUnsafe?.user;
+            const username = tgUser?.username ? tgUser.username : null;
+            const newPlayer = {
+                telegram_id: this.playerTelegramId,
+                username: username,
+                coins: 0,
+                next_item_id: 10,
+                class: '',
+                skills: defaultState.skills,
+                stats: defaultState.stats,
+                inventory: defaultState.inventory,
+                minions: defaultState.minions,
+                pets: [],
+                buffs: defaultState.buffs
+            };
+            const { error: insertError } = await supabaseClient
+                .from('players')
+                .insert(newPlayer);
+            if (insertError) {
+                console.error('Не удалось создать нового игрока:', insertError);
+                this.msg('Ошибка создания профиля');
+                this.state = JSON.parse(JSON.stringify(defaultState));
+            } else {
+                this.state = JSON.parse(JSON.stringify(defaultState));
+                this.msg('Новый профиль создан!');
+            }
+        }
+        this.initSkills();
+        Object.assign(game.state.stats, {
+            mining_fortune: game.state.stats.mining_fortune ?? 0,
+            mining_exp_bonus: game.state.stats.mining_exp_bonus ?? 0,
+            foraging_fortune: game.state.stats.foraging_fortune ?? 0,
+            foraging_exp_bonus: game.state.stats.foraging_exp_bonus ?? 0,
+            farming_fortune: game.state.stats.farming_fortune ?? 0,
+            farming_exp_bonus: game.state.stats.farming_exp_bonus ?? 0,
+            fishing_speed: game.state.stats.fishing_speed ?? 0,
+            fishing_double_chance: game.state.stats.fishing_double_chance ?? 0,
+            magic_res: game.state.stats.magic_res ?? 0
+        });
+        this.updateUI();
+    },
 
     saveToSupabase: async function() {
         if (!this.playerTelegramId) return;
@@ -245,36 +242,18 @@ loadFromSupabase: async function() {
     },
 
     calcStats(inDungeon = false) {
-        let s = {
-            ...this.state.stats,
-            xp_bonus: this.state.stats.xp_bonus ?? 0,
-            gold_bonus: this.state.stats.gold_bonus ?? 0,
-            magic_res: this.state.stats.magic_res ?? 0,
-            mining_fortune: this.state.stats.mining_fortune ?? 0,
-            mining_exp_bonus: this.state.stats.mining_exp_bonus ?? 0,
-            foraging_fortune: this.state.stats.foraging_fortune ?? 0,
-            foraging_exp_bonus: this.state.stats.foraging_exp_bonus ?? 0,
-            farming_fortune: this.state.stats.farming_fortune ?? 0,
-            farming_exp_bonus: this.state.stats.farming_exp_bonus ?? 0,
-            fishing_speed: this.state.stats.fishing_speed ?? 0,
-            fishing_double_chance: this.state.stats.fishing_double_chance ?? 0
-        };
-
+        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
         this.state.inventory.forEach(i => {
             if (i.equipped) {
-                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
-                 'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
-                 'farming_fortune','farming_exp_bonus','fishing_speed','fishing_double_chance'].forEach(st => {
-                    if (i[st] !== undefined) s[st] += i[st];
+                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res','mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus','farming_fortune','farming_exp_bonus','fishing_speed','fishing_double_chance'].forEach(st => {
+                    if (i[st]) s[st] += i[st];
                 });
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
-
         if (Date.now() < this.state.buffs.godpotion.endTime) {
             s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
         }
-
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -282,16 +261,6 @@ loadFromSupabase: async function() {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
-        // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ
-        s.mining_fortune     += 3 * (this.state.skills.mining.lvl - 1);
-     
-        s.farming_fortune    += 3 * (this.state.skills.farming.lvl - 1);
-        
-        s.foraging_fortune   += 3 * (this.state.skills.foraging.lvl - 1);
-        
-        s.fishing_fortune      += 2 * (this.state.skills.fishing.lvl - 1);
-
-
         return s;
     },
 
@@ -312,58 +281,57 @@ loadFromSupabase: async function() {
         document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
         const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
         document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
-
         document.getElementById('stats-display').innerHTML = `
             <div class="stat-row">
-                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp || 0)}</span>
+                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str || 0)}</span>
+                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def || 0)}</span>
+                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc || 0)}%</span>
+                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd || 0)}%</span>
+                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf || 0)}</span>
+                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int || 0)}</span>
+                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp || 0)}</span>
+                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
+                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⛏️ Майнинг ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
+                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⛏️ Майнинг ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 Лесная ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
+                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 Лесной ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">🌲 ФОРАЖ ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌾 Фарминг ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune || 0)}</span>
+                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌾 Фарминг ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ</span> <span class="stat-val">${Math.floor(s.fishing_speed || 0)}</span>
+                <span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ</span> <span class="stat-val">${Math.floor(s.fishing_speed)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🎣 ДВОЙНОЙ ШАНС</span> <span class="stat-val">${Math.floor(s.fishing_double_chance || 0)}%</span>
+                <span class="stat-label">🎣 ДВОЙНОЙ ШАНС</span> <span class="stat-val">${Math.floor(s.fishing_double_chance)}%</span>
             </div>
         `;
 
@@ -481,14 +449,12 @@ loadFromSupabase: async function() {
         const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging'};
         const skillKey = map[this.currentLoc];
         const skill = this.state.skills[skillKey];
-        const s = this.calcStats(false);
         const gain = 15 * skill.lvl;
         this.state.coins += gain;
         const base_xp = 20;
         let exp_bonus = 0;
         let fortune = 0;
         let amount = 1;
-
         if (this.currentLoc === 'mine') {
             exp_bonus = s.mining_exp_bonus;
             fortune = s.mining_fortune;
@@ -497,30 +463,24 @@ loadFromSupabase: async function() {
             fortune = s.farming_fortune;
         } else if (this.currentLoc === 'fish') {
             exp_bonus = s.fishing_exp_bonus;
-            fortune = s.fishing_fortune;
+            fortune = s.fishing_double_chance;
         } else if (this.currentLoc === 'forage') {
             exp_bonus = s.foraging_exp_bonus;
             fortune = s.foraging_fortune;
         }
-
         const total_xp = base_xp * (1 + exp_bonus / 100);
         this.addXp(skillKey, total_xp);
-
         const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
-
         const guaranteed = Math.floor(fortune / 100);
         amount = guaranteed + 1;
         const chance = fortune % 100;
         if (Math.random() * 100 < chance) amount++;
-
         const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type);
         if (equippedTool) {
             if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
             else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
         }
-
         for (let i = 0; i < amount; i++) this.addMaterial(mat);
-
         document.getElementById('loc-log').innerText = `+${gain} 💰 | +${total_xp.toFixed(1)} XP | +${amount} ${mat}`;
         this.updateUI();
     },
