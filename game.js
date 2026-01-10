@@ -19,25 +19,7 @@ const defaultState = {
         foraging: {lvl:1,xp:0,next:100,label:'ЛЕС'},
         dungeons: {lvl:1,xp:0,next:200,label:'ДАНЖИ'}
     },
-    stats: {
-        hp:100,
-        str:10,
-        def:0,
-        cc:5,
-        cd:50,
-        mf:0,
-        int:0,
-        mag_amp:0,
-        magic_res:0,
-        mining_fortune:0,
-        mining_exp_bonus:0,
-        foraging_fortune:0,
-        foraging_exp_bonus:0,
-        farming_fortune:0,
-        farming_exp_bonus:0,
-        fishing_speed:0,
-        fishing_double_chance:0
-    },
+    stats: {hp:100,str:10,def:0,cc:5,cd:50,mf:0,int:0,mag_amp:0,magic_res:0},
     class: '',
     buffs: {godpotion:{endTime:0}},
     inventory: [
@@ -233,35 +215,18 @@ const game = {
     },
 
     calcStats(inDungeon = false) {
-        // Копируем ВСЕ статы + дефолтные 0, если их нет
-        let s = { ...this.state.stats };
-        s.xp_bonus = s.xp_bonus ?? 0;
-        s.gold_bonus = s.gold_bonus ?? 0;
-        s.magic_res = s.magic_res ?? 0;
-        s.mining_fortune = s.mining_fortune ?? 0;
-        s.mining_exp_bonus = s.mining_exp_bonus ?? 0;
-        s.foraging_fortune = s.foraging_fortune ?? 0;
-        s.foraging_exp_bonus = s.foraging_exp_bonus ?? 0;
-        s.farming_fortune = s.farming_fortune ?? 0;
-        s.farming_exp_bonus = s.farming_exp_bonus ?? 0;
-        s.fishing_speed = s.fishing_speed ?? 0;
-        s.fishing_double_chance = s.fishing_double_chance ?? 0;
-
+        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
         this.state.inventory.forEach(i => {
             if (i.equipped) {
-                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
-                 'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
-                 'farming_fortune','farming_exp_bonus','fishing_speed','fishing_double_chance'].forEach(st => {
-                    if (i[st] !== undefined) s[st] += i[st];
+                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus'].forEach(st => {
+                    if (i[st]) s[st] += i[st];
                 });
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
-
         if (Date.now() < this.state.buffs.godpotion.endTime) {
             s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
         }
-
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -269,7 +234,6 @@ const game = {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
-
         return s;
     },
 
@@ -291,58 +255,58 @@ const game = {
         const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
         document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
 
-        // Главный блок статов — безопасный, без краша
+        // Главный блок статов — как на твоём скрине
         document.getElementById('stats-display').innerHTML = `
             <div class="stat-row">
-                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp || 0)}</span>
+                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str || 0)}</span>
+                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def || 0)}</span>
+                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc || 0)}%</span>
+                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd || 0)}%</span>
+                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf || 0)}</span>
+                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int || 0)}</span>
+                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp || 0)}</span>
+                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
+                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
+                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${s.mining_exp_bonus.toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
+                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 ФОРАЖ ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">🌲 ФОРАЖ ОПЫТ</span> <span class="stat-val">${s.foraging_exp_bonus.toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune || 0)}</span>
+                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${s.farming_exp_bonus.toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ</span> <span class="stat-val">${Math.floor(s.fishing_speed || 0)}</span>
+                <span class="stat-label">🎣 ФИШИНГ СКОРОСТЬ</span> <span class="stat-val">${Math.floor(s.fishing_speed)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🎣 ДВОЙНОЙ ШАНС</span> <span class="stat-val">${Math.floor(s.fishing_double_chance || 0)}%</span>
+                <span class="stat-label">🎣 ДВОЙНОЙ ШАНС</span> <span class="stat-val">${Math.floor(s.fishing_double_chance)}%</span>
             </div>
         `;
 
