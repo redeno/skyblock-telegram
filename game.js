@@ -282,6 +282,15 @@ loadFromSupabase: async function() {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
+        // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ
+        s.mining_fortune     += 3 * (this.state.skills.mining.lvl - 1);
+     
+        s.farming_fortune    += 3 * (this.state.skills.farming.lvl - 1);
+        
+        s.foraging_fortune   += 3 * (this.state.skills.foraging.lvl - 1);
+        
+        s.fishing_fortune      += 2 * (this.state.skills.fishing.lvl - 1);
+
 
         return s;
     },
