@@ -483,7 +483,7 @@ const game = {
         }
 
         const total_xp = base_xp * (1 + exp_bonus / 100);
-        this.addXp(skillKey, total_xp);
+
 
         const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
 
@@ -501,6 +501,7 @@ const game = {
         for (let i = 0; i < amount; i++) this.addMaterial(mat);
 
         const final_xp = total_xp * amount;
+	this.addXp(skillKey, final_xp);
 
         document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
         this.updateUI();
