@@ -33,7 +33,8 @@ const defaultState = {
         foraging_exp_bonus:0,
         farming_fortune:0,
         farming_exp_bonus:0,
-        fishing_exp_bonus:0,  // ← Заменил fishing_speed на fishing_exp_bonus
+        fishing_fortune:0,        // ← фортуна для рыбалки
+        fishing_exp_bonus:0       // ← бонус опыта для рыбалки (если нужен отдельно)
     },
     class: '',
     buffs: {godpotion:{endTime:0}},
@@ -67,15 +68,15 @@ const shopItems = {
         {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:2000},
         {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:2000},
         {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:2000},
-        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:5,cost:2000},
+        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_fortune:5,cost:2000},
         {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:20,cost:10000},
         {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:20,cost:10000},
         {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:20,cost:10000},
-        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:10,cost:100000},
-        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:50,fast:true,cost:1000000},
-        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_exp_bonus:30,cost:25000000},
-        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_exp_bonus:50,triple_chance:25,cost:100000000},
-        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_exp_bonus:100,triple_chance:25,cost:500000000}
+        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_fortune:10,cost:100000},
+        {name:'Быстрая Удочка',type:'tool',sub_type:'rod',fishing_fortune:50,fast:true,cost:1000000},
+        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_fortune:30,cost:25000000},
+        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_fortune:50,triple_chance:25,cost:100000000},
+        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_fortune:100,triple_chance:25,cost:500000000}
     ],
     accessory: [
         {name:'Талисман удачи',type:'accessory',mf:10,cost:10000},
@@ -190,6 +191,7 @@ const game = {
             foraging_exp_bonus: game.state.stats.foraging_exp_bonus ?? 0,
             farming_fortune: game.state.stats.farming_fortune ?? 0,
             farming_exp_bonus: game.state.stats.farming_exp_bonus ?? 0,
+            fishing_fortune: game.state.stats.fishing_fortune ?? 0,
             fishing_exp_bonus: game.state.stats.fishing_exp_bonus ?? 0,
             magic_res: game.state.stats.magic_res ?? 0
         });
@@ -243,7 +245,9 @@ const game = {
         let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
         this.state.inventory.forEach(i => {
             if (i.equipped) {
-                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res','mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus','farming_fortune','farming_exp_bonus','fishing_exp_bonus'].forEach(st => {
+                ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
+                 'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
+                 'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus'].forEach(st => {
                     if (i[st]) s[st] += i[st];
                 });
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
@@ -259,6 +263,13 @@ const game = {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
+
+        // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ ОТ УРОВНЯ (возвращаем как было)
+        s.mining_fortune += 3 * (this.state.skills.mining.lvl - 1);
+        s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
+        s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
+        s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);  // ← вот он, вернулся
+
         return s;
     },
 
@@ -308,22 +319,28 @@ const game = {
                 <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
             </div>
             <div class="stat-row">
+                <span class="stat-label">🛡️ ОСОБАЯ ЗАЩИТА (Заглушка)</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
+            </div>
+            <div class="stat-row">
                 <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 ФОРАЖ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
+                <span class="stat-label">🌲 ЛЕСНАЯ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🌲 ФОРАЖ ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
+                <span class="stat-label">🌲 ЛЕСНОЙ ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune || 0)}</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🎣 ФИШИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.fishing_fortune || 0)}</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">🎣 ФИШИНГ ОПЫТ</span> <span class="stat-val">${(s.fishing_exp_bonus || 0).toFixed(1)}%</span>
@@ -459,7 +476,7 @@ const game = {
             fortune = s.farming_fortune || 0;
         } else if (this.currentLoc === 'fish') {
             exp_bonus = s.fishing_exp_bonus || 0;
-            fortune = s.fishing_double_chance || 0;  // ← для рыбалки шанс удвоения
+            fortune = s.fishing_fortune || 0;  // ← теперь фортуна рыбалки
         } else if (this.currentLoc === 'forage') {
             exp_bonus = s.foraging_exp_bonus || 0;
             fortune = s.foraging_fortune || 0;
