@@ -1,144 +1,219 @@
-// inventory.js — логика инвентаря (с stackable талисманами, показом статов, правильной продажей)
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SkyBlock Mobile RPG</title>
+    
+    <!-- Telegram WebApp API -->
+    <script src="https://telegram.org/js/telegram-web-app.js?ver=20260107"></script>
+    
+    <!-- Подключаем стили -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="header-ui">
+        <button class="top-btn" onclick="game.showModal('skillsModal')">⚙️ СКИЛЛЫ</button>
+        <button class="top-btn" onclick="game.showModal('updatesModal')">📜 ОБНОВЛЕНИЯ</button>
+        <div class="sb-lvl-badge">LVL <span id="sb-lvl">0.00</span></div>
+        <button class="top-btn" onclick="game.showModal('leadModal')">🏆 ТОП</button>
+    </div>
 
-Object.assign(game, {
-    getItemDesc(i) {
-        let d = '';
-        if (i.str) d += `+${i.str} СИЛЫ `;
-        if (i.def) d += `+${i.def} БРОНИ `;
-        if (i.cc) d += `+${i.cc}% КРИТ ШАНС `;
-        if (i.cd) d += `+${i.cd}% КРИТ УРОН `;
-        if (i.mf) d += `+${i.mf} УДАЧИ `;
-        if (i.int) d += `+${i.int} ИНТЕЛЛЕКТА `;
-        if (i.mag_amp) d += `+${i.mag_amp} МАГ УСИЛЕНИЯ `;
-        if (i.xp_bonus) d += `+${i.xp_bonus}% ОПЫТА `;
-        if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
-        if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
-        if (i.fast) d += 'БЫСТРАЯ ';
-        if (i.dynamic_str === 'midas') d += 'МИДАС ';
-        if (i.magic) d += 'МАГИЧЕСКОЕ ';
-        if (i.type === 'pet') d += `+${(petRarityBonuses[i.rarity] * i.lvl).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
-        return d.trim() || 'Без бонусов';
-    },
+    <div id="viewport">
+        <!-- Главный экран -->
+        <div id="home" class="screen active">
+            <div class="card" style="text-align:center">
+                <h1 style="margin:0;color:var(--accent)">💰 <span id="coins-val">0</span></h1>
+                <small style="color:var(--gray)">ТВОИ МОНЕТЫ</small>
+            </div>
+            <div class="card">
+                <div class="stat-grid" id="stats-display"></div>
+            </div>
+        </div>
 
-    addMaterial(name, type = 'material') {
-        const existing = this.state.inventory.find(i => i.name === name && i.type === type);
-        if (existing) {
-            existing.count = (existing.count || 1) + 1;
-        } else {
-            this.state.inventory.push({
-                id: this.state.nextItemId++,
-                name,
-                type,
-                count: 1,
-                equipped: false
-            });
-        }
-    },
+        <!-- Портал -->
+        <div id="portal" class="screen">
+            <h3 style="text-align:center;margin-top:0">🌀 ПОРТАЛ</h3>
+            <div class="portal-grid">
+                <div class="portal-node" onclick="game.goLoc('mine')">⛏️ ШАХТА</div>
+                <div class="portal-node" onclick="game.goLoc('farm')">🌾 ФЕРМА</div>
+                <div class="portal-node" onclick="game.goLoc('fish')">🎣 РЫБАЛКА</div>
+                <div class="portal-node" onclick="game.goLoc('forage')">🌲 ЛЕС</div>
+                <div class="portal-node" onclick="game.switchTab('dungeons-menu')">💀 ДАНЖИ</div>
+                <div class="portal-node" onclick="game.msg('Скоро...')">👹 СЛЕЙЕРЫ</div>
+                <div class="portal-node" onclick="game.switchTab('shop')">🛒 МАГАЗИН</div>
+                <div class="portal-node" onclick="game.msg('Скоро...')">⚖️ ОБМЕН</div>
+                <div class="portal-node" onclick="game.msg('Скоро...')">📅 ИВЕНТ</div>
+                <div class="portal-node" onclick="game.msg('Скоро...')">🗳️ МЭР</div>
+                <div class="portal-node" onclick="game.switchTab('pen')">🐾 ЗАГОН</div>
+            </div>
+        </div>
 
-    filterInv(t, e) {
-        document.querySelectorAll('.inv-tab').forEach(x => x.classList.remove('active'));
-        e.classList.add('active');
-        this.lastFilter = t;
-        this.renderInvList(t);
-    },
+        <!-- Работа на локации -->
+        <div id="action-loc" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h2 id="loc-title" style="text-align:center;text-transform:uppercase">ШАХТА</h2>
+            <div class="card" style="text-align:center">
+                <button id="action-btn" class="cooldown-btn" onclick="game.executeAction()">
+                    <div id="action-prog" class="progress-overlay"></div>
+                    <span style="position:relative">РАБОТАТЬ</span>
+                </button>
+            </div>
+            <div id="loc-log" style="text-align:center;color:var(--green);min-height:20px;margin-top:10px;"></div>
+        </div>
 
-    renderInvList(t) {
-        const l = document.getElementById('inv-list');
-        l.innerHTML = '';
-        const items = t === 'pet' ? this.state.pets : this.state.inventory.filter(i => i.type === t);
-        if (!items.length) {
-            l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто</div>';
-            return;
-        }
-        items.forEach((i, idx) => {
-            const c = i.count > 1 ? ` (${i.count})` : '';
-            let a = '';
+        <!-- Данжи -->
+        <div id="dungeons-menu" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3>💀 КАТАКОМБЫ</h3>
+            <div class="card"><p>ЭТАЖ I</p><button class="cooldown-btn" onclick="game.startDungeon(1)">ВОЙТИ</button></div>
+            <div class="card"><p>ЭТАЖ II</p><button class="cooldown-btn" onclick="game.startDungeon(2)">ВОЙТИ</button></div>
+            <div class="card"><p>ЭТАЖ III</p><button class="cooldown-btn" onclick="game.startDungeon(3)">ВОЙТИ</button></div>
+            <div class="card"><p>ЭТАЖ IV</p><button class="cooldown-btn" onclick="game.startDungeon(4)">ВОЙТИ</button></div>
+            <div class="card"><p>ЭТАЖ V</p><button class="cooldown-btn" onclick="game.startDungeon(5)">ВОЙТИ</button></div>
+            <div class="card"><p>ЭТАЖ VI</p><button class="cooldown-btn" onclick="game.startDungeon(6)">ВОЙТИ</button></div>
+        </div>
 
-            if (t === 'pet') {
-                a = `
-                    <button class="act-btn" onclick="game.toggleEquipPet(${idx})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
-                    <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
-                    <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost / 2)}💰)</button>
-                `;
-            } else if (i.type === 'material' || i.type === 'accessory') {
-                const pricePer = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
-                a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${pricePer * (i.count || 1)}💰)</button>`;
-            } else if (i.type === 'chest') {
-                a = `<button class="act-btn" onclick="game.openChest(${i.id})">ОТКРЫТЬ</button>`;
-            } else if (['weapon','armor','tool'].includes(i.type)) {
-                a = `<button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>`;
-            } else if (i.type === 'potion' && i.name === 'GodPotion') {
-                a = `<button class="act-btn" onclick="game.activateGodPotion(${i.id})">АКТИВИРОВАТЬ</button>`;
-            }
+        <!-- Бой -->
+        <div id="battle-screen" class="screen">
+            <h2 id="mob-name" style="text-align:center;color:var(--red)">МОНСТР</h2>
+            <div class="card">
+                <div style="display:flex;justify-content:space-between"><span>ХП ВРАГА</span><span id="m-hp-txt">50/50</span></div>
+                <div class="hp-bar"><div id="m-hp-fill" class="hp-fill" style="width:100%"></div></div>
+            </div>
+            <div class="card" style="border-color:var(--blue)">
+                <div style="display:flex;justify-content:space-between"><span>ТВОЁ ХП</span><span id="p-hp-txt">100/100</span></div>
+                <div class="hp-bar"><div id="p-hp-fill" class="hp-fill" style="width:100%;background:var(--blue)"></div></div>
+            </div>
+            <button class="cooldown-btn" style="height:80px" onclick="game.dungeonAttack()">💥 УДАРИТЬ</button>
+        </div>
 
-            l.innerHTML += `
-                <div class="card">
-                    <b>${i.name}${c}</b><br>
-                    <small style="color:#0f0; font-weight:bold">${this.getItemDesc(i)}</small>
-                    <div class="item-actions">${a}</div>
-                </div>`;
-        });
-    },
+        <!-- Лут после данжа -->
+<div id="loot-screen" class="screen">
+    <h2 style="text-align:center;color:var(--accent)">ПОБЕДА!</h2>
 
-    activateGodPotion(id) {
-        const i = this.state.inventory.find(x => x.id === id);
-        if (!i || i.name !== 'GodPotion') return;
-        if (Date.now() < this.state.buffs.godpotion.endTime) {
-            this.msg('Уже активен!');
-            return;
-        }
-        this.state.buffs.godpotion.endTime = Date.now() + 86400000;
-        this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-        this.msg('GodPotion на 24 часа!');
-        this.updateUI();
-    },
+    <!-- ЛОГ НАГРАД ДАНЖА -->
+    <div id="dungeon-log"
+         style="color:#0f0; font-size:18px; text-align:center;
+                margin:15px; padding:12px;
+                background:rgba(0,0,0,0.5);
+                border-radius:10px;">
+    </div>
 
-    openChest(id) {
-        const i = this.state.inventory.find(x => x.id === id);
-        if (!i || i.type !== 'chest') return;
-        const floorMatch = i.name.match(/\d+/);
-        const floor = floorMatch ? parseInt(floorMatch[0]) : 1;
-        console.log('Открытие сундука:', i.name, 'этаж:', floor);
-        const r = dungeonRewards[floor] || dungeonRewards[1];
-        const coins = Math.floor(Math.random() * (r.coins_max - r.coins_min + 1) + r.coins_min);
-        this.state.coins += coins;
-        if (i.count > 1) i.count--;
-        else this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-        this.msg(`+${coins.toLocaleString()} 💰 из сундука этажа ${floor}!`);
-        this.updateUI();
-    },
+    <p style="text-align:center;font-size:1.2rem">🎁 Сундук добавлен в инвентарь!</p>
 
-    sellItem(id) {
-        const i = this.state.inventory.find(x => x.id === id);
-        if (!i || (i.type !== 'material' && i.type !== 'accessory')) return;
+    <div id="extra-chests" style="display:none;">
+        <h3 style="text-align:center">Купить доп. сундук?</h3>
+        <div class="item-actions">
+            <button class="act-btn" onclick="game.buyExtraChest(1)">Обычный (3м)</button>
+            <button class="act-btn" onclick="game.buyExtraChest(2)">Эпический (5м)</button>
+            <button class="act-btn" onclick="game.buyExtraChest(3)">Элитный (10м)</button>
+        </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
+        <button class="cooldown-btn" onclick="game.switchTab('portal')">ВЕРНУТЬСЯ НА ПОРТАЛ</button>
+        <button class="cooldown-btn" style="background:var(--green)" onclick="game.repeatDungeon()">ПОВТОРИТЬ ДАНЖ</button>
+    </div>
+</div>
 
-        const pricePer = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
-        const amount = i.count || 1;
-        const total = pricePer * amount;
+        <!-- Магазин -->
+        <div id="shop" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3>🛒 МАГАЗИН</h3>
+            <div class="inv-tabs">
+                <div class="inv-tab active" onclick="game.shopFilter('weapon',this)">ОРУЖИЕ</div>
+                <div class="inv-tab" onclick="game.shopFilter('armor',this)">БРОНЯ</div>
+                <div class="inv-tab" onclick="game.shopFilter('tool',this)">ИНСТРУМЕНТЫ</div>
+                <div class="inv-tab" onclick="game.shopFilter('accessory',this)">ТАЛИСМАНЫ</div>
+                <div class="inv-tab" onclick="game.shopFilter('buff',this)">БАФФЫ</div>
+                <div class="inv-tab" onclick="game.shopFilter('pet',this)">ПИТОМЦЫ</div>
+            </div>
+            <div id="shop-list"></div>
+        </div>
 
-        this.state.coins += total;
-        this.state.inventory = this.state.inventory.filter(x => x.id !== id);
+        <!-- Миньоны -->
+        <div id="minions" class="screen">
+            <div class="card" style="border-color:var(--accent);text-align:center">
+                КОШЕЛЕК: <span id="m-coins-val" style="color:var(--accent)">0</span> 💰
+            </div>
+            <div id="minions-list"></div>
+        </div>
 
-        this.msg(`Продано ${amount} ${i.name}! +${total} 💰`);
-        this.updateUI();
-    },
+        <!-- Инвентарь -->
+        <div id="inventory" class="screen">
+            <div class="inv-tabs">
+                <div class="inv-tab active" onclick="game.filterInv('weapon',this)">ОРУЖИЕ</div>
+                <div class="inv-tab" onclick="game.filterInv('armor',this)">БРОНЯ</div>
+                <div class="inv-tab" onclick="game.filterInv('tool',this)">ИНСТРУМЕНТЫ</div>
+                <div class="inv-tab" onclick="game.filterInv('accessory',this)">ТАЛИСМАНЫ</div>
+                <div class="inv-tab" onclick="game.filterInv('material',this)">МАТЕРИАЛ</div>
+                <div class="inv-tab" onclick="game.filterInv('chest',this)">СУНДУКИ</div>
+                <div class="inv-tab" onclick="game.filterInv('pet',this)">ПИТОМЦЫ</div>
+            </div>
+            <div id="inv-list"></div>
+        </div>
 
-    toggleEquip(id) {
-        const i = this.state.inventory.find(x => x.id === id);
-        if (!i || !['weapon','armor','tool','accessory'].includes(i.type)) return;
+        <!-- Загон питомцев -->
+        <div id="pen" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3>🐾 ЗАГОН</h3>
+            <div id="pen-list"></div>
+        </div>
+    </div>
 
-        if (i.type === 'accessory') {
-            this.state.inventory.forEach(x => {
-                if (x.type === 'accessory' && x.id !== id) x.equipped = false;
-            });
-            i.equipped = !i.equipped;
-        } else {
-            if (i.type === 'weapon') this.state.inventory.forEach(x => { if (x.type === 'weapon' && x.id !== id) x.equipped = false; });
-            if (i.type === 'armor') this.state.inventory.forEach(x => { if (x.type === 'armor' && x.id !== id) x.equipped = false; });
-            if (i.type === 'tool') this.state.inventory.forEach(x => { if (x.type === 'tool' && x.sub_type === i.sub_type && x.id !== id) x.equipped = false; });
-            i.equipped = !i.equipped;
-        }
+    <!-- Модальные окна -->
+    <div id="skillsModal" class="modal">
+        <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('skillsModal')">[ЗАКРЫТЬ]</span>
+        <h3>📊 ТВОИ НАВЫКИ</h3>
+        <div id="skills-content"></div>
+        <h3>КЛАСС</h3>
+        <select id="class-select" onchange="game.setClass(this.value)">
+            <option value="">Не выбран</option>
+            <option value="berserk">Берсерк</option>
+            <option value="archer">Арчер</option>
+            <option value="tank">Танк</option>
+            <option value="mage">Маг</option>
+            <option value="healer">Хиллер</option>
+        </select>
+    </div>
 
-        this.updateUI();
-    }
-});
+<div id="updatesModal" class="modal"></div>    
+<div id="leadModal" class="modal">
+    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
+    <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
+    
+    <!-- Вкладки топа -->
+    <div class="inv-tabs">
+        <div class="inv-tab active" onclick="game.loadTop('rich')">💰 БОГАТЫЕ</div>
+        <div class="inv-tab" onclick="game.loadTop('dungeons')">💀 ДАНЖИ</div>
+        <div class="inv-tab" onclick="game.loadTop('level')">🌟 УРОВЕНЬ</div>
+    </div>
+    
+    <div id="lead-list"></div>
+</div>
+
+    <!-- Нижняя навигация -->
+    <nav id="nav">
+        <button class="nav-item active" onclick="game.switchTab('home',this)"><span>🏠</span>ДОМ</button>
+        <button class="nav-item" onclick="game.switchTab('portal',this)"><span>🌀</span>ПОРТАЛ</button>
+        <button class="nav-item" onclick="game.switchTab('minions',this)"><span>👷</span>МИНЬОНЫ</button>
+        <button class="nav-item" onclick="game.switchTab('inventory',this)"><span>🎒</span>ИНВЕНТАРЬ</button>
+    </nav>
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="game.js"></script>
+    <script src="news.js"></script>
+    <script src="inventory.js"></script>
+<script src="top.js"></script>
+<script src="dungeon.js"></script>
+<script src="skills.js"></script>
+
+
+</body>
+</html>
+
+
+
+
+
+
+
