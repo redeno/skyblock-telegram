@@ -7,7 +7,7 @@ const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const defaultState = {
-    coins: 500000000,
+    coins: 0,
     nextItemId: 10,
     skills: {
         mining: {lvl:1,xp:0,next:100,label:'ШАХТА'},
