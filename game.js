@@ -7,7 +7,7 @@ const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const defaultState = {
-    coins: 0,
+    coins: 500000000,
     nextItemId: 10,
     skills: {
         mining: {lvl:1,xp:0,next:100,label:'ШАХТА'},
@@ -93,7 +93,27 @@ const shopItems = {
     pet: [
         {name:'Чешуйница',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'mining',base_bonus:0.1,cost:5000},
         {name:'Кролик',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'farming',base_bonus:0.1,cost:5000},
-        {name:'Сквид',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'fishing',base_bonus:0.1,cost:5000}
+        {name:'Сквид',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'fishing',base_bonus:0.1,cost:5000},
+    	{
+        name: 'Ёжик',
+        type: 'pet',
+        skill: 'foraging',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 5000
+   	 },
+    	{
+        name: 'Бейби Иссушитель',
+        type: 'pet',
+        skill: 'combat',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 50000000
+    	}
     ]
 };
 
@@ -113,7 +133,9 @@ const petUpgradeCosts = {
 const petResourceMap = {
     mining: 'Уголь',
     farming: 'Пшеница',
-    fishing: 'Рыба'
+    fishing: 'Рыба',
+    foraging: 'Дерево',
+    combat: 'Фрагмент из Данжа' 
 };
 
 const game = {
@@ -351,9 +373,9 @@ const game = {
         if (equippedPet) {
             const rarityColor = {
                 common: '#aaaaaa',
-                rare: '#00ff00',
-                epic: '#ff00ff',
-                legendary: '#ffaa00'
+                rare: '#7aa0ff',
+                epic: '#ae70ff',
+                legendary: '#ffbd38'
             }[equippedPet.rarity] || '#ffffff';
             const progress = (equippedPet.xp / equippedPet.next * 100).toFixed(1);
             petHtml = `
@@ -364,7 +386,7 @@ const game = {
                     <div class="hp-bar" style="margin:5px 0;">
                         <div class="hp-fill" style="width:${progress}%;background:${rarityColor}"></div>
                     </div>
-                    <small style="color:#0f0">+${(petRarityBonuses[equippedPet.rarity] * equippedPet.lvl * 100).toFixed(1)}% XP</small>
+                    <small style="color:#0f0">+${(petRarityBonuses[equippedPet.rarity] * equippedPet.lvl).toFixed(1)}% XP</small>
                 </div>
             `;
         }
@@ -384,12 +406,13 @@ const game = {
         this.saveToSupabase();
     },
 
+
     renderPenList() {
         const l = document.getElementById('pen-list');
         l.innerHTML = '';
         this.state.pets.forEach((pet, idx) => {
             const rarity = pet.rarity.toUpperCase();
-            const bonus = (petRarityBonuses[pet.rarity] * pet.lvl * 100).toFixed(1);
+            const bonus = (petRarityBonuses[pet.rarity] * pet.lvl).toFixed(1);
             l.innerHTML += `
                 <div class="card">
                     <b>${pet.name} (${rarity}, LVL ${pet.lvl})</b><br>
@@ -455,7 +478,7 @@ const game = {
     },
 
     finishAction() {
-        const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging'};
+        const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging',combat:'combat'};
         const skillKey = map[this.currentLoc];
         const skill = this.state.skills[skillKey];
         const gain = 15 * skill.lvl;
@@ -481,8 +504,16 @@ const game = {
             exp_bonus = s.foraging_exp_bonus || 0;
             fortune = s.foraging_fortune || 0;
         }
+	let petXpBonus = 0;
 
-        const total_xp = base_xp * (1 + exp_bonus / 100);
+	const pet = this.state.pets.find(p => p.equipped && p.skill === skillKey);
+	if (pet) {
+	    const rarityMul = petRarityBonuses[pet.rarity] || 0;
+  	  petXpBonus = rarityMul * pet.lvl; // в процентах
+	}
+
+        const total_xp = base_xp * (1 + (exp_bonus + petXpBonus) / 100);
+
 
 
         const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
@@ -503,10 +534,21 @@ const game = {
         const final_xp = total_xp * amount;
 	this.addXp(skillKey, final_xp);
 
+	if (pet) {
+    	const petXp = final_xp * 0.5;
+    	this.addPetXp(pet, petXp);
+	}
         document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
         this.updateUI();
     },
-
+addPetXp(pet, amount) {
+    pet.xp += amount;
+    while (pet.xp >= pet.next && pet.lvl < 100) {
+        pet.xp -= pet.next;
+        pet.lvl++;
+        pet.next = Math.floor(pet.next * 1.15);
+    }
+},	
     renderMinions(){
         const l=document.getElementById('minions-list');l.innerHTML='';
         this.state.minions.forEach((m,i)=>{
