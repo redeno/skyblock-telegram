@@ -327,16 +327,21 @@ const game = {
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
-        if (Date.now() < this.state.buffs.godpotion.endTime) {
-            s.str += 5; s.cc += 5; s.cd += 5; s.mf += 10; s.def += 5; s.int += 5; s.mag_amp += 5;
-            s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
-            s.xp_bonus += 1; s.magic_res += 5;
-        }
-        if (Date.now() < this.state.buffs.cookie.endTime) {
-            s.str += 50; s.cc += 10; s.cd += 25; s.mf += 25; s.def += 50; s.int += 50; s.mag_amp += 5;
-            s.mining_fortune += 25; s.farming_fortune += 25; s.foraging_fortune += 25; s.fishing_fortune += 25;
-            s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25;
-        }
+        const buffs = this.state.buffs || {};
+    const godEnd = buffs.godpotion?.endTime || 0;
+    const cookieEnd = buffs.cookie?.endTime || 0;
+
+    if (Date.now() < godEnd) {
+        s.str += 5; s.cc += 5; s.cd += 5; s.mf += 10; s.def += 5; s.int += 5; s.mag_amp += 5;
+        s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
+        s.xp_bonus += 1; s.magic_res += 5;
+    }
+
+    if (Date.now() < cookieEnd) {
+        s.str += 50; s.cc += 10; s.cd += 25; s.mf += 25; s.def += 50; s.int += 50; s.mag_amp += 5;
+        s.mining_fortune += 25; s.farming_fortune += 25; s.foraging_fortune += 25; s.fishing_fortune += 25;
+        s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25;
+    }
 
         // Tiger Stats
         const tiger = this.state.pets.find(p => p.equipped && p.name === 'Тигр');
