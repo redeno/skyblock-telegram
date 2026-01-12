@@ -603,32 +603,44 @@ const game = {
     },
 
     renderShopList(t) {
-        const l = document.getElementById('shop-list');
-        l.innerHTML = '';
-        let itemsToShow = [];
-        if (t.startsWith('tool_')) {
-            const subType = t.replace('tool_', '');
-            itemsToShow = (shopItems.tool || []).filter(item => item.sub_type === subType);
-        } else if (t === 'tools') {
-            itemsToShow = shopItems.tool || [];
-        } else {
-            itemsToShow = shopItems[t] || [];
-        }
-        if (itemsToShow.length === 0) {
-            l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто в этом разделе</div>';
-            return;
-        }
-        itemsToShow.forEach((i, x) => {
-            l.innerHTML += `
-                <div class="card">
-                    <b>${i.name}</b><br>
-                    <small>${this.getItemDesc(i)}</small>
-                    <div class="item-actions">
-                        <button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button>
-                    </div>
-                </div>`;
-        });
-    },
+    const l = document.getElementById('shop-list');
+    l.innerHTML = '';
+
+    let items = [];
+
+    // Если обычная вкладка (weapon, armor, buff и т.д.)
+    if (shopItems[t]) {
+        items = shopItems[t];
+    }
+    // Если подвкладка инструментов
+    else if (t.startsWith('tool_')) {
+        const subType = t.replace('tool_', ''); // mining, farming, fishing, foraging
+        items = shopItems.tool.filter(item => item.sub_type === subType);
+    }
+    // Если просто "tools" — показываем все инструменты
+    else if (t === 'tools') {
+        items = shopItems.tool;
+    }
+
+    if (items.length === 0) {
+        l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто в этом разделе</div>';
+        return;
+    }
+
+    items.forEach((i, index) => {
+        l.innerHTML += `
+            <div class="card">
+                <b>${i.name}</b><br>
+                <small>${this.getItemDesc(i)}</small>
+                <div class="item-actions">
+                    <button class="act-btn" onclick="game.buyShopItem('${t}',${index})">
+                        КУПИТЬ (${i.cost.toLocaleString()}💰)
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+},
 
     buyShopItem(t,x){
         const i = shopItems[t][x];
