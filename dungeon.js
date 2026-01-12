@@ -92,31 +92,34 @@ Object.assign(game, {
         let actualDmg=Math.max(1,mobDmg-s.def-this.mobDef);
         this.dungeon.pHp-=actualDmg;
 
-        if(this.dungeon.mobHp<=0){
-            // XP за моба с бонусом Бейби
-            const baseXp = isBoss ? this.dungeon.floor*50 : this.dungeon.floor*20;
-            const {bonusMul, pet} = this.getBabyWitherXpBonus();
-            const finalXp = Math.floor(baseXp*bonusMul);
+        if (this.dungeon.mobHp <= 0) {
+    // XP за моба с бонусом Бейби
+    const baseXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
+    const {bonusMul, pet} = this.getBabyWitherXpBonus();
+    const finalXp = Math.floor(baseXp * bonusMul);
+    this.addXp('combat', finalXp);
+    if (pet) this.addPetXp(pet, finalXp * 0.5);
 
-            this.addXp('combat', finalXp);
-            if(pet) this.addPetXp(pet, finalXp*0.5);
+    // Классовый хил — делаем его ДО увеличения mobIdx
+    let killMsg = 'МОБ УБИТ!';
+    if (this.state.class === 'healer') {
+        const heal = Math.floor(this.dungeon.pMaxHp * 0.2);
+        this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + heal);
+        killMsg = `МОБ УБИТ! +${heal} ХП (Хиллер)`;
+    }
+    this.msg(killMsg);
 
-            this.dungeon.mobIdx++;
-            if(this.dungeon.mobIdx>=4){this.giveDungeonReward(); this.switchTab('loot-screen');}
-            else{
-                this.initMobStats();
-                if(this.state.class==='healer'){
-                    this.dungeon.pHp=Math.min(this.dungeon.pMaxHp,this.dungeon.pHp+this.dungeon.pMaxHp*0.2);
-                    this.msg('МОБ УБИТ! +20% ХП (Хиллер)');
-                } else this.msg('МОБ УБИТ!');
-                this.updateBattleUI();
-            }
-        } else if(this.dungeon.pHp<=0){
-            this.msg(`ТЫ УМЕР на этаже ${this.dungeon.floor}!`);
-            this.switchTab('portal');
-            this.resetDungeonEffects();
-        } else this.updateBattleUI();
-    },
+    // Теперь увеличиваем индекс
+    this.dungeon.mobIdx++;
+
+    if (this.dungeon.mobIdx >= 4) {
+        this.giveDungeonReward();
+        this.switchTab('loot-screen');
+    } else {
+        this.initMobStats();
+        this.updateBattleUI();
+    }
+},
 
     initMobStats(){
         const config=dungeonConfig[this.dungeon.floor];
