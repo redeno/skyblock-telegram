@@ -28,6 +28,7 @@ Object.assign(game, {
     mobDef: 0,
     fireStacks: 0,
     witherAttackCount: 0,
+    tigerHitCount: 0,
 
     // Бонус к XP от Бейби Иссушителя
     getBabyWitherXpBonus() {
@@ -60,6 +61,19 @@ Object.assign(game, {
         else if(this.dungeon.mobIdx===3 && Math.random()<0.03){damage=this.dungeon.mobHp*0.4; msgText+='Мощный выстрел по боссу! ';}
     }
     if(Math.random()*100<s.cc){damage*=(1+s.cd/100); msgText+='КРИТИЧЕСКИЙ УДАР! ';}
+
+    // Tiger Legendary Perk
+    const tiger = this.state.pets.find(p => p.equipped && p.name === 'Тигр');
+    if (tiger && tiger.rarity === 'legendary') {
+        const lvl = tiger.lvl || 1;
+        // 1% (lvl 1) -> 5% (lvl 100) per hit
+        const perkBonus = 1 + (lvl - 1) * (4/99);
+        const multiplier = 1 + (this.tigerHitCount * perkBonus / 100);
+        damage *= multiplier;
+        this.tigerHitCount++;
+        // msgText += `(TIGER x${multiplier.toFixed(2)}) `; 
+    }
+
     this.dungeon.mobHp-=damage;
     if(this.dungeon.floor===4 && this.dungeon.mobIdx===3) this.mobDef=Math.max(0,this.mobDef-10);
     if(msgText) this.msg(msgText.trim());
@@ -130,6 +144,7 @@ Object.assign(game, {
         this.mobDef = isBoss && config.bossStats ? config.bossStats.def||config.baseDef*(config.bossMultiplier||1) : config.baseDef;
         this.fireStacks=0;
         this.witherAttackCount=0;
+        this.tigerHitCount=0;
     },
 
     updateBattleUI(){
