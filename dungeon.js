@@ -78,29 +78,40 @@ Object.assign(game, {
         }
         let actualDmg=Math.max(1,mobDmg-s.def-this.mobDef);
         this.dungeon.pHp-=actualDmg;
-        if(this.dungeon.mobHp<=0){
-            // XP за моба с бонусом Бейби
-            const baseXp = isBoss ? this.dungeon.floor*50 : this.dungeon.floor*20;
-            const {bonusMul, pet} = this.getBabyWitherXpBonus();
-            const finalXp = Math.floor(baseXp*bonusMul);
-            this.addXp('combat', finalXp);
-            if(pet) this.addPetXp(pet, finalXp*0.5);
-            this.dungeon.mobIdx++;
-            if(this.dungeon.mobIdx>=4){this.giveDungeonReward(); this.switchTab('loot-screen');}
-            else{
-                this.initMobStats();
-                if(this.state.class==='healer'){
-                    this.dungeon.pHp=Math.min(this.dungeon.pMaxHp,this.dungeon.pHp+this.dungeon.pMaxHp*0.2);
-                    this.msg('МОБ УБИТ! +20% ХП (Хиллер)');
-                } else this.msg('МОБ УБИТ!');
-                this.updateBattleUI();
-            }
-        } else if(this.dungeon.pHp<=0){
-            this.msg(`ТЫ УМЕР на этаже ${this.dungeon.floor}!`);
-            this.switchTab('portal');
-            this.resetDungeonEffects();
-        } else this.updateBattleUI();
-    },
+       if (this.dungeon.mobHp <= 0) {
+    // XP за моба с бонусом Бейби
+    const baseXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
+    const {bonusMul, pet} = this.getBabyWitherXpBonus();
+    const finalXp = Math.floor(baseXp * bonusMul);
+    this.addXp('combat', finalXp);
+    if (pet) this.addPetXp(pet, finalXp * 0.5);
+
+    // ХИЛ ОТ ХИЛЛЕРА — всегда после убийства моба (даже после босса!)
+    let killMsg = 'МОБ УБИТ!';
+    if (this.state.class === 'healer') {
+        // Защита от NaN/0 в pMaxHp
+        const maxHp = Number(this.dungeon.pMaxHp) || 100; // дефолт 100 если сломано
+        const healAmount = Math.floor(maxHp * 0.2);
+        const newHp = (this.dungeon.pHp || 0) + healAmount;
+        this.dungeon.pHp = Math.min(maxHp, newHp);
+
+        killMsg = `МОБ УБИТ! +${healAmount} ХП (Хиллер) [${this.dungeon.pHp}/${maxHp}]`;
+    }
+
+    this.msg(killMsg);
+
+    // Увеличиваем индекс моба
+    this.dungeon.mobIdx++;
+
+    // Переход на следующий моб или награда
+    if (this.dungeon.mobIdx >= 4) {
+        this.giveDungeonReward();
+        this.switchTab('loot-screen');
+    } else {
+        this.initMobStats();
+        this.updateBattleUI();
+    }
+},
     initMobStats(){
         const config=dungeonConfig[this.dungeon.floor];
         const isBoss=this.dungeon.mobIdx===3;
