@@ -440,32 +440,41 @@ const game = {
     },
 
     upgradePet(idx) {
-        const pet = this.state.pets[idx];
-        const nextRarity = {common:'rare', rare:'epic', epic:'legendary'}[pet.rarity];
-        if (!nextRarity) { this.msg('Уже максимальная редкость!'); return; }
-        const cost = petUpgradeCosts[nextRarity];
-        const resourceName = petResourceMap[pet.skill];
-        const resourceItem = this.state.inventory.find(i => i.name === resourceName && i.type === 'material');
-        const resourceCount = resourceItem ? resourceItem.count || 0 : 0;
-        const upgradeItem = this.state.inventory.find(i => i.name === 'Апгрейд питомца' && i.type === 'material');
-        const upgradeCount = upgradeItem ? upgradeItem.count || 0 : 0;
-        if (this.state.coins < cost.coins || resourceCount < cost.resources || (cost.upgradeItem && upgradeCount < cost.upgradeItem)) {
-            this.msg('Не хватает ресурсов или монет!');
-            return;
-        }
-        this.state.coins -= cost.coins;
-        if (resourceItem) {
-            resourceItem.count -= cost.resources;
-            if (resourceItem.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== resourceItem.id);
-        }
-        if (cost.upgradeItem && upgradeItem) {
-            upgradeItem.count -= cost.upgradeItem;
-            if (upgradeItem.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== upgradeItem.id);
-        }
-        pet.rarity = nextRarity;
-        this.msg(`Питомец улучшен до ${nextRarity.toUpperCase()}!`);
-        this.updateUI();
-    },
+    const pet = this.state.pets[idx];
+    const nextRarity = {common:'rare', rare:'epic', epic:'legendary'}[pet.rarity];
+    if (!nextRarity) { this.msg('Уже максимальная редкость!'); return; }
+
+    const cost = petUpgradeCosts[nextRarity];
+    const resourceName = petResourceMap[pet.skill];
+    const resourceItem = this.state.inventory.find(i => i.name === resourceName && i.type === 'material');
+    const resourceCount = resourceItem ? (resourceItem.count || 0) : 0;
+
+    const upgradeItem = this.state.inventory.find(i => i.name === 'Апгрейд питомца' && i.type === 'material');
+    const upgradeCount = upgradeItem ? (upgradeItem.count || 0) : 0;
+
+    const needUpgradeItem = cost.upgradeItem || 0;
+
+    if (this.state.coins < cost.coins || resourceCount < cost.resources || upgradeCount < needUpgradeItem) {
+        this.msg('Не хватает ресурсов или монет!');
+        return;
+    }
+
+    this.state.coins -= cost.coins;
+
+    if (resourceItem) {
+        resourceItem.count -= cost.resources;
+        if (resourceItem.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== resourceItem.id);
+    }
+
+    if (needUpgradeItem > 0 && upgradeItem) {
+        upgradeItem.count -= needUpgradeItem;
+        if (upgradeItem.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== upgradeItem.id);
+    }
+
+    pet.rarity = nextRarity;
+    this.msg(`Питомец улучшен до ${nextRarity.toUpperCase()}!`);
+    this.updateUI();
+},
 
     sellPet(idx) {
         const pet = this.state.pets[idx];
