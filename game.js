@@ -94,7 +94,7 @@ const shopItems = {
         {name:'Сквид',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'fishing',base_bonus:0.1,cost:5000},
         {name: 'Ёжик',type: 'pet',skill: 'foraging',rarity: 'common',lvl: 1,xp: 0,next: 100,cost: 5000},
         {name: 'Бейби Иссушитель',type: 'pet',skill: 'combat',rarity: 'common',lvl: 1,xp: 0,next: 100,cost: 50000000},
-        {name: 'Тигр',type: 'pet',rarity: 'common',lvl: 1,xp: 0,next: 100,skill: 'combat',cost: 1000000}
+        {name: 'Тигр', type: 'pet', rarity: 'common', lvl: 1, xp: 0, next: 100, skill: 'combat', cost: 1000000},
     ]
 };
 
