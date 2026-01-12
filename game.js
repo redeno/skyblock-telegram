@@ -291,7 +291,34 @@ const game = {
         s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
         s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
         s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);  // ← вот он, вернулся
+	    // Бонусы от Тигра (только если надет)
+this.state.pets.forEach(pet => {
+    if (pet.equipped && pet.name === 'Тигр') {
+        const rarity = pet.rarity;
+        const lvl = pet.lvl || 1;
 
+        let strBonus = 0;
+        let cdBonus = 0;
+        let comboBonus = 0;
+
+        if (rarity === 'common') {
+            strBonus = 0.2 * lvl; // 1 сила на 1 lvl → 20 на 100
+        } else if (rarity === 'rare') {
+            strBonus = 0.25 * lvl; // 25 на 100
+        } else if (rarity === 'epic') {
+            strBonus = 0.3 * lvl;
+            cdBonus = 0.2 * lvl; // 1 крит урон на 1 → 20 на 100
+        } else if (rarity === 'legendary') {
+            strBonus = 0.4 * lvl;
+            cdBonus = 0.75 * lvl;
+            // Комбо: каждый удар +1% (на 100 lvl +5%)
+            // Это нужно отслеживать отдельно в бою (добавим позже)
+        }
+
+        s.str += strBonus;
+        s.cd += cdBonus;
+    }
+});
         return s;
     },
 
