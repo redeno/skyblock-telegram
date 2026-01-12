@@ -45,7 +45,6 @@
                 <div class="portal-node" onclick="game.msg('Скоро...')">⚖️ ОБМЕН</div>
                 <div class="portal-node" onclick="game.msg('Скоро...')">📅 ИВЕНТ</div>
                 <div class="portal-node" onclick="game.msg('Скоро...')">🗳️ МЭР</div>
-                <div class="portal-node" onclick="game.switchTab('pen')">🐾 ЗАГОН</div>
             </div>
         </div>
 
@@ -123,7 +122,10 @@
             <div class="inv-tabs">
                 <div class="inv-tab active" onclick="game.shopFilter('weapon',this)">ОРУЖИЕ</div>
                 <div class="inv-tab" onclick="game.shopFilter('armor',this)">БРОНЯ</div>
-                <div class="inv-tab" onclick="game.shopFilter('tool',this)">ИНСТРУМЕНТЫ</div>
+                <div class="inv-tab" onclick="game.shopFilter('mining_tool',this)">⛏️ ШАХТА</div>
+                <div class="inv-tab" onclick="game.shopFilter('farming_tool',this)">🌾 ФЕРМА</div>
+                <div class="inv-tab" onclick="game.shopFilter('foraging_tool',this)">🌲 ЛЕС</div>
+                <div class="inv-tab" onclick="game.shopFilter('fishing_tool',this)">🎣 РЫБАЛКА</div>
                 <div class="inv-tab" onclick="game.shopFilter('accessory',this)">ТАЛИСМАНЫ</div>
                 <div class="inv-tab" onclick="game.shopFilter('buff',this)">БАФФЫ</div>
                 <div class="inv-tab" onclick="game.shopFilter('pet',this)">ПИТОМЦЫ</div>
@@ -148,17 +150,12 @@
                 <div class="inv-tab" onclick="game.filterInv('accessory',this)">ТАЛИСМАНЫ</div>
                 <div class="inv-tab" onclick="game.filterInv('material',this)">МАТЕРИАЛ</div>
                 <div class="inv-tab" onclick="game.filterInv('chest',this)">СУНДУКИ</div>
+                <div class="inv-tab" onclick="game.filterInv('buff',this)">БАФФЫ</div>
                 <div class="inv-tab" onclick="game.filterInv('pet',this)">ПИТОМЦЫ</div>
             </div>
             <div id="inv-list"></div>
         </div>
 
-        <!-- Загон питомцев -->
-        <div id="pen" class="screen">
-            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
-            <h3>🐾 ЗАГОН</h3>
-            <div id="pen-list"></div>
-        </div>
     </div>
 
     <!-- Модальные окна -->
@@ -200,20 +197,15 @@
         <button class="nav-item" onclick="game.switchTab('inventory',this)"><span>🎒</span>ИНВЕНТАРЬ</button>
     </nav>
    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+   <!-- Use relative paths for iframe compatibility -->
 <script src="game.js"></script>
     <script src="news.js"></script>
     <script src="inventory.js"></script>
 <script src="top.js"></script>
 <script src="dungeon.js"></script>
 <script src="skills.js"></script>
+<script src="pets.js"></script>
 
 
 </body>
 </html>
-
-
-
-
-
-
-
