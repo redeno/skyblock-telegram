@@ -8,30 +8,34 @@ const dungeonConfig = {
     6: { mobs: ['ОРК','ГОБЛИН','ТРОЛЬ','ГИГАНТ'], baseHp:1000, baseDmg:100, baseDef:10, bossStats:{hp:2000,dmg:125,def:20} },
     7: { mobs: ['БЛЕЙЗ','ГАСТ','СКЕЛЕТ ИССУШИТЕЛЬ','ИССУШИТЕЛЬ'], baseHp:750, baseDmg:50, baseDef:0, fireStacks:true, bossStats:{hp:3000,dmgBase:75,dmgInc:15}, bossSpecial:'witherPhase' }
 };
+
 const dungeonRewards = {
     1: {coins_min:50, coins_max:250, drops:[]},
     2: {coins_min:300, coins_max:500, drops:[{chance:1, items:[
-        {name:'Талисман силы +1',type:'accessory',str:1},
-        {name:'Талисман крита +1',type:'accessory',cd:1},
-        {name:'Талисман удачи +1',type:'accessory',mf:1}
+        {name:'Талисман силы +1',type:'accessory',str:1,cost:100},
+        {name:'Талисман крита +1',type:'accessory',cd:1,cost:100},
+        {name:'Талисман удачи +1',type:'accessory',mf:1,cost:100}
     ]}]},
-    3: {coins_min:1000, coins_max:2500, drops:[{chance:1,item:{name:'Талисман защиты +20',type:'accessory',def:20}}]},
-    4: {coins_min:5000, coins_max:25000, drops:[{chance:5,item:{name:'Меч Мидаса',type:'weapon',dynamic_str:'midas'}}]},
+    3: {coins_min:1000, coins_max:2500, drops:[{chance:1,item:{name:'Талисман защиты +20',type:'accessory',def:20,cost:5000}}]},
+    4: {coins_min:5000, coins_max:25000, drops:[{chance:5,item:{name:'Меч Мидаса',type:'weapon',dynamic_str:'midas',cost:10000}}]},
     5: {coins_min:10000, coins_max:40000, drops:[]},
-    6: {coins_min:100000, coins_max:500000, drops:[{chance:3,item:{name:'Меч Гиганта',type:'weapon',str:100,cd:50}}]},
-    7: {coins_min:200000, coins_max:1000000, drops:[{chance:0.5,item:{name:'Гиперион',type:'weapon',magic:true}}]}
+    6: {coins_min:100000, coins_max:500000, drops:[{chance:3,item:{name:'Меч Гиганта',type:'weapon',str:100,cd:50,cost:250000}}]},
+    7: {coins_min:200000, coins_max:1000000, drops:[{chance:0.5,item:{name:'Гиперион',type:'weapon',magic:true,cost:500000}}]}
 };
+
 Object.assign(game, {
     dungeon: {floor:1, mobIdx:0, mobHp:50, pHp:100, pMaxHp:100, mobs:['ЗОМБИ','СКЕЛЕТ','ПАУК','БОСС']},
     mobDef: 0,
     fireStacks: 0,
     witherAttackCount: 0,
+
     // Бонус к XP от Бейби Иссушителя
     getBabyWitherXpBonus() {
         const pet = this.state.pets.find(p => p.equipped && p.name === 'Бейби Иссушитель');
         if (!pet) return { bonusMul:1, pet:null };
         return { bonusMul:1 + pet.lvl / 100, pet };
     },
+
     // Добавление XP питомцу
     addPetXp(pet, xp) {
         pet.xp += xp;
@@ -42,6 +46,7 @@ Object.assign(game, {
             this.msg(`${pet.name} повысил уровень! Теперь ${pet.lvl}`);
         }
     },
+
     dungeonAttack() {
         const inDungeon = true;
         const s = this.calcStats(inDungeon);
@@ -49,22 +54,27 @@ Object.assign(game, {
         let damage = weapon?.magic ? s.int*s.mag_amp*100 : s.str;
         damage *= 1 + (s.dungeon_damage||0)/100;
         let msgText='';
-        if(this.state.class==='berserk' && Math.random()<0.2){damage*=2; msgText+='ДВОЙНОЙ УДАР! ';}
+
+        if(this.state.class==='berserk' && Math.random()<0.2){ damage*=2; msgText+='ДВОЙНОЙ УДАР! '; }
         if(this.state.class==='archer'){
-            if(this.dungeon.mobIdx<3 && Math.random()<0.2){damage=999999; msgText+='ВАНШОТ! ';}
-            else if(this.dungeon.mobIdx===3 && Math.random()<0.03){damage=this.dungeon.mobHp*0.4; msgText+='Мощный выстрел по боссу! ';}
+            if(this.dungeon.mobIdx<3 && Math.random()<0.2){ damage=999999; msgText+='ВАНШОТ! '; }
+            else if(this.dungeon.mobIdx===3 && Math.random()<0.03){ damage=this.dungeon.mobHp*0.4; msgText+='Мощный выстрел по боссу! '; }
         }
-        if(Math.random()*100<s.cc){damage*=(1+s.cd/100); msgText+='КРИТИЧЕСКИЙ УДАР! ';}
-        this.dungeon.mobHp-=damage;
+        if(Math.random()*100<s.cc){ damage*=(1+s.cd/100); msgText+='КРИТИЧЕСКИЙ УДАР! '; }
+
+        this.dungeon.mobHp -= damage;
+
         if(this.dungeon.floor===4 && this.dungeon.mobIdx===3) this.mobDef=Math.max(0,this.mobDef-10);
         if(msgText) this.msg(msgText.trim());
+
         const config = dungeonConfig[this.dungeon.floor];
         const isBoss = this.dungeon.mobIdx===3;
         let mobDmg = isBoss && config.bossStats ? config.bossStats.dmg||config.baseDmg*(config.bossMultiplier||1) : config.baseDmg;
+
         if(this.dungeon.floor===5){
             const mobCc = isBoss ? config.bossStats.cc : config.baseCc;
             const mobCd = isBoss ? config.bossStats.cd : config.baseCd;
-            if(Math.random()*100<mobCc){mobDmg*=(1+mobCd/100); this.msg('КРИТ ОТ ВРАГА!');}
+            if(Math.random()*100<mobCc){ mobDmg*=(1+mobCd/100); this.msg('КРИТ ОТ ВРАГА!'); }
         }
         if(this.dungeon.floor===7 && config.fireStacks){
             this.fireStacks=Math.min(3,this.fireStacks+1);
@@ -76,42 +86,44 @@ Object.assign(game, {
             if(this.witherAttackCount%2===0) mobDmg+=config.bossStats.dmgInc;
             if(this.dungeon.mobHp/this.dungeon.mobMaxHp<0.5) this.mobDef=75;
         }
+
         let actualDmg=Math.max(1,mobDmg-s.def-this.mobDef);
-        this.dungeon.pHp-=actualDmg;
-       if (this.dungeon.mobHp <= 0) {
-    // XP за моба с бонусом Бейби
-    const baseXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
-    const {bonusMul, pet} = this.getBabyWitherXpBonus();
-    const finalXp = Math.floor(baseXp * bonusMul);
-    this.addXp('combat', finalXp);
-    if (pet) this.addPetXp(pet, finalXp * 0.5);
+        this.dungeon.pHp -= actualDmg;
 
-    // ХИЛ ОТ ХИЛЛЕРА — всегда после убийства моба (даже после босса!)
-    let killMsg = 'МОБ УБИТ!';
-    if (this.state.class === 'healer') {
-        // Защита от NaN/0 в pMaxHp
-        const maxHp = Number(this.dungeon.pMaxHp) || 100; // дефолт 100 если сломано
-        const healAmount = Math.floor(maxHp * 0.3);
-        const newHp = (this.dungeon.pHp || 0) + healAmount;
-        this.dungeon.pHp = Math.min(maxHp, newHp);
+        // Исправленный блок: закрыта атака моба
+        if (this.dungeon.mobHp <= 0) {
+            // XP за моба с бонусом Бейби
+            const baseXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
+            const {bonusMul, pet} = this.getBabyWitherXpBonus();
+            const finalXp = Math.floor(baseXp * bonusMul);
+            this.addXp('combat', finalXp);
+            if (pet) this.addPetXp(pet, finalXp * 0.5);
 
-        killMsg = `МОБ УБИТ! +${healAmount} ХП (Хиллер) [${this.dungeon.pHp}/${maxHp}]`;
-    }
+            // ХИЛ ОТ ХИЛЛЕРА — всегда после убийства моба
+            let killMsg = 'МОБ УБИТ!';
+            if (this.state.class === 'healer') {
+                const maxHp = Number(this.dungeon.pMaxHp) || 100;
+                const healAmount = Math.floor(maxHp * 0.3);
+                const newHp = Math.max(0, (this.dungeon.pHp || 0) + healAmount);
+                this.dungeon.pHp = Math.min(maxHp, newHp);
+                killMsg = `МОБ УБИТ! +${healAmount} ХП (Хиллер) [${Math.floor(this.dungeon.pHp)}/${maxHp}]`;
+            }
+            this.msg(killMsg);
 
-    this.msg(killMsg);
+            // Следующий моб или награда
+            this.dungeon.mobIdx++;
+            if (this.dungeon.mobIdx >= 4) {
+                this.giveDungeonReward();
+                this.switchTab('loot-screen');
+            } else {
+                this.initMobStats();
+                this.updateBattleUI();
+            }
+        } else {
+            this.updateBattleUI();
+        }
+    },
 
-    // Увеличиваем индекс моба
-    this.dungeon.mobIdx++;
-
-    // Переход на следующий моб или награда
-    if (this.dungeon.mobIdx >= 4) {
-        this.giveDungeonReward();
-        this.switchTab('loot-screen');
-    } else {
-        this.initMobStats();
-        this.updateBattleUI();
-    }
-},
     initMobStats(){
         const config=dungeonConfig[this.dungeon.floor];
         const isBoss=this.dungeon.mobIdx===3;
@@ -122,25 +134,29 @@ Object.assign(game, {
         this.fireStacks=0;
         this.witherAttackCount=0;
     },
+
     updateBattleUI(){
         document.getElementById('mob-name').innerText=this.dungeon.mobs[this.dungeon.mobIdx];
         document.getElementById('m-hp-txt').innerText=`${Math.max(0,Math.floor(this.dungeon.mobHp))}/${this.dungeon.mobMaxHp}`;
         document.getElementById('m-hp-fill').style.width=`${Math.max(0,this.dungeon.mobHp/this.dungeon.mobMaxHp*100)}%`;
         document.getElementById('p-hp-txt').innerText=`${Math.max(0,Math.floor(this.dungeon.pHp))}/${Math.floor(this.dungeon.pMaxHp)}`;
-        document.getElementById('p-hp-fill').style.width=`${this.dungeon.pHp/this.dungeon.pMaxHp*100}%`;
+        document.getElementById('p-hp-fill').style.width=`${Math.max(0,this.dungeon.pHp/this.dungeon.pMaxHp*100)}%`;
     },
+
     giveDungeonReward(){
         const s=this.calcStats(true);
         const r=dungeonRewards[this.dungeon.floor];
         let coins=Math.floor(Math.random()*(r.coins_max-r.coins_min+1)+r.coins_min);
         coins=Math.floor(coins*(1+(s.gold_bonus||0)/100));
         this.state.coins+=coins;
+
         // XP за этаж с бонусом Бейби
         const baseDungeonXp = this.dungeon.floor*200;
         const {bonusMul, pet} = this.getBabyWitherXpBonus();
         const finalDungeonXp = Math.floor(baseDungeonXp*bonusMul);
         this.addXp('dungeons', finalDungeonXp);
         if(pet) this.addPetXp(pet, finalDungeonXp*0.5);
+
         // Дропы
         let dropsText='';
         r.drops?.forEach(drop=>{
@@ -152,14 +168,18 @@ Object.assign(game, {
             }
         });
         let upgradeChance = this.dungeon.floor>=5 ? 5+((s.mf||0)/100) : 1+((s.mf||0)/100);
-        if(Math.random()*100<upgradeChance){this.addMaterial('Апгрейд питомца','material'); dropsText+=' | +Апгрейд питомца';}
-        const fullLog=`+${coins} 💰 | +${finalDungeonXp} XP (Данж ${this.dungeon.floor})${dropsText}`;
+        if(Math.random()*100<upgradeChance){ 
+            this.addMaterial('Апгрейд питомца','material'); 
+            dropsText+=' | +Апгрейд питомца';
+        }
+        const fullLog=`+${coins.toLocaleString()} 💰 | +${finalDungeonXp} XP (Данж ${this.dungeon.floor})${dropsText}`;
         document.getElementById('dungeon-log').innerText=fullLog;
         this.addMaterial(`Сундук этажа ${this.dungeon.floor}`,'chest');
         document.getElementById('extra-chests').style.display=this.dungeon.floor>=5?'block':'none';
         this.updateUI();
         this.resetDungeonEffects();
     },
+
     startDungeon(floor){
         const req=(floor-1)*5+1;
         if(this.state.skills.dungeons.lvl<req){this.msg(`Требуется уровень ДАНЖЕЙ ${req}`); return;}
@@ -172,9 +192,11 @@ Object.assign(game, {
         this.updateBattleUI();
         this.switchTab('battle-screen');
     },
+
     repeatDungeon(){
         if(!this.dungeon||!this.dungeon.floor){this.msg('Нет активного данжа для повторения'); return;}
         this.startDungeon(this.dungeon.floor);
     },
+
     resetDungeonEffects(){this.mobDef=0; this.fireStacks=0; this.witherAttackCount=0;}
 });
