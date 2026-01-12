@@ -16,7 +16,7 @@ Object.assign(game, {
         if (i.fast) d += 'БЫСТРАЯ ';
         if (i.dynamic_str === 'midas') d += 'МИДАС ';
         if (i.magic) d += 'МАГИЧЕСКОЕ ';
-        if (i.type === 'pet') d += `+${(petRarityBonuses[i.rarity] * i.lvl * 100).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
+        if (i.type === 'pet') d += `+${(petRarityBonuses[i.rarity] * i.lvl).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
         return d.trim() || 'Без бонусов';
     },
 
@@ -60,15 +60,9 @@ Object.assign(game, {
                     <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
                     <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost / 2)}💰)</button>
                 `;
-            } else if (i.type === 'material') {
+            } else if (i.type === 'material' || i.type === 'accessory') {
                 const pricePer = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
                 a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${pricePer * (i.count || 1)}💰)</button>`;
-            } else if (i.type === 'accessory') {
-                const sellPrice = i.cost ? Math.floor(i.cost / 2 * (i.count || 1)) : 2 * (i.count || 1);
-                a = `
-                    <button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
-                    <button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${sellPrice}💰)</button>
-                `;
             } else if (i.type === 'chest') {
                 a = `<button class="act-btn" onclick="game.openChest(${i.id})">ОТКРЫТЬ</button>`;
             } else if (['weapon','armor','tool'].includes(i.type)) {
@@ -116,21 +110,16 @@ Object.assign(game, {
 
     sellItem(id) {
         const i = this.state.inventory.find(x => x.id === id);
-        if (!i || i.type !== 'material' && i.type !== 'accessory') return;
+        if (!i || (i.type !== 'material' && i.type !== 'accessory')) return;
 
-        let pricePer;
-        if (i.type === 'material') {
-            pricePer = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
-        } else if (i.type === 'accessory') {
-            pricePer = i.cost ? Math.floor(i.cost / 2) : 2;
-        }
+        const pricePer = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
         const amount = i.count || 1;
         const total = pricePer * amount;
 
         this.state.coins += total;
         this.state.inventory = this.state.inventory.filter(x => x.id !== id);
 
-        this.msg(`Продано ${amount} ${i.name}! +${total.toLocaleString()} 💰`);
+        this.msg(`Продано ${amount} ${i.name}! +${total} 💰`);
         this.updateUI();
     },
 
@@ -138,21 +127,18 @@ Object.assign(game, {
         const i = this.state.inventory.find(x => x.id === id);
         if (!i || !['weapon','armor','tool','accessory'].includes(i.type)) return;
 
-        // Для accessory снимаем все другие талисманы
         if (i.type === 'accessory') {
             this.state.inventory.forEach(x => {
                 if (x.type === 'accessory' && x.id !== id) x.equipped = false;
             });
             i.equipped = !i.equipped;
         } else {
-            // Для оружия/брони/инструментов по типам/sub_type
             if (i.type === 'weapon') this.state.inventory.forEach(x => { if (x.type === 'weapon' && x.id !== id) x.equipped = false; });
             if (i.type === 'armor') this.state.inventory.forEach(x => { if (x.type === 'armor' && x.id !== id) x.equipped = false; });
             if (i.type === 'tool') this.state.inventory.forEach(x => { if (x.type === 'tool' && x.sub_type === i.sub_type && x.id !== id) x.equipped = false; });
             i.equipped = !i.equipped;
         }
 
-        this.msg(i.equipped ? `${i.name} надет!` : `${i.name} снят!`);
-        this.updateUI();  // Обновляет статы и UI
+        this.updateUI();
     }
 });
