@@ -91,7 +91,7 @@ Object.assign(game, {
     if (this.state.class === 'healer') {
         // Защита от NaN/0 в pMaxHp
         const maxHp = Number(this.dungeon.pMaxHp) || 100; // дефолт 100 если сломано
-        const healAmount = Math.floor(maxHp * 0.2);
+        const healAmount = Math.floor(maxHp * 0.3);
         const newHp = (this.dungeon.pHp || 0) + healAmount;
         this.dungeon.pHp = Math.min(maxHp, newHp);
 
