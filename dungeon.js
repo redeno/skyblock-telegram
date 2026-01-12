@@ -105,7 +105,6 @@ Object.assign(game, {
     if (this.state.class === 'healer') {
         const heal = Math.floor(this.dungeon.pMaxHp * 0.2);
         this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + heal);
-        killMsg = `МОБ УБИТ! +${heal} ХП (Хиллер)`;
     }
     this.msg(killMsg);
 
