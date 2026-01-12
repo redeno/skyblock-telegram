@@ -596,20 +596,69 @@ addPetXp(pet, amount) {
         }
     },
 
-    shopFilter(t,e){
-        document.querySelectorAll('#shop .inv-tab').forEach(x=>x.classList.remove('active'));
-        e.classList.add('active');
-        this.lastShopFilter=t;
-        this.renderShopList(t);
-    },
+    shopFilter(t, e) {
+    // Убираем active со всех вкладок
+    document.querySelectorAll('#shop-tabs .inv-tab, #tool-subtabs .inv-tab').forEach(x => x.classList.remove('active'));
+    e.classList.add('active');
 
-    renderShopList(t){
-        const l=document.getElementById('shop-list');
-        l.innerHTML='';
-        (shopItems[t]||[]).forEach((i,x)=>{
-            l.innerHTML+=`<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
-        });
-    },
+    this.lastShopFilter = t;
+
+    // Показываем/скрываем подвкладки инструментов
+    if (t === 'tools') {
+        document.getElementById('tool-subtabs').style.display = 'flex';
+        // По умолчанию открываем Майнинг
+        if (!t.startsWith('tool_')) {
+            t = 'tool_mining';
+            document.querySelector('#tool-subtabs .inv-tab').classList.add('active');
+        }
+    } else {
+        document.getElementById('tool-subtabs').style.display = 'none';
+    }
+
+    this.renderShopList(t);
+},
+
+renderShopList(t) {
+    const l = document.getElementById('shop-list');
+    l.innerHTML = '';
+
+    let itemsToShow = [];
+
+    if (t === 'all') {
+        // Показываем всё
+        Object.values(shopItems).flat().forEach(i => itemsToShow.push(i));
+    } else if (t === 'tools') {
+        // Если просто "tools" — показываем все инструменты
+        itemsToShow = shopItems.tool || [];
+    } else if (t.startsWith('tool_')) {
+        // Подфильтр по типу инструмента
+        const subType = t.replace('tool_', '');
+        itemsToShow = (shopItems.tool || []).filter(item => 
+            item.sub_type === subType
+        );
+    } else {
+        itemsToShow = shopItems[t] || [];
+    }
+
+    if (itemsToShow.length === 0) {
+        l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто в этом разделе</div>';
+        return;
+    }
+
+    itemsToShow.forEach((i, x) => {
+        l.innerHTML += `
+            <div class="card">
+                <b>${i.name}</b><br>
+                <small>${this.getItemDesc(i)}</small>
+                <div class="item-actions">
+                    <button class="act-btn" onclick="game.buyShopItem('${t}',${x})">
+                        КУПИТЬ (${i.cost.toLocaleString()}💰)
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+},
 
     buyShopItem(t,x){
         const i = shopItems[t][x];
