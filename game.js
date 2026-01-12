@@ -1,13 +1,11 @@
 const tg = window.Telegram?.WebApp || {};
-
 const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_t63MwjVo6ILOZYH64SWORg_S_KlENDS';
-
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const defaultState = {
-    coins: 500000000,
+    coins: 0,
     nextItemId: 10,
     skills: {
         mining: {lvl:1,xp:0,next:100,label:'ШАХТА'},
@@ -33,8 +31,8 @@ const defaultState = {
         foraging_exp_bonus:0,
         farming_fortune:0,
         farming_exp_bonus:0,
-        fishing_fortune:0,        // ← фортуна для рыбалки
-        fishing_exp_bonus:0       // ← бонус опыта для рыбалки (если нужен отдельно)
+        fishing_fortune:0,
+        fishing_exp_bonus:0
     },
     class: '',
     buffs: {godpotion:{endTime:0}},
@@ -94,26 +92,9 @@ const shopItems = {
         {name:'Чешуйница',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'mining',base_bonus:0.1,cost:5000},
         {name:'Кролик',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'farming',base_bonus:0.1,cost:5000},
         {name:'Сквид',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'fishing',base_bonus:0.1,cost:5000},
-    	{
-        name: 'Ёжик',
-        type: 'pet',
-        skill: 'foraging',
-        rarity: 'common',
-        lvl: 1,
-        xp: 0,
-        next: 100,
-        cost: 5000
-   	 },
-    	{
-        name: 'Бейби Иссушитель',
-        type: 'pet',
-        skill: 'combat',
-        rarity: 'common',
-        lvl: 1,
-        xp: 0,
-        next: 100,
-        cost: 50000000
-    	}
+        {name: 'Ёжик',type: 'pet',skill: 'foraging',rarity: 'common',lvl: 1,xp: 0,next: 100,cost: 5000},
+        {name: 'Бейби Иссушитель',type: 'pet',skill: 'combat',rarity: 'common',lvl: 1,xp: 0,next: 100,cost: 50000000},
+        {name: 'Тигр',type: 'pet',rarity: 'common',lvl: 1,xp: 0,next: 100,skill: 'combat',cost: 1000000}
     ]
 };
 
@@ -135,7 +116,7 @@ const petResourceMap = {
     farming: 'Пшеница',
     fishing: 'Рыба',
     foraging: 'Дерево',
-    combat: 'Фрагмент из Данжа' 
+    combat: 'Фрагмент из Данжа'
 };
 
 const game = {
@@ -205,7 +186,15 @@ const game = {
                 this.msg('Новый профиль создан!');
             }
         }
-        this.initSkills();
+
+        // Защита от NaN в скиллах
+        Object.keys(this.state.skills).forEach(key => {
+            const sk = this.state.skills[key];
+            sk.xp = Number(sk.xp) || 0;
+            sk.next = Number(sk.next) || (key === 'dungeons' ? 200 : 100);
+            sk.lvl = Number(sk.lvl) || 1;
+        });
+
         Object.assign(game.state.stats, {
             mining_fortune: game.state.stats.mining_fortune ?? 0,
             mining_exp_bonus: game.state.stats.mining_exp_bonus ?? 0,
@@ -217,6 +206,7 @@ const game = {
             fishing_exp_bonus: game.state.stats.fishing_exp_bonus ?? 0,
             magic_res: game.state.stats.magic_res ?? 0
         });
+
         this.updateUI();
     },
 
@@ -265,6 +255,7 @@ const game = {
 
     calcStats(inDungeon = false) {
         let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
+
         this.state.inventory.forEach(i => {
             if (i.equipped) {
                 ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
@@ -275,9 +266,17 @@ const game = {
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
-        if (Date.now() < this.state.buffs.godpotion.endTime) {
-            s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
+
+        if (this.state.buffs.godpotion.endTime && Date.now() < this.state.buffs.godpotion.endTime) {
+            s.str += 50;
+            s.cc += 10;
+            s.cd += 25;
+            s.mf += 10;
+            s.def += 50;
+            s.int += 50;
+            s.mag_amp += 5;
         }
+
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -286,11 +285,10 @@ const game = {
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
 
-        // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ ОТ УРОВНЯ (возвращаем как было)
         s.mining_fortune += 3 * (this.state.skills.mining.lvl - 1);
         s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
         s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
-        s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);  // ← вот он, вернулся
+        s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);
 
         return s;
     },
@@ -401,11 +399,11 @@ const game = {
         if (document.getElementById('pen')?.classList.contains('active') && typeof this.renderPenList === 'function') {
             this.renderPenList();
         }
-        if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
-        document.getElementById('class-select').value = this.state.class;
+        if (document.getElementById('skillsModal')?.style.display === 'block') this.showModal('skillsModal');
+        const classSelect = document.getElementById('class-select');
+        if (classSelect) classSelect.value = this.state.class;
         this.saveToSupabase();
     },
-
 
     renderPenList() {
         const l = document.getElementById('pen-list');
@@ -483,14 +481,11 @@ const game = {
         const skill = this.state.skills[skillKey];
         const gain = 15 * skill.lvl;
         this.state.coins += gain;
-
         const s = this.calcStats(false);
-
         const base_xp = 20;
         let exp_bonus = 0;
         let fortune = 0;
         let amount = 1;
-
         if (this.currentLoc === 'mine') {
             exp_bonus = s.mining_exp_bonus || 0;
             fortune = s.mining_fortune || 0;
@@ -499,56 +494,48 @@ const game = {
             fortune = s.farming_fortune || 0;
         } else if (this.currentLoc === 'fish') {
             exp_bonus = s.fishing_exp_bonus || 0;
-            fortune = s.fishing_fortune || 0;  // ← теперь фортуна рыбалки
+            fortune = s.fishing_fortune || 0;
         } else if (this.currentLoc === 'forage') {
             exp_bonus = s.foraging_exp_bonus || 0;
             fortune = s.foraging_fortune || 0;
         }
-	let petXpBonus = 0;
-
-	const pet = this.state.pets.find(p => p.equipped && p.skill === skillKey);
-	if (pet) {
-	    const rarityMul = petRarityBonuses[pet.rarity] || 0;
-  	  petXpBonus = rarityMul * pet.lvl; // в процентах
-	}
-
+        let petXpBonus = 0;
+        const pet = this.state.pets.find(p => p.equipped && p.skill === skillKey);
+        if (pet) {
+            const rarityMul = petRarityBonuses[pet.rarity] || 0;
+            petXpBonus = rarityMul * pet.lvl;
+        }
         const total_xp = base_xp * (1 + (exp_bonus + petXpBonus) / 100);
-
-
-
         const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
-
         const guaranteed = Math.floor(fortune / 100);
         amount = guaranteed + 1;
         const chance = fortune % 100;
         if (Math.random() * 100 < chance) amount++;
-
         const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type);
         if (equippedTool) {
             if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
             else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
         }
-
         for (let i = 0; i < amount; i++) this.addMaterial(mat);
-
         const final_xp = total_xp * amount;
-	this.addXp(skillKey, final_xp);
-
-	if (pet) {
-    	const petXp = final_xp * 0.5;
-    	this.addPetXp(pet, petXp);
-	}
+        this.addXp(skillKey, final_xp);
+        if (pet) {
+            const petXp = final_xp * 0.5;
+            this.addPetXp(pet, petXp);
+        }
         document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
         this.updateUI();
     },
-addPetXp(pet, amount) {
-    pet.xp += amount;
-    while (pet.xp >= pet.next && pet.lvl < 100) {
-        pet.xp -= pet.next;
-        pet.lvl++;
-        pet.next = Math.floor(pet.next * 1.15);
-    }
-},	
+
+    addPetXp(pet, amount) {
+        pet.xp += amount;
+        while (pet.xp >= pet.next && pet.lvl < 100) {
+            pet.xp -= pet.next;
+            pet.lvl++;
+            pet.next = Math.floor(pet.next * 1.15);
+        }
+    },
+
     renderMinions(){
         const l=document.getElementById('minions-list');l.innerHTML='';
         this.state.minions.forEach((m,i)=>{
@@ -596,18 +583,50 @@ addPetXp(pet, amount) {
         }
     },
 
-    shopFilter(t,e){
-        document.querySelectorAll('#shop .inv-tab').forEach(x=>x.classList.remove('active'));
+    shopFilter(t, e) {
+        document.querySelectorAll('#shop-tabs .inv-tab, #tool-subtabs .inv-tab').forEach(x => x.classList.remove('active'));
         e.classList.add('active');
-        this.lastShopFilter=t;
+        this.lastShopFilter = t;
+        const toolSubtabs = document.getElementById('tool-subtabs');
+        if (toolSubtabs) {
+            if (t === 'tools') {
+                toolSubtabs.style.display = 'flex';
+                if (!t.startsWith('tool_')) {
+                    t = 'tool_mining';
+                    document.querySelector('#tool-subtabs .inv-tab')?.classList.add('active');
+                }
+            } else {
+                toolSubtabs.style.display = 'none';
+            }
+        }
         this.renderShopList(t);
     },
 
-    renderShopList(t){
-        const l=document.getElementById('shop-list');
-        l.innerHTML='';
-        (shopItems[t]||[]).forEach((i,x)=>{
-            l.innerHTML+=`<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
+    renderShopList(t) {
+        const l = document.getElementById('shop-list');
+        l.innerHTML = '';
+        let itemsToShow = [];
+        if (t.startsWith('tool_')) {
+            const subType = t.replace('tool_', '');
+            itemsToShow = (shopItems.tool || []).filter(item => item.sub_type === subType);
+        } else if (t === 'tools') {
+            itemsToShow = shopItems.tool || [];
+        } else {
+            itemsToShow = shopItems[t] || [];
+        }
+        if (itemsToShow.length === 0) {
+            l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто в этом разделе</div>';
+            return;
+        }
+        itemsToShow.forEach((i, x) => {
+            l.innerHTML += `
+                <div class="card">
+                    <b>${i.name}</b><br>
+                    <small>${this.getItemDesc(i)}</small>
+                    <div class="item-actions">
+                        <button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button>
+                    </div>
+                </div>`;
         });
     },
 
@@ -698,6 +717,53 @@ addPetXp(pet, amount) {
             prog.style.width = '0%';
             this.finishAction();
         }, 1520);
+    },
+
+    // Функция активации GodPotion (для инвентаря)
+    activateGodPotion(id) {
+        const item = this.state.inventory.find(i => i.id === id && i.name === 'GodPotion');
+        if (!item) return this.msg('Зелье не найдено');
+
+        if (this.state.buffs.godpotion.endTime && Date.now() < this.state.buffs.godpotion.endTime) {
+            this.msg('GodPotion уже активен!');
+            return;
+        }
+
+        this.state.buffs.godpotion.endTime = Date.now() + 24 * 60 * 60 * 1000; // 24 часа
+        this.state.inventory = this.state.inventory.filter(i => i.id !== id);
+        this.msg('GodPotion активирован на 24 часа! +50 силы, +10% крита и т.д.');
+        this.updateUI();
+    },
+
+    addXp(skillKey, amount) {
+        const skill = this.state.skills[skillKey];
+        if (!skill) return;
+        skill.xp += amount;
+        while (skill.xp >= skill.next) {
+            skill.lvl++;
+            skill.xp -= skill.next;
+            skill.next = Math.floor(skill.next * 1.4);
+        }
+    },
+
+    addMaterial(name) {
+        let item = this.state.inventory.find(i => i.name === name && i.type === 'material');
+        if (!item) {
+            item = {id: this.state.nextItemId++, name, type: 'material', count: 0};
+            this.state.inventory.push(item);
+        }
+        item.count = (item.count || 0) + 1;
+    },
+
+    getItemDesc(item) {
+        let desc = '';
+        Object.keys(item).forEach(key => {
+            if (['str','def','cc','cd','mf','int','mag_amp','mining_fortune','farming_fortune',
+                 'foraging_fortune','fishing_fortune'].includes(key)) {
+                desc += `${key.toUpperCase()}: +${item[key]} `;
+            }
+        });
+        return desc || 'Обычный предмет';
     }
 };
 
