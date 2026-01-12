@@ -1,11 +1,13 @@
 const tg = window.Telegram?.WebApp || {};
+
 const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_t63MwjVo6ILOZYH64SWORg_S_KlENDS';
+
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const defaultState = {
-    coins: 0,
+    coins: 500000000,
     nextItemId: 10,
     skills: {
         mining: {lvl:1,xp:0,next:100,label:'ШАХТА'},
@@ -31,8 +33,8 @@ const defaultState = {
         foraging_exp_bonus:0,
         farming_fortune:0,
         farming_exp_bonus:0,
-        fishing_fortune:0,
-        fishing_exp_bonus:0
+        fishing_fortune:0,        // ← фортуна для рыбалки
+        fishing_exp_bonus:0       // ← бонус опыта для рыбалки (если нужен отдельно)
     },
     class: '',
     buffs: {godpotion:{endTime:0}},
@@ -92,26 +94,26 @@ const shopItems = {
         {name:'Чешуйница',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'mining',base_bonus:0.1,cost:5000},
         {name:'Кролик',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'farming',base_bonus:0.1,cost:5000},
         {name:'Сквид',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'fishing',base_bonus:0.1,cost:5000},
-        {
-            name: 'Ёжик',
-            type: 'pet',
-            skill: 'foraging',
-            rarity: 'common',
-            lvl: 1,
-            xp: 0,
-            next: 100,
-            cost: 5000
-        },
-        {
-            name: 'Бейби Иссушитель',
-            type: 'pet',
-            skill: 'combat',
-            rarity: 'common',
-            lvl: 1,
-            xp: 0,
-            next: 100,
-            cost: 50000000
-        }
+    	{
+        name: 'Ёжик',
+        type: 'pet',
+        skill: 'foraging',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 5000
+   	 },
+    	{
+        name: 'Бейби Иссушитель',
+        type: 'pet',
+        skill: 'combat',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 50000000
+    	}
     ]
 };
 
@@ -133,7 +135,7 @@ const petResourceMap = {
     farming: 'Пшеница',
     fishing: 'Рыба',
     foraging: 'Дерево',
-    combat: 'Фрагмент из Данжа'
+    combat: 'Фрагмент из Данжа' 
 };
 
 const game = {
@@ -152,13 +154,11 @@ const game = {
             this.updateUI();
             return;
         }
-
         let { data, error } = await supabaseClient
             .from('players')
             .select('*')
             .eq('telegram_id', this.playerTelegramId)
             .maybeSingle();
-
         if (error && error.code !== 'PGRST116') {
             console.error('Ошибка Supabase:', error);
             this.msg('Ошибка связи с сервером');
@@ -166,7 +166,6 @@ const game = {
             this.updateUI();
             return;
         }
-
         if (data) {
             this.state.coins = data.coins ?? 0;
             this.state.nextItemId = data.next_item_id ?? 10;
@@ -194,11 +193,9 @@ const game = {
                 pets: [],
                 buffs: defaultState.buffs
             };
-
             const { error: insertError } = await supabaseClient
                 .from('players')
                 .insert(newPlayer);
-
             if (insertError) {
                 console.error('Не удалось создать нового игрока:', insertError);
                 this.msg('Ошибка создания профиля');
@@ -208,9 +205,8 @@ const game = {
                 this.msg('Новый профиль создан!');
             }
         }
-
         this.initSkills();
-                Object.assign(game.state.stats, {
+        Object.assign(game.state.stats, {
             mining_fortune: game.state.stats.mining_fortune ?? 0,
             mining_exp_bonus: game.state.stats.mining_exp_bonus ?? 0,
             foraging_fortune: game.state.stats.foraging_fortune ?? 0,
@@ -269,7 +265,6 @@ const game = {
 
     calcStats(inDungeon = false) {
         let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0};
-        
         this.state.inventory.forEach(i => {
             if (i.equipped) {
                 ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
@@ -280,12 +275,9 @@ const game = {
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
-
         if (Date.now() < this.state.buffs.godpotion.endTime) {
-            s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; 
-            s.int += 50; s.mag_amp += 5;
+            s.str += 50; s.cc += 10; s.cd += 25; s.mf += 10; s.def += 50; s.int += 50; s.mag_amp += 5;
         }
-
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -294,35 +286,11 @@ const game = {
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
 
-        // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ ОТ УРОВНЯ
+        // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ ОТ УРОВНЯ (возвращаем как было)
         s.mining_fortune += 3 * (this.state.skills.mining.lvl - 1);
         s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
         s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
-        s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);
-
-        // Бонусы от Тигра (только если надет)
-        this.state.pets.forEach(pet => {
-            if (pet.equipped && pet.name === 'Тигр') {
-                const rarity = pet.rarity;
-                const lvl = pet.lvl || 1;
-                let strBonus = 0;
-                let cdBonus = 0;
-                
-                if (rarity === 'common') {
-                    strBonus = 0.2 * lvl;
-                } else if (rarity === 'rare') {
-                    strBonus = 0.25 * lvl;
-                } else if (rarity === 'epic') {
-                    strBonus = 0.3 * lvl;
-                    cdBonus = 0.2 * lvl;
-                } else if (rarity === 'legendary') {
-                    strBonus = 0.4 * lvl;
-                    cdBonus = 0.75 * lvl;
-                }
-                s.str += strBonus;
-                s.cd += cdBonus;
-            }
-        });
+        s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);  // ← вот он, вернулся
 
         return s;
     },
@@ -340,34 +308,66 @@ const game = {
 
     updateUI() {
         const s = this.calcStats(false);
-        
         document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
         document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
-        
         const totalLvl = Object.values(this.state.skills).reduce((a,b) => a + b.lvl, 0) - 6;
         document.getElementById('sb-lvl').innerText = (totalLvl / 10).toFixed(2);
-
         document.getElementById('stats-display').innerHTML = `
-            ❤️ ЗДОРОВЬЕ ${Math.floor(s.hp || 0)}<br>
-            ⚔️ СИЛА ${Math.floor(s.str || 0)}<br>
-            🛡️ БРОНЯ ${Math.floor(s.def || 0)}<br>
-            💥 КРИТ ШАНС ${Math.floor(s.cc || 0)}%<br>
-            🔥 КРИТ УРОН ${Math.floor(s.cd || 0)}%<br>
-            🍀 УДАЧА ${Math.floor(s.mf || 0)}<br>
-            🧠 ИНТЕЛЛЕКТ ${Math.floor(s.int || 0)}<br>
-            🔮 МАГ УСИЛЕНИЕ ${Math.floor(s.mag_amp || 0)}<br>
-            🛡️ МАГ ЗАЩИТА ${Math.floor(s.magic_res || 0)}%<br>
-            🛡️ ОСОБАЯ ЗАЩИТА (Заглушка) ${Math.floor(s.magic_res || 0)}%<br>
-            ⛏️ МАЙНИНГ ФОРТУНА ${Math.floor(s.mining_fortune || 0)}<br>
-            ⛏️ МАЙНИНГ ОПЫТ ${(s.mining_exp_bonus || 0).toFixed(1)}%<br>
-            🌲 ЛЕСНАЯ ФОРТУНА ${Math.floor(s.foraging_fortune || 0)}<br>
-            🌲 ЛЕСНОЙ ОПЫТ ${(s.foraging_exp_bonus || 0).toFixed(1)}%<br>
-            🌾 ФАРМИНГ ФОРТУНА ${Math.floor(s.farming_fortune || 0)}<br>
-            🌾 ФАРМИНГ ОПЫТ ${(s.farming_exp_bonus || 0).toFixed(1)}%<br>
-            🎣 ФИШИНГ ФОРТУНА ${Math.floor(s.fishing_fortune || 0)}<br>
-            🎣 ФИШИНГ ОПЫТ ${(s.fishing_exp_bonus || 0).toFixed(1)}%
+            <div class="stat-row">
+                <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⚔️ СИЛА</span> <span class="stat-val">${Math.floor(s.str || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🛡️ БРОНЯ</span> <span class="stat-val">${Math.floor(s.def || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">💥 КРИТ ШАНС</span> <span class="stat-val">${Math.floor(s.cc || 0)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🔥 КРИТ УРОН</span> <span class="stat-val">${Math.floor(s.cd || 0)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🍀 УДАЧА</span> <span class="stat-val">${Math.floor(s.mf || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🧠 ИНТЕЛЛЕКТ</span> <span class="stat-val">${Math.floor(s.int || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🔮 МАГ УСИЛЕНИЕ</span> <span class="stat-val">${Math.floor(s.mag_amp || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🛡️ ОСОБАЯ ЗАЩИТА (Заглушка)</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⛏️ МАЙНИНГ ОПЫТ</span> <span class="stat-val">${(s.mining_exp_bonus || 0).toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌲 ЛЕСНАЯ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.foraging_fortune || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌲 ЛЕСНОЙ ОПЫТ</span> <span class="stat-val">${(s.foraging_exp_bonus || 0).toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌾 ФАРМИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.farming_fortune || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🌾 ФАРМИНГ ОПЫТ</span> <span class="stat-val">${(s.farming_exp_bonus || 0).toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🎣 ФИШИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.fishing_fortune || 0)}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🎣 ФИШИНГ ОПЫТ</span> <span class="stat-val">${(s.fishing_exp_bonus || 0).toFixed(1)}%</span>
+            </div>
         `;
-
         const equippedPet = this.state.pets.find(p => p.equipped);
         let petHtml = '';
         if (equippedPet) {
@@ -379,17 +379,18 @@ const game = {
             }[equippedPet.rarity] || '#ffffff';
             const progress = (equippedPet.xp / equippedPet.next * 100).toFixed(1);
             petHtml = `
-                <div style="color: ${rarityColor}; margin-top: 10px;">
-                    <strong>${equippedPet.rarity.toUpperCase()} ${equippedPet.name} LVL ${equippedPet.lvl}</strong><br>
-                    <div style="width: 100px; height: 8px; background: #333; border-radius: 4px;">
-                        <div style="width: ${progress}%; height: 100%; background: ${rarityColor}; border-radius: 4px;"></div>
+                <div class="pet-row" style="margin-top:15px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;">
+                    <div style="color:${rarityColor};font-weight:bold;">
+                        ${equippedPet.rarity.toUpperCase()} ${equippedPet.name} LVL ${equippedPet.lvl}
                     </div>
-                    +${(petRarityBonuses[equippedPet.rarity] * equippedPet.lvl).toFixed(1)}% XP
+                    <div class="hp-bar" style="margin:5px 0;">
+                        <div class="hp-fill" style="width:${progress}%;background:${rarityColor}"></div>
+                    </div>
+                    <small style="color:#0f0">+${(petRarityBonuses[equippedPet.rarity] * equippedPet.lvl).toFixed(1)}% XP</small>
                 </div>
             `;
         }
         document.getElementById('stats-display').innerHTML += petHtml;
-
         this.renderMinions();
         if (typeof this.renderInvList === 'function') {
             this.renderInvList(this.lastFilter);
@@ -405,6 +406,7 @@ const game = {
         this.saveToSupabase();
     },
 
+
     renderPenList() {
         const l = document.getElementById('pen-list');
         l.innerHTML = '';
@@ -412,20 +414,17 @@ const game = {
             const rarity = pet.rarity.toUpperCase();
             const bonus = (petRarityBonuses[pet.rarity] * pet.lvl).toFixed(1);
             l.innerHTML += `
-                <div class="pet-item">
-                    <span>$$ ${pet.name} ( $${rarity}, LVL ${pet.lvl})</span><br>
-                    +${bonus}% XP в ${pet.skill.toUpperCase()}<br>
-                    <button onclick="game.toggleEquipPet(${idx})">
-                        ${pet.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}
-                    </button>
-                    <button onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
-                    <button onclick="game.sellPet(${idx})">
-                        ПРОДАТЬ ( $${Math.floor(pet.cost / 2)}💰)
-                    </button>
-                </div>
-            `;
+                <div class="card">
+                    <b>${pet.name} (${rarity}, LVL ${pet.lvl})</b><br>
+                    <small>+${bonus}% XP в ${pet.skill.toUpperCase()}</small><br>
+                    <div class="item-actions">
+                        <button class="act-btn" onclick="game.toggleEquipPet(${idx})">${pet.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
+                        <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
+                        <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(pet.cost / 2)}💰)</button>
+                    </div>
+                </div>`;
         });
-        if (!this.state.pets.length) l.innerHTML = '<div>Пусто</div>';
+        if (!this.state.pets.length) l.innerHTML = '<div class="card" style="text-align:center;color:#666">Пусто</div>';
     },
 
     toggleEquipPet(idx) {
@@ -445,36 +444,26 @@ const game = {
     upgradePet(idx) {
         const pet = this.state.pets[idx];
         const nextRarity = {common:'rare', rare:'epic', epic:'legendary'}[pet.rarity];
-        if (!nextRarity) { 
-            this.msg('Уже максимальная редкость!'); 
-            return; 
-        }
-        
+        if (!nextRarity) { this.msg('Уже максимальная редкость!'); return; }
         const cost = petUpgradeCosts[nextRarity];
         const resourceName = petResourceMap[pet.skill];
         const resourceItem = this.state.inventory.find(i => i.name === resourceName && i.type === 'material');
         const resourceCount = resourceItem ? resourceItem.count || 0 : 0;
         const upgradeItem = this.state.inventory.find(i => i.name === 'Апгрейд питомца' && i.type === 'material');
         const upgradeCount = upgradeItem ? upgradeItem.count || 0 : 0;
-
-        if (this.state.coins < cost.coins || resourceCount < cost.resources || 
-            (cost.upgradeItem && upgradeCount < cost.upgradeItem)) {
+        if (this.state.coins < cost.coins || resourceCount < cost.resources || (cost.upgradeItem && upgradeCount < cost.upgradeItem)) {
             this.msg('Не хватает ресурсов или монет!');
             return;
         }
-
         this.state.coins -= cost.coins;
         if (resourceItem) {
             resourceItem.count -= cost.resources;
-            if (resourceItem.count <= 0) 
-                this.state.inventory = this.state.inventory.filter(i => i.id !== resourceItem.id);
+            if (resourceItem.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== resourceItem.id);
         }
         if (cost.upgradeItem && upgradeItem) {
             upgradeItem.count -= cost.upgradeItem;
-            if (upgradeItem.count <= 0) 
-                this.state.inventory = this.state.inventory.filter(i => i.id !== upgradeItem.id);
+            if (upgradeItem.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== upgradeItem.id);
         }
-        
         pet.rarity = nextRarity;
         this.msg(`Питомец улучшен до ${nextRarity.toUpperCase()}!`);
         this.updateUI();
@@ -496,6 +485,7 @@ const game = {
         this.state.coins += gain;
 
         const s = this.calcStats(false);
+
         const base_xp = 20;
         let exp_bonus = 0;
         let fortune = 0;
@@ -509,22 +499,25 @@ const game = {
             fortune = s.farming_fortune || 0;
         } else if (this.currentLoc === 'fish') {
             exp_bonus = s.fishing_exp_bonus || 0;
-            fortune = s.fishing_fortune || 0;
+            fortune = s.fishing_fortune || 0;  // ← теперь фортуна рыбалки
         } else if (this.currentLoc === 'forage') {
             exp_bonus = s.foraging_exp_bonus || 0;
             fortune = s.foraging_fortune || 0;
         }
+	let petXpBonus = 0;
 
-        let petXpBonus = 0;
-        const pet = this.state.pets.find(p => p.equipped && p.skill === skillKey);
-        if (pet) {
-            const rarityMul = petRarityBonuses[pet.rarity] || 0;
-            petXpBonus = rarityMul * pet.lvl;
-        }
+	const pet = this.state.pets.find(p => p.equipped && p.skill === skillKey);
+	if (pet) {
+	    const rarityMul = petRarityBonuses[pet.rarity] || 0;
+  	  petXpBonus = rarityMul * pet.lvl; // в процентах
+	}
 
         const total_xp = base_xp * (1 + (exp_bonus + petXpBonus) / 100);
+
+
+
         const mat = {mine:'Уголь',farm:'Пшеница',fish:'Рыба',forage:'Дерево'}[this.currentLoc];
-        
+
         const guaranteed = Math.floor(fortune / 100);
         amount = guaranteed + 1;
         const chance = fortune % 100;
@@ -532,46 +525,36 @@ const game = {
 
         const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type);
         if (equippedTool) {
-            if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) 
-                amount *= 3;
-            else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) 
-                amount *= 2;
+            if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
+            else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
         }
 
         for (let i = 0; i < amount; i++) this.addMaterial(mat);
-        const final_xp = total_xp * amount;
-        this.addXp(skillKey, final_xp);
-        
-        if (pet) {
-            const petXp = final_xp * 0.5;
-            this.addPetXp(pet, petXp);
-        }
 
+        const final_xp = total_xp * amount;
+	this.addXp(skillKey, final_xp);
+
+	if (pet) {
+    	const petXp = final_xp * 0.5;
+    	this.addPetXp(pet, petXp);
+	}
         document.getElementById('loc-log').innerText = `+${gain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${mat}`;
         this.updateUI();
     },
-
-    addPetXp(pet, amount) {
-        pet.xp += amount;
-        while (pet.xp >= pet.next && pet.lvl < 100) {
-            pet.xp -= pet.next;
-            pet.lvl++;
-            pet.next = Math.floor(pet.next * 1.15);
-        }
-    },
-
+addPetXp(pet, amount) {
+    pet.xp += amount;
+    while (pet.xp >= pet.next && pet.lvl < 100) {
+        pet.xp -= pet.next;
+        pet.lvl++;
+        pet.next = Math.floor(pet.next * 1.15);
+    }
+},	
     renderMinions(){
-        const l=document.getElementById('minions-list');
-        l.innerHTML='';
+        const l=document.getElementById('minions-list');l.innerHTML='';
         this.state.minions.forEach((m,i)=>{
             const buy=this.state.coins>=m.cost&&m.count<13;
             const coll=m.stored>=0.1;
-            l.innerHTML+=`
-                ${m.name} (${m.count}/13)📦 ${m.stored.toFixed(1)}/64<br>
-                ${buy ? `КУПИТЬ (${Math.floor(m.cost)}💰)` : ''}${
-                    coll ? `СОБРАТЬ (${Math.floor(m.stored*20)}💰)` : ''
-                }<br><br>
-            `;
+            l.innerHTML+=`<div class="card"><div style="display:flex;justify-content:space-between"><b>${m.name} (${m.count}/13)</b><span>📦 ${m.stored.toFixed(1)}/64</span></div><div class="item-actions"><button class="act-btn" ${!buy?'disabled':''} onclick="game.buyMinion(${i})">КУПИТЬ (${Math.floor(m.cost)}💰)</button><button class="act-btn" ${!coll?'disabled':''} onclick="game.collectMinion(${i})">СОБРАТЬ (${Math.floor(m.stored*20)}💰)</button></div></div>`;
         });
     },
 
@@ -613,65 +596,25 @@ const game = {
         }
     },
 
-    shopFilter(t, e) {
-        document.querySelectorAll('#shop-tabs .inv-tab, #tool-subtabs .inv-tab').forEach(x => x.classList.remove('active'));
+    shopFilter(t,e){
+        document.querySelectorAll('#shop .inv-tab').forEach(x=>x.classList.remove('active'));
         e.classList.add('active');
-        this.lastShopFilter = t;
-
-        if (t === 'tools') {
-            document.getElementById('tool-subtabs').style.display = 'flex';
-            if (!t.startsWith('tool_')) {
-                t = 'tool_mining';
-                document.querySelector('#tool-subtabs .inv-tab').classList.add('active');
-            }
-        } else {
-            document.getElementById('tool-subtabs').style.display = 'none';
-        }
+        this.lastShopFilter=t;
         this.renderShopList(t);
     },
 
-    renderShopList(t) {
-        const l = document.getElementById('shop-list');
-        l.innerHTML = '';
-        let itemsToShow = [];
-
-        if (t === 'all') {
-            Object.values(shopItems).flat().forEach(i => itemsToShow.push(i));
-        } else if (t === 'tools') {
-            itemsToShow = shopItems.tool || [];
-        } else if (t.startsWith('tool_')) {
-            const subType = t.replace('tool_', '');
-            itemsToShow = (shopItems.tool || []).filter(item => item.sub_type === subType);
-        } else {
-            itemsToShow = shopItems[t] || [];
-        }
-
-        if (itemsToShow.length === 0) {
-            l.innerHTML = '<div>Пусто в этом разделе</div>';
-            return;
-        }
-
-        itemsToShow.forEach((i, x) => {
-            l.innerHTML += `
-                <div class="shop-item">
-                    <strong>${i.name}</strong><br>
-                    ${this.getItemDesc(i)}
-                    <button onclick="game.buyShopItem('${t}', ${x})">
-                        КУПИТЬ (${i.cost.toLocaleString()}💰)
-                    </button>
-                </div>
-            `;
+    renderShopList(t){
+        const l=document.getElementById('shop-list');
+        l.innerHTML='';
+        (shopItems[t]||[]).forEach((i,x)=>{
+            l.innerHTML+=`<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
         });
     },
 
     buyShopItem(t,x){
         const i = shopItems[t][x];
-        if(this.state.coins < i.cost){
-            this.msg('Не хватает монет!');
-            return;
-        }
+        if(this.state.coins < i.cost){this.msg('Не хватает монет!');return;}
         this.state.coins -= i.cost;
-
         if (i.type === 'pet') {
             this.state.pets.push({...i, equipped:false});
             this.msg(`${i.name} куплен и добавлен в Загон!`);
@@ -706,10 +649,7 @@ const game = {
             let html = '';
             Object.values(this.state.skills).forEach(sk => {
                 const progress = (sk.xp / sk.next * 100).toFixed(1);
-                html += `
-                    <div>${sk.label} LVL ${sk.lvl}<br>
-                    ${Math.floor(sk.xp)} / ${Math.floor(sk.next)} XP</div>
-                `;
+                html += `<div class="card"><b>${sk.label} LVL ${sk.lvl}</b><br><small>${Math.floor(sk.xp)} / ${Math.floor(sk.next)} XP</small><div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${progress}%;background:var(--green)"></div></div></div>`;
             });
             document.getElementById('skills-content').innerHTML = html;
         }
@@ -717,7 +657,7 @@ const game = {
             if (typeof renderUpdates === 'function') {
                 renderUpdates();
             } else {
-                document.getElementById('updatesModal').innerHTML = 'Обновления загружаются...';
+                document.getElementById('updatesModal').innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Обновления загружаются...</div>';
             }
         }
     },
@@ -758,41 +698,6 @@ const game = {
             prog.style.width = '0%';
             this.finishAction();
         }, 1520);
-    },
-
-    // Дополнительные недостающие методы
-    initSkills() {
-        // Инициализация навыков если нужно
-    },
-
-    addXp(skillKey, amount) {
-        const skill = this.state.skills[skillKey];
-        skill.xp += amount;
-        while (skill.xp >= skill.next && skill.lvl < 100) {
-            skill.xp -= skill.next;
-            skill.lvl++;
-            skill.next = Math.floor(skill.next * 1.15);
-        }
-    },
-
-    addMaterial(name) {
-        let item = this.state.inventory.find(i => i.name === name && i.type === 'material');
-        if (!item) {
-            item = {id: this.state.nextItemId++, name: name, type: 'material', count: 0};
-            this.state.inventory.push(item);
-        }
-        item.count = (item.count || 0) + 1;
-    },
-
-    getItemDesc(item) {
-        let desc = '';
-        Object.keys(item).forEach(key => {
-            if (['str','def','cc','cd','mf','int','mag_amp','mining_fortune','farming_fortune',
-                 'foraging_fortune','fishing_fortune'].includes(key)) {
-                desc += `${key.toUpperCase()}: +${item[key]} `;
-            }
-        });
-        return desc || 'Обычный предмет';
     }
 };
 
