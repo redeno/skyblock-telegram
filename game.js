@@ -200,132 +200,78 @@ const game = {
     playerTelegramId: null,
 
     loadFromSupabase: async function() {
-    if (!this.playerTelegramId) {
-        this.msg('Не удалось получить Telegram ID — тестовый режим');
-        this.state = JSON.parse(JSON.stringify(defaultState));
-        this.updateUI();
-        return;
-    }
-
-    let { data, error } = await supabaseClient
-        .from('players')
-        .select('*')
-        .eq('telegram_id', this.playerTelegramId)
-        .maybeSingle();
-
-    if (error && error.code !== 'PGRST116') {
-        console.error('Ошибка Supabase:', error);
-        this.msg('Ошибка связи с сервером — загружаем локально');
-        this.state = JSON.parse(JSON.stringify(defaultState));
-        this.updateUI();
-        return;
-    }
-
-    if (data) {
-        // Безопасное присваивание всех полей с дефолтами
-        this.state.coins = data.coins ?? 0;
-        this.state.nextItemId = data.next_item_id ?? 10;
-        this.state.class = data.class ?? '';
-
-        // Навыки — с защитой от null/undefined
-        this.state.skills = data.skills 
-            ? { ...defaultState.skills, ...data.skills } 
-            : defaultState.skills;
-
-        // Статы — с защитой
-        this.state.stats = data.stats 
-            ? { ...defaultState.stats, ...data.stats } 
-            : defaultState.stats;
-
-        // Инвентарь
-        this.state.inventory = Array.isArray(data.inventory) 
-            ? data.inventory 
-            : defaultState.inventory;
-
-        // Миньоны
-        this.state.minions = Array.isArray(data.minions) 
-            ? data.minions 
-            : defaultState.minions;
-
-        // Питомцы
-        this.state.pets = Array.isArray(data.pets) 
-            ? data.pets 
-            : [];
-
-        // Баффы — САМОЕ ВАЖНОЕ МЕСТО, где раньше падало
-        this.state.buffs = data.buffs && typeof data.buffs === 'object'
-            ? {
-                godpotion: { endTime: data.buffs.godpotion?.endTime ?? 0 },
-                cookie: { endTime: data.buffs.cookie?.endTime ?? 0 },
-                ...data.buffs  // если появятся новые баффы — сохраним
-              }
-            : { 
-                godpotion: { endTime: 0 }, 
-                cookie: { endTime: 0 } 
-              };
-
-        this.msg('Сохранение успешно загружено!');
-    } else {
-        // Новый игрок — создаём с дефолтными значениями
-        const tgUser = tg.initDataUnsafe?.user;
-        const username = tgUser?.username || null;
-
-        const newPlayer = {
-            telegram_id: this.playerTelegramId,
-            username: username,
-            coins: 0,
-            next_item_id: 10,
-            class: '',
-            skills: defaultState.skills,
-            stats: defaultState.stats,
-            inventory: defaultState.inventory,
-            minions: defaultState.minions,
-            pets: [],
-            buffs: { 
-                godpotion: { endTime: 0 }, 
-                cookie: { endTime: 0 } 
-            }
-        };
-
-        const { error: insertError } = await supabaseClient
-            .from('players')
-            .insert(newPlayer);
-
-        if (insertError) {
-            console.error('Ошибка создания профиля:', insertError);
-            this.msg('Ошибка создания нового профиля');
+        if (!this.playerTelegramId) {
+            this.msg('Не удалось получить Telegram ID');
             this.state = JSON.parse(JSON.stringify(defaultState));
-        } else {
-            this.state = JSON.parse(JSON.stringify(defaultState));
-            this.msg('Создан новый профиль!');
+            this.updateUI();
+            return;
         }
-    }
+        let { data, error } = await supabaseClient
+            .from('players')
+            .select('*')
+            .eq('telegram_id', this.playerTelegramId)
+            .maybeSingle();
+        if (error && error.code !== 'PGRST116') {
+            console.error('Ошибка Supabase:', error);
+            this.msg('Ошибка связи с сервером');
+            this.state = JSON.parse(JSON.stringify(defaultState));
+            this.updateUI();
+            return;
+        }
+        if (data) {
+            this.state.coins = data.coins ?? 0;
+            this.state.nextItemId = data.next_item_id ?? 10;
+            this.state.class = data.class ?? '';
+            this.state.skills = data.skills ?? defaultState.skills;
+            this.state.stats = data.stats ?? defaultState.stats;
+            this.state.inventory = data.inventory ?? defaultState.inventory;
+            this.state.minions = data.minions ?? defaultState.minions;
+            this.state.pets = data.pets ?? [];
+            this.state.buffs = data.buffs ?? defaultState.buffs;
+            this.msg('Сохранение загружено!');
+        } else {
+            const tgUser = tg.initDataUnsafe?.user;
+            const username = tgUser?.username ? tgUser.username : null;
+            const newPlayer = {
+                telegram_id: this.playerTelegramId,
+                username: username,
+                coins: 0,
+                next_item_id: 10,
+                class: '',
+                skills: defaultState.skills,
+                stats: defaultState.stats,
+                inventory: defaultState.inventory,
+                minions: defaultState.minions,
+                pets: [],
+                buffs: defaultState.buffs
+            };
+            const { error: insertError } = await supabaseClient
+                .from('players')
+                .insert(newPlayer);
+            if (insertError) {
+                console.error('Не удалось создать нового игрока:', insertError);
+                this.msg('Ошибка создания профиля');
+                this.state = JSON.parse(JSON.stringify(defaultState));
+            } else {
+                this.state = JSON.parse(JSON.stringify(defaultState));
+                this.msg('Новый профиль создан!');
+            }
+        }
+        this.initSkills();
+        Object.assign(game.state.stats, {
+            mining_fortune: game.state.stats.mining_fortune ?? 0,
+            mining_exp_bonus: game.state.stats.mining_exp_bonus ?? 0,
+            foraging_fortune: game.state.stats.foraging_fortune ?? 0,
+            foraging_exp_bonus: game.state.stats.foraging_exp_bonus ?? 0,
+            farming_fortune: game.state.stats.farming_fortune ?? 0,
+            farming_exp_bonus: game.state.stats.farming_exp_bonus ?? 0,
+            fishing_fortune: game.state.stats.fishing_fortune ?? 0,
+            fishing_exp_bonus: game.state.stats.fishing_exp_bonus ?? 0,
+            magic_res: game.state.stats.magic_res ?? 0
+        });
+        this.updateUI();
+    },
 
-    // Финальная защита — на всякий случай
-    if (!this.state.buffs) {
-        this.state.buffs = { 
-            godpotion: { endTime: 0 }, 
-            cookie: { endTime: 0 } 
-        };
-    }
-
-    this.initSkills();
-
-    // Защита статов (как было у тебя)
-    Object.assign(this.state.stats, {
-        mining_fortune: this.state.stats.mining_fortune ?? 0,
-        mining_exp_bonus: this.state.stats.mining_exp_bonus ?? 0,
-        foraging_fortune: this.state.stats.foraging_fortune ?? 0,
-        foraging_exp_bonus: this.state.stats.foraging_exp_bonus ?? 0,
-        farming_fortune: this.state.stats.farming_fortune ?? 0,
-        farming_exp_bonus: this.state.stats.farming_exp_bonus ?? 0,
-        fishing_fortune: this.state.stats.fishing_fortune ?? 0,
-        fishing_exp_bonus: this.state.stats.fishing_exp_bonus ?? 0,
-        magic_res: this.state.stats.magic_res ?? 0
-    });
-
-    this.updateUI();
-},
     saveToSupabase: async function() {
         if (!this.playerTelegramId) return;
         const { error } = await supabaseClient
@@ -381,21 +327,16 @@ const game = {
                 if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
             }
         });
-        const buffs = this.state.buffs || {};
-    const godEnd = buffs.godpotion?.endTime || 0;
-    const cookieEnd = buffs.cookie?.endTime || 0;
-
-    if (Date.now() < godEnd) {
-        s.str += 5; s.cc += 5; s.cd += 5; s.mf += 10; s.def += 5; s.int += 5; s.mag_amp += 5;
-        s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
-        s.xp_bonus += 1; s.magic_res += 5;
-    }
-
-    if (Date.now() < cookieEnd) {
-        s.str += 50; s.cc += 10; s.cd += 25; s.mf += 25; s.def += 50; s.int += 50; s.mag_amp += 5;
-        s.mining_fortune += 25; s.farming_fortune += 25; s.foraging_fortune += 25; s.fishing_fortune += 25;
-        s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25;
-    }
+        if (Date.now() < this.state.buffs.godpotion.endTime) {
+            s.str += 5; s.cc += 5; s.cd += 5; s.mf += 10; s.def += 5; s.int += 5; s.mag_amp += 5;
+            s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
+            s.xp_bonus += 1; s.magic_res += 5;
+        }
+        if (Date.now() < this.state.buffs.cookie.endTime) {
+            s.str += 50; s.cc += 10; s.cd += 25; s.mf += 25; s.def += 50; s.int += 50; s.mag_amp += 5;
+            s.mining_fortune += 25; s.farming_fortune += 25; s.foraging_fortune += 25; s.fishing_fortune += 25;
+            s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25;
+        }
 
         // Tiger Stats
         const tiger = this.state.pets.find(p => p.equipped && p.name === 'Тигр');
