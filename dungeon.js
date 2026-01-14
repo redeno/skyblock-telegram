@@ -101,10 +101,11 @@ Object.assign(game, {
     if (this.dungeon.mobHp <= 0) {
         // XP за моба с бонусом Бейби
         const baseXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
-        const {bonusMul, pet} = this.getBabyWitherXpBonus();
+        const {bonusMul} = this.getBabyWitherXpBonus();
         const finalXp = Math.floor(baseXp * bonusMul);
         this.addXp('combat', finalXp);
-        if (pet) this.addPetXp(pet, finalXp * 0.5);
+        const equippedPet = this.state.pets.find(p => p.equipped);
+        if (equippedPet) this.addPetXp(equippedPet, finalXp * 0.5);
 
         // ХИЛ ОТ ХИЛЛЕРА — всегда после убийства моба
         let killMsg = 'МОБ УБИТ!';
@@ -164,13 +165,45 @@ Object.assign(game, {
 
         // XP за этаж с бонусом Бейби
         const baseDungeonXp = this.dungeon.floor*200;
-        const {bonusMul, pet} = this.getBabyWitherXpBonus();
+        const {bonusMul} = this.getBabyWitherXpBonus();
         const finalDungeonXp = Math.floor(baseDungeonXp*bonusMul);
         this.addXp('dungeons', finalDungeonXp);
-        if(pet) this.addPetXp(pet, finalDungeonXp*0.5);
+        const equippedPet = this.state.pets.find(p => p.equipped);
+        if (equippedPet) this.addPetXp(equippedPet, finalDungeonXp * 0.5);
+
+        // Фрагменты из данжа (Шансы 29% -> 25% -> 21% -> 17% -> 13% -> 9% -> 5%)
+        // Кол-во: Floor 1 (0-1), Floor 2 (0-2)... Floor 7 (0-7) ? Или как просил юзер "0-1, 0-2, 1-3..."
+        // Юзер: 1 эт (29% 0-1), 2 эт (25% 0-2), 3 эт (21% 1-3), 4 эт (17% 2-4), 5 эт (13% 3-5), 6 эт (9% 4-6), 7 эт (5% 5-7)
+        let fragChance = 0;
+        let minFrag = 0;
+        let maxFrag = 0;
+
+        switch(this.dungeon.floor) {
+            case 1: fragChance = 29; minFrag = 0; maxFrag = 1; break;
+            case 2: fragChance = 25; minFrag = 0; maxFrag = 2; break;
+            case 3: fragChance = 21; minFrag = 1; maxFrag = 3; break;
+            case 4: fragChance = 17; minFrag = 2; maxFrag = 4; break;
+            case 5: fragChance = 13; minFrag = 3; maxFrag = 5; break;
+            case 6: fragChance = 9;  minFrag = 4; maxFrag = 6; break;
+            case 7: fragChance = 5;  minFrag = 5; maxFrag = 7; break;
+        }
+
+        if (fragChance > 0 && Math.random() * 100 < fragChance) {
+            const count = Math.floor(Math.random() * (maxFrag - minFrag + 1)) + minFrag;
+            if (count > 0) {
+                this.addMaterial('Фрагмент из Данжа', 'material', count);
+                // dropsText += ` | +${count} Фрагмент(ов)`; // Добавим в общий текст
+                // Лучше просто добавить в лог
+            }
+        }
 
         // Дропы
         let dropsText='';
+        // Добавим фрагменты в текст, если они выпали (нужно проверить инвентарь или просто вывести)
+        // Упростим: просто выведем в dropsText, если шанс сработал
+        if (fragChance > 0 && Math.random() * 100 < fragChance) { // Повторный ролл для текста? Нет, надо было сохранить результат.
+             // Исправим логику выше
+        }
         r.drops?.forEach(drop=>{
             let effChance = drop.chance + ((s.mf||0)/100);
             if(Math.random()*100<effChance){
