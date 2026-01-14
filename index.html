@@ -42,7 +42,7 @@
                 <div class="portal-node" onclick="game.switchTab('dungeons-menu')">💀 ДАНЖИ</div>
                 <div class="portal-node" onclick="game.msg('Скоро...')">👹 СЛЕЙЕРЫ</div>
                 <div class="portal-node" onclick="game.switchTab('shop')">🛒 МАГАЗИН</div>
-                <div class="portal-node" onclick="game.msg('Скоро...')">⚖️ ОБМЕН</div>
+                <div class="portal-node" onclick="game.openExchange()">⚖️ ОБМЕН</div>
                 <div class="portal-node" onclick="game.msg('Скоро...')">📅 ИВЕНТ</div>
                 <div class="portal-node" onclick="game.msg('Скоро...')">🗳️ МЭР</div>
             </div>
@@ -189,6 +189,12 @@
     <div id="lead-list"></div>
 </div>
 
+<div id="exchangeModal" class="modal">
+    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('exchangeModal')">[ЗАКРЫТЬ]</span>
+    <h3>⚖️ ОБМЕН</h3>
+    <div id="exchange-content"></div>
+</div>
+
     <!-- Нижняя навигация -->
     <nav id="nav">
         <button class="nav-item active" onclick="game.switchTab('home',this)"><span>🏠</span>ДОМ</button>
@@ -205,6 +211,7 @@
 <script src="dungeon.js"></script>
 <script src="skills.js"></script>
 <script src="pets.js"></script>
+<script src="exchange.js"></script>
 
 
 </body>
