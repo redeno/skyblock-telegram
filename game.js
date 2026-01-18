@@ -67,31 +67,31 @@ const shopItems = {
     ],
     tool: [], // Deprecated, split into subsections
     mining_tool: [
-        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:2000},
-        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:20,cost:10000},
-        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:40,cost:50000},
-        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:60,cost:250000},
-        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:80,cost:1000000},
-        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,cost:10000000},
-        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:300,cost:100000000}
+        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:25,cost:5000},
+        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:50,cost:25000},
+        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:100,cost:125000},
+        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,cost:750000},
+        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:200,cost:2500000},
+        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:400,cost:50000000},
+        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:700,cost:250000000}
     ],
     farming_tool: [
-        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:2000},
-        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:20,cost:10000},
-        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:40,cost:50000},
-        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:60,cost:250000},
-        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:80,cost:1000000},
-        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:10000000},
-        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:300,cost:100000000}
+        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:25,cost:5000},
+        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:50,cost:25000},
+        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:100,cost:125000},
+        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:750000},
+        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:200,cost:2500000},
+        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:400,cost:50000000},
+        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:700,cost:250000000}
     ],
     foraging_tool: [
-        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:2000},
-        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:20,cost:10000},
-        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:40,cost:50000},
-        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:60,cost:250000},
-        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:80,cost:1000000},
-        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:10000000},
-        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:300,cost:100000000}
+        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:25,cost:5000},
+        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:50,cost:25000},
+        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:100,cost:125000},
+        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:750000},
+        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:200,cost:2500000},
+        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:400,cost:50000000},
+        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:700,cost:250000000}
     ],
     fishing_tool: [
         {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_fortune:5,cost:2000},
