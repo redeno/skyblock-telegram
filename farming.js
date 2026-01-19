@@ -81,6 +81,8 @@ const farmingCrops = {
 };
 
 Object.assign(game, {
+    currentCrop: null,
+
     openFarmingMenu() {
         this.renderFarmingMenu();
         this.switchTab('farming-menu');
@@ -125,11 +127,7 @@ Object.assign(game, {
             return;
         }
 
-        this.state.currentCrop = cropId;
-        // Persist in stats to ensure it saves to DB
-        if (!this.state.stats) this.state.stats = {};
-        this.state.stats.currentCrop = cropId;
-        
+        this.currentCrop = cropId;
         this.goLoc('farm'); 
         
         // Update UI specific to crop
@@ -137,7 +135,7 @@ Object.assign(game, {
     },
 
     processFarmingAction() {
-        const crop = farmingCrops[this.state.currentCrop];
+        const crop = farmingCrops[this.currentCrop];
         if (!crop) {
             this.msg('Ошибка: культура не выбрана!');
             this.switchTab('portal');
@@ -197,7 +195,9 @@ Object.assign(game, {
             }
         }
 
-        this.addMaterial(crop.resource, 'material', amount);
+        for (let i = 0; i < amount; i++) {
+        this.addMaterial(crop.resource); 
+   	 }
 
         // 4. Rare Drops
         let dropMsg = '';
@@ -248,11 +248,10 @@ Object.assign(game, {
         
         // XP scaling by amount? User said "if exp drops, multiplied by amount" for jackpot
         // Let's assume if jackpot happens, we multiply XP?
-        // "if drops experience multiplied by amount" -> probably means Farming XP scales with crops harvested?
+        // "if drops experience multiplied by amount" -> probably eans Farming XP scales with crops harvested?
         // Standard Hypixel Skyblock logic: XP is per crop break.
         // Let's multiply XP by amount for now as a bonus.
-                // XP scaling by amount
-        const final_xp = total_xp * amount; // Small bonus for big drops, not linear to avoid crazy numbers
+        const final_xp = total_xp * (amount > 10 ? 2 : 1); // Small bonus for big drops, not linear to avoid crazy numbers
         
         this.addXp('farming', final_xp);
         if (pet) this.addPetXp(pet, final_xp * 0.5);
