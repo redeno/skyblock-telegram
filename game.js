@@ -67,31 +67,32 @@ const shopItems = {
     ],
     tool: [], // Deprecated, split into subsections
     mining_tool: [
-        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:2000},
-        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:20,cost:10000},
-        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:40,cost:50000},
-        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:60,cost:250000},
-        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:80,cost:1000000},
-        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,cost:10000000},
-        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:300,cost:100000000}
+        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:25,cost:5000},
+        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:50,cost:25000},
+        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:100,cost:125000},
+        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,cost:750000},
+        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:200,cost:5000000},
+        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:300,cost:50000000},
+        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:500,cost:500000000}
     ],
     farming_tool: [
-        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:2000},
-        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:20,cost:10000},
-        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:40,cost:50000},
-        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:60,cost:250000},
-        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:80,cost:1000000},
-        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:10000000},
-        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:300,cost:100000000}
+        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:25,cost:5000},
+        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:50,cost:25000},
+        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:100,cost:125000},
+        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:750000},
+        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:200,cost:5000000},
+        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:300,cost:50000000},
+        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:500,cost:500000000},
+	{name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000}
     ],
     foraging_tool: [
-        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:2000},
-        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:20,cost:10000},
-        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:40,cost:50000},
-        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:60,cost:250000},
-        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:80,cost:1000000},
-        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:10000000},
-        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:300,cost:100000000}
+        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:25,cost:5000},
+        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:50,cost:25000},
+        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:100,cost:125000},
+        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:750000},
+        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:200,cost:5000000},
+        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:300,cost:50000000},
+        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:500,cost:500000000}
     ],
     fishing_tool: [
         {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_fortune:5,cost:2000},
@@ -203,6 +204,8 @@ const game = {
     if (!this.playerTelegramId) {
         this.msg('Не удалось получить Telegram ID — тестовый режим');
         this.state = JSON.parse(JSON.stringify(defaultState));
+        // Restore currentCrop if it was in state (from local storage simulation or just init)
+        this.state.currentCrop = null; 
         this.updateUI();
         return;
     }
@@ -226,6 +229,20 @@ const game = {
         this.state.coins = data.coins ?? 0;
         this.state.nextItemId = data.next_item_id ?? 10;
         this.state.class = data.class ?? '';
+        // Restore currentCrop from loaded data if we start saving it in JSON columns or separate field
+        // Since we are using this.state to save, and supabase saves specific fields, we might lose it if not in schema.
+        // However, we are saving 'stats', 'skills', 'inventory' etc separately in upsert.
+        // We need to add 'currentCrop' to the upsert and schema OR put it in 'stats' or another JSON field?
+        // 'stats' is a JSONB column usually. 'skills' is JSONB.
+        // Let's put currentCrop in this.state directly, but we need to ensure it's saved.
+        // Inspect saveToSupabase: it saves explicit fields.
+        // So we should add currentCrop to 'stats' or 'skills' temporarily or update saveToSupabase.
+        // Updating saveToSupabase requires DB schema change if it's a column.
+        // If 'stats' is JSONB, we can add it there.
+        
+        // Let's use this.state.stats.currentCrop for persistence without schema change!
+        this.state.stats.currentCrop = data.stats?.currentCrop || null;
+        this.state.currentCrop = this.state.stats.currentCrop; // Sync to root state for easier access
 
         // Навыки — с защитой от null/undefined
         this.state.skills = data.skills 
@@ -432,6 +449,24 @@ const game = {
                  s.cd += Math.floor(cdBonus);
             }
         }
+
+        // Pig Stats
+        const pig = this.state.pets.find(p => p.equipped && p.name === 'Pig');
+        if (pig) {
+            const lvl = pig.lvl || 1;
+            // Common: 1 (1) -> 20 (100) -> 0.2 per level (approx)
+            // Rare: 40 (100) -> 0.4 per level
+            // Epic: 60 (100) -> 0.6 per level
+            // Legendary: 100 (100) -> 1.0 per level
+            
+            let fortuneMax = 20;
+            if (pig.rarity === 'rare') fortuneMax = 40;
+            if (pig.rarity === 'epic') fortuneMax = 60;
+            if (pig.rarity === 'legendary') fortuneMax = 100;
+            
+            const fortune = 1 + (fortuneMax - 1) * ((lvl - 1) / 99);
+            s.farming_fortune += Math.floor(fortune);
+        }
         
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
@@ -446,7 +481,10 @@ const game = {
         s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
         s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
         s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);  // ← вот он, вернулся
-
+	s.mining_exp_bonus += 0.5 * (this.state.skills.mining.lvl - 1);
+        s.farming_exp_bonus += 0.5 * (this.state.skills.farming.lvl - 1);
+        s.foraging_exp_bonus += 0.5 * (this.state.skills.foraging.lvl - 1);
+        s.fishing_exp_bonus += 0.5 * (this.state.skills.fishing.lvl - 1);
         return s;
     },
 
@@ -644,6 +682,13 @@ const game = {
     },
 
     finishAction() {
+        // Delegate to new farming system if applicable
+                if (this.currentLoc === 'farm' && typeof this.processFarmingAction === 'function' && (this.state.currentCrop || this.state.stats?.currentCrop)) {
+            if (!this.state.currentCrop) this.state.currentCrop = this.state.stats.currentCrop;
+            this.processFarmingAction();
+            return;
+        }
+
         const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging',combat:'combat'};
         const skillKey = map[this.currentLoc];
         const skill = this.state.skills[skillKey];
