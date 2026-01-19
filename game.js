@@ -172,7 +172,48 @@ const petResourceMap = {
     foraging: 'Дерево',
     combat: 'Фрагмент из Данжа' 
 };
-
+const farmingArmorTiers = [
+    {
+        name: 'Фермерская броня',
+        rarity: 'rare',
+        farming_fortune: 50,
+        farming_exp_bonus: 5,
+        material_cost: { 'Пшеница': 512 }
+    },
+    {
+        name: 'Арбузная броня',
+        rarity: 'epic',
+        farming_fortune: 125,
+        farming_exp_bonus: 7,
+        material_cost: {
+            'Стог Пшена': 1,
+            'Стог Картошки': 1,
+            'Стог Моркови': 1
+        }
+    },
+    {
+        name: 'Ферменто броня',
+        rarity: 'legendary',
+        farming_fortune: 200,
+        farming_exp_bonus: 10,
+        material_cost: {
+            'Сингулярность Пшена': 1,
+            'Сингулярность Картошки': 1,
+            'Сингулярность Моркови': 1
+        }
+    },
+    {
+        name: 'Гелиантус броня',
+        rarity: 'mythic',
+        farming_fortune: 300,
+        farming_exp_bonus: 15,
+        material_cost: {
+            'Сингулярность Пшена': 4,
+            'Сингулярность Картошки': 4,
+            'Сингулярность Моркови': 4
+        }
+    }
+];
 const minionConfig = {
     1: { cost: 50, resources: 0, storage: 32 },
     2: { cost: 250, resources: 32, storage: 40 },
