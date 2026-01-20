@@ -123,8 +123,8 @@ const shopItems = {
 		{name:'🍀 Treasure Artifact',type:'accessory',gold_bonus:5,str:10,cost:300000000}		
     ],
     buff: [
-        {name:'GodPotion',type:'potion',cost:1000000},
-        {name:'Печенька',type:'potion',cost:10000000}
+        {name:'GodPotion',type:'potion',cost:25000000},
+        {name:'Печенька',type:'potion',cost:50000000}
     ],
     pet: [
         {name:'Чешуйница',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'mining',base_bonus:0.1,cost:5000},
@@ -455,16 +455,18 @@ const game = {
     const cookieEnd = buffs.cookie?.endTime || 0;
 
     if (Date.now() < godEnd) {
-        s.str += 5; s.cc += 5; s.cd += 5; s.mf += 10; s.def += 5; s.int += 5; s.mag_amp += 5;
-        s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
-        s.xp_bonus += 1; s.magic_res += 5;
-    }
-
-    if (Date.now() < cookieEnd) {
-        s.str += 50; s.cc += 10; s.cd += 25; s.mf += 25; s.def += 50; s.int += 50; s.mag_amp += 5;
-        s.mining_fortune += 25; s.farming_fortune += 25; s.foraging_fortune += 25; s.fishing_fortune += 25;
-        s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25;
-    }
+    s.str += 5; s.cc += 5; s.cd += 5; s.mf += 5; s.def += 5; s.int += 5; s.mag_amp += 5;
+    s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
+    s.mining_exp_bonus += 1; s.farming_exp_bonus += 1; s.foraging_exp_bonus += 1; s.fishing_exp_bonus += 1;
+    s.magic_res += 5;
+}
+if (Date.now() < cookieEnd) {
+    s.str += 50; s.cc += 10; s.cd += 25; s.mf += 30; s.def += 30; s.int += 30; s.mag_amp += 5;
+    s.mining_fortune += 50; s.farming_fortune += 50; s.foraging_fortune += 50; s.fishing_fortune += 50;
+    s.mining_exp_bonus += 5; s.farming_exp_bonus += 5; s.foraging_exp_bonus += 5; s.fishing_exp_bonus += 5;
+    s.dungeon_exp_bonus += 5;
+    s.magic_res += 20; s.gold_bonus += 5;
+}
 
         // Tiger Stats
         const tiger = this.state.pets.find(p => p.equipped && p.name === 'Тигр');
