@@ -53,10 +53,10 @@ const defaultState = {
 
 const shopItems = {
     weapon: [
-        {name:'Каменный меч',type:'weapon',str:10,cost:1000},
-        {name:'Железный Меч',type:'weapon',str:20,cost:5000},
-        {name:'Алмазный Меч',type:'weapon',str:30,cost:20000},
-        {name:'Незеритовый Меч',type:'weapon',str:50,cost:100000}
+        {name:'⚔️ Каменный меч',type:'weapon',str:10,cost:1000},
+        {name:'⚔️ Железный Меч',type:'weapon',str:20,cost:5000},
+        {name:'⚔️ Алмазный Меч',type:'weapon',str:30,cost:20000},
+        {name:'⚔️ Незеритовый Меч',type:'weapon',str:50,cost:100000}
     ],
     armor: [
         {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
@@ -953,7 +953,7 @@ addPetXp(pet, amount) {
 
         // Оружие: показываем только следующий тир для улучшения
         if (t === 'weapon') {
-            const swordProgression = ['Старый меч', 'Каменный меч', 'Железный Меч', 'Алмазный Меч', 'Незеритовый Меч'];
+            const swordProgression = ['⚔️ Старый меч', '⚔️ Каменный меч', '⚔️ Железный Меч', '⚔️ Алмазный Меч', '⚔️ Незеритовый Меч'];
             const currentSword = this.state.inventory.find(i => i.type === 'weapon' && swordProgression.includes(i.name));
             
             let nextIdx = 0;
