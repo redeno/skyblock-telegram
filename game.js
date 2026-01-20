@@ -53,17 +53,17 @@ const defaultState = {
 
 const shopItems = {
     weapon: [
-        {name:'Каменный меч',type:'weapon',str:10,cost:1000},
-        {name:'Железный Меч',type:'weapon',str:20,cost:5000},
-        {name:'Алмазный Меч',type:'weapon',str:30,cost:20000},
-        {name:'Незеритовый Меч',type:'weapon',str:50,cost:100000}
+        {name:'⚔️ Каменный меч',type:'weapon',str:10,cost:1000},
+        {name:'⚔️ Железный Меч',type:'weapon',str:20,cost:5000},
+        {name:'⚔️ Алмазный Меч',type:'weapon',str:30,cost:20000},
+        {name:'⚔️ Незеритовый Меч',type:'weapon',str:50,cost:100000}
     ],
     armor: [
-        {name:'Железная Броня',type:'armor',def:10,cost:10000},
-        {name:'Алмазная броня',type:'armor',def:20,cost:50000},
-        {name:'Shaddow Assasins броня',type:'armor',def:25,str:25,cc:5,cd:10,cost:1000000},
-        {name:'ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000},
-        {name:'Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000},
+        {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
+        {name:'🛡️ Алмазная броня',type:'armor',def:20,cost:50000},
+        {name:'⚔️ Shaddow Assasins броня',type:'armor',def:25,str:25,cc:5,cd:10,cost:1000000},
+        {name:'🧠 ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000},
+        {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000},
 		{name: '🌾 Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 0,resource_cost: { wheat: 512 }},
         {name: '🌾 Melon Armor',type: 'armor',rarity: 'epic',farming_fortune: 125,farming_exp_bonus: 7,cost: 0,resource_cost: { wheat: 64, carrot: 64, potato: 64 }},
         {name: '🌾 Farmer Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 0,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
@@ -106,14 +106,14 @@ const shopItems = {
         {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_fortune:50,triple_chance:25,cost:100000000},
         {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_fortune:100,triple_chance:25,cost:500000000}
     ],
-    accessory: [
-        {name:'Талисман удачи',type:'accessory',mf:10,cost:10000},
-        {name:'Талисман силы',type:'accessory',str:5,cost:5000},
-        {name:'Талисман защиты',type:'accessory',def:5,cost:5000},
-        {name:'Талисман мощи',type:'accessory',cd:5,cc:1,cost:10000},
-        {name:'Талисман знаний',type:'accessory',int:5,cost:5000},
-        {name:'Талисман древних знаний',type:'accessory',int:25,mag_amp:1,cost:1000000},
-        {name:'Кольцо опыта',type:'accessory',xp_bonus:1,cost:100000}
+    accessory: [ 
+        {name:'🍀 Талисман удачи',type:'accessory',mf:10,cost:10000},
+        {name:'⚔️ Талисман силы',type:'accessory',str:5,cost:5000},
+        {name:'🛡️ Талисман защиты',type:'accessory',def:5,cost:5000},
+        {name:'⚔️ Талисман мощи',type:'accessory',cd:5,cc:1,cost:10000},
+        {name:'🧠 Талисман знаний',type:'accessory',int:5,cost:5000},
+        {name:'🧠 Талисман древних знаний',type:'accessory',int:25,mag_amp:1,cost:1000000},
+        {name:'🍀 Кольцо опыта',type:'accessory',xp_bonus:1,cost:100000}
     ],
     buff: [
         {name:'GodPotion',type:'potion',cost:1000000},
