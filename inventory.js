@@ -164,9 +164,9 @@ Object.assign(game, {
             this.msg('Уже активен!');
             return;
         }
-        this.state.buffs.godpotion.endTime = Date.now() + 86400000;
+        this.state.buffs.godpotion.endTime = Date.now() + 3600000;
         this.state.inventory = this.state.inventory.filter(x => x.id !== id);
-        this.msg('GodPotion на 24 часа!');
+        this.msg('GodPotion на 1 час!');
         this.updateUI();
     },
 
