@@ -53,10 +53,10 @@ const defaultState = {
 
 const shopItems = {
     weapon: [
-        {name:'⚔️ Каменный меч',type:'weapon',str:10,cost:1000},
-        {name:'⚔️ Железный Меч',type:'weapon',str:20,cost:5000},
-        {name:'⚔️ Алмазный Меч',type:'weapon',str:30,cost:20000},
-        {name:'⚔️ Незеритовый Меч',type:'weapon',str:50,cost:100000}
+        {name:'Каменный меч',type:'weapon',str:10,cost:1000},
+        {name:'Железный Меч',type:'weapon',str:20,cost:5000},
+        {name:'Алмазный Меч',type:'weapon',str:30,cost:20000},
+        {name:'Незеритовый Меч',type:'weapon',str:50,cost:100000}
     ],
     armor: [
         {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
@@ -66,8 +66,8 @@ const shopItems = {
         {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000},
 		{name: '🌾 Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 0,resource_cost: { wheat: 512 }},
         {name: '🌾 Melon Armor',type: 'armor',rarity: 'epic',farming_fortune: 125,farming_exp_bonus: 7,cost: 0,resource_cost: { wheat: 64, carrot: 64, potato: 64 }},
-        {name: '🌾 Farmer Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 0,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
-        {name: '🌾 Melon Armor',type: 'armor',rarity: 'legendary',farming_fortune: 300,farming_exp_bonus: 15,cost: 0,resource_cost: { wheat: 99999, carrot: 99999, potato: 99999,pumpkin: 99999,melon: 99999,cane: 99999 }}
+        {name: '🌾 Fermento Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 0,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
+        {name: '🌾 Helianthus Armor',type: 'armor',rarity: 'legendary',farming_fortune: 300,farming_exp_bonus: 15,cost: 0,resource_cost: { wheat: 99999, carrot: 99999, potato: 99999,pumpkin: 99999,melon: 99999,cane: 99999 }}
     ],
     tool: [], // Deprecated, split into subsections
     mining_tool: [
@@ -953,7 +953,7 @@ addPetXp(pet, amount) {
 
         // Оружие: показываем только следующий тир для улучшения
         if (t === 'weapon') {
-            const swordProgression = ['⚔️ Старый меч', '⚔️ Каменный меч', '⚔️ Железный Меч', '⚔️ Алмазный Меч', '⚔️ Незеритовый Меч'];
+            const swordProgression = ['Старый меч', 'Каменный меч', 'Железный Меч', 'Алмазный Меч', 'Незеритовый Меч'];
             const currentSword = this.state.inventory.find(i => i.type === 'weapon' && swordProgression.includes(i.name));
             
             let nextIdx = 0;
