@@ -83,7 +83,12 @@ const shopItems = {
         {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:200,cost:5000000},
         {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:300,cost:50000000},
         {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:500,cost:500000000},
-	{name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000}
+	{name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000},
+		{name: 'Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 0,resource_cost: { wheat: 512 }},
+        {name: 'Melon Armor',type: 'armor',rarity: 'epic',farming_fortune: 125,farming_exp_bonus: 7,cost: 0,resource_cost: { wheat: 64, carrot: 64, potato: 64 }},
+        {name: 'Farmer Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 0,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
+        {name: 'Melon Armor',type: 'armor',rarity: 'legendary',farming_fortune: 300,farming_exp_bonus: 15,cost: 0,resource_cost: { wheat: 99999, carrot: 99999, potato: 99999,pumpkin: 99999,melon: 99999,cane: 99999 }}
+    
     ],
     foraging_tool: [
         {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:25,cost:5000},
