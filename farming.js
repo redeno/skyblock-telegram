@@ -26,7 +26,7 @@ const farmingCrops = {
         resource: 'Морковь',
         drops: [
             { type: 'pet', name: 'Rabbit', rarity: 'common', chance: 0.001 },
-            { type: 'accessory', name: 'Cropie Talisman', chance: 0.01, stats: { farming_fortune: 25 }, cost: 250000 }
+            { type: 'accessory', name: 'Cropie Talisman', chance: 0.001, stats: { farming_fortune: 25 }, cost: 250000 }
         ]
     },
     pumpkin: { 
@@ -36,7 +36,7 @@ const farmingCrops = {
         resource: 'Тыква',
         specialDrop: { type: 'resource_jackpot', amountBase: 128, chance: 0.1 },
         drops: [
-            { type: 'accessory', name: 'Squash Ring', chance: 0.01, stats: { farming_fortune: 75 }, cost: 2500000 }
+            { type: 'accessory', name: 'Squash Ring', chance: 0.001, stats: { farming_fortune: 75 }, cost: 2500000 }
         ]
     },
     melon: { 
@@ -46,7 +46,7 @@ const farmingCrops = {
         resource: 'Арбуз',
         specialDrop: { type: 'resource_jackpot', amountBase: 128, chance: 0.1 },
         drops: [
-            { type: 'accessory', name: 'Squash Ring', chance: 0.01, stats: { farming_fortune: 75 }, cost: 2500000 }
+            { type: 'accessory', name: 'Squash Ring', chance: 0.001, stats: { farming_fortune: 75 }, cost: 2500000 }
         ]
     },
     cane: { 
@@ -56,7 +56,7 @@ const farmingCrops = {
         resource: 'Тростник',
         drops: [
             { type: 'pet', name: 'Moth', rarity: 'common', chance: 0.001 },
-            { type: 'accessory', name: 'Fermento Artifact', chance: 0.01, stats: { farming_fortune: 150 }, cost: 30000000 }
+            { type: 'accessory', name: 'Fermento Artifact', chance: 0.001, stats: { farming_fortune: 150 }, cost: 30000000 }
         ]
     },
     mushroom: { 
@@ -66,7 +66,7 @@ const farmingCrops = {
         resource: 'Грибы',
         specialDrop: { type: 'resource_jackpot', amountBase: 256, chance: 0.05 },
         drops: [
-            { type: 'accessory', name: 'Fermento Artifact', chance: 0.02, stats: { farming_fortune: 150 }, cost: 30000000 }
+            { type: 'accessory', name: 'Fermento Artifact', chance: 0.002, stats: { farming_fortune: 150 }, cost: 30000000 }
         ]
     },
     wart: { 
@@ -75,7 +75,7 @@ const farmingCrops = {
         level: 50, 
         resource: 'Адский нарост',
         drops: [
-            { type: 'accessory', name: 'Fermento Artifact', chance: 0.1, stats: { farming_fortune: 150 }, cost: 30000000 }
+            { type: 'accessory', name: 'Fermento Artifact', chance: 0.01, stats: { farming_fortune: 150 }, cost: 30000000 }
         ]
     }
 };
@@ -85,21 +85,18 @@ Object.assign(game, {
         this.renderFarmingMenu();
         this.switchTab('farming-menu');
     },
-
     renderFarmingMenu() {
         const list = document.getElementById('farming-list');
         if (!list) return;
         
         const farmingLvl = this.state.skills.farming.lvl;
         let html = '';
-
         Object.values(farmingCrops).forEach(crop => {
             const locked = farmingLvl < crop.level;
             const btnClass = locked ? 'cooldown-btn disabled' : 'cooldown-btn';
             const status = locked ? `🔒 Требуется LVL ${crop.level}` : 'ВЫБРАТЬ';
             const onclick = locked ? '' : `onclick="game.startFarming('${crop.id}')"`;
             const style = locked ? 'opacity:0.5; cursor:not-allowed' : '';
-
             html += `
                 <div class="card" style="${style}">
                     <div style="display:flex; justify-content:space-between; align-items:center">
@@ -112,10 +109,8 @@ Object.assign(game, {
                 </div>
             `;
         });
-
         list.innerHTML = html;
     },
-
     startFarming(cropId) {
         const crop = farmingCrops[cropId];
         if (!crop) return;
@@ -124,18 +119,12 @@ Object.assign(game, {
             this.msg(`Нужен ${crop.level} уровень фермерства!`);
             return;
         }
-
         this.state.currentCrop = cropId;
-        // Persist in stats to ensure it saves to DB
         if (!this.state.stats) this.state.stats = {};
-        this.state.stats.currentCrop = cropId;
-        
+        this.state.stats.currentCrop = cropId;   
         this.goLoc('farm'); 
-        
-        // Update UI specific to crop
         document.getElementById('loc-title').innerText = `ФЕРМА: ${crop.name.toUpperCase()}`;
     },
-
     processFarmingAction() {
         const crop = farmingCrops[this.state.currentCrop];
         if (!crop) {
@@ -143,45 +132,32 @@ Object.assign(game, {
             this.switchTab('portal');
             return;
         }
-
         const s = this.calcStats(false);
         const fortune = s.farming_fortune || 0;
         const skillLvl = this.state.skills.farming.lvl;
-        
-        // 1. XP Calculation
-        // Base XP + Bonuses
-        const base_xp = 10 + (crop.level * 0.5); // Slightly scaling base XP
+        const base_xp = 20 + (crop.level * 0.5); // Slightly scaling base XP
         const exp_bonus = s.farming_exp_bonus || 0;
-        
         // Pet XP Bonus check
         let petXpBonus = 0;
         const pet = this.state.pets.find(p => p.equipped && p.skill === 'farming');
         if (pet) {
-            // Check specific Pig bonuses if needed, otherwise generic
              if (pet.name === 'Pig' && pet.rarity === 'legendary') {
-                // Pig legendary: 1% -> 5% xp bonus
                 petXpBonus += 1 + (pet.lvl * 0.04); 
              } else {
                 petXpBonus += (window.petRarityBonuses[pet.rarity] || 0) * pet.lvl;
              }
         }
-
         const total_xp = base_xp * (1 + (exp_bonus + petXpBonus) / 100);
-
         // 2. Resource Drops
         let amount = 1;
-        // Fortune Formula: floor(fortune/100) guaranteed + chance for one more
         const guaranteed = Math.floor(fortune / 100);
         amount += guaranteed;
         if (Math.random() * 100 < (fortune % 100)) amount++;
-
-        // Tool Multipliers (Double/Triple drops)
         const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type === 'hoe');
         if (equippedTool) {
             if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
             else if (equippedTool.double_chance && Math.random() * 100 < equippedTool.double_chance) amount *= 2;
         }
-
         // 3. Jackpot Logic (Pumpkin/Melon/Mushroom)
         let jackpotMsg = '';
         if (crop.specialDrop) {
@@ -196,21 +172,16 @@ Object.assign(game, {
                 jackpotMsg = ` | 🎰 ДЖЕКПОТ! +${jackpotAmount} шт.`;
             }
         }
-
         this.addMaterial(crop.resource, 'material', amount);
 
         // 4. Rare Drops
         let dropMsg = '';
         if (crop.drops) {
             crop.drops.forEach(drop => {
-                // Luck influence? "luck can influence chance!"
-                // Standard magic find formula usually
                 const mf = s.mf || 0;
-                const chance = drop.chance * (1 + mf / 100);
-                
+                const chance = drop.chance * (1 + mf / 100);             
                 if (Math.random() * 100 < chance) {
                     if (drop.type === 'pet') {
-                        // Add pet
                         const newPet = {
                             name: drop.name,
                             type: 'pet',
@@ -241,22 +212,12 @@ Object.assign(game, {
                 }
             });
         }
-
         // 5. Finalize
         const coinsGain = 10 * skillLvl; // Simple coin gain per action
         this.state.coins += coinsGain;
-        
-        // XP scaling by amount? User said "if exp drops, multiplied by amount" for jackpot
-        // Let's assume if jackpot happens, we multiply XP?
-        // "if drops experience multiplied by amount" -> probably means Farming XP scales with crops harvested?
-        // Standard Hypixel Skyblock logic: XP is per crop break.
-        // Let's multiply XP by amount for now as a bonus.
-                // XP scaling by amount
-        const final_xp = total_xp * amount; // Small bonus for big drops, not linear to avoid crazy numbers
-        
+        const final_xp = total_xp * amount; // Small bonus for big drops, not linear to avoid crazy numbers    
         this.addXp('farming', final_xp);
         if (pet) this.addPetXp(pet, final_xp * 0.5);
-
         document.getElementById('loc-log').innerText = `+${coinsGain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${crop.resource}${jackpotMsg}${dropMsg}`;
         this.updateUI();
     }
