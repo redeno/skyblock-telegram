@@ -113,7 +113,12 @@ const shopItems = {
         {name:'⚔️ Талисман мощи',type:'accessory',cd:5,cc:1,cost:10000},
         {name:'🧠 Талисман знаний',type:'accessory',int:5,cost:5000},
         {name:'🧠 Талисман древних знаний',type:'accessory',int:25,mag_amp:1,cost:1000000},
-        {name:'🍀 Кольцо опыта',type:'accessory',xp_bonus:1,cost:100000}
+        {name:'🍀 Кольцо опыта',type:'accessory',xp_bonus:1,cost:100000},
+		{name:'🍀 Golden Box Talisman',type:'accessory',gold_bonus:1,cost:5000000},
+		{name:'🌾 Hay Bale Talisman',type:'accessory',farming_fortune:5,cost:100000},
+		{name:'🌾 Farmer Orb Talisman',type:'accessory',farming_exp_bonus:1,cost:10000000},
+		{name:'⚔️ Tiger Talisman',type:'accessory',cc:7,cost:50000000},
+		{name:'🍀 Treasure Artifact',type:'accessory',gold_bonus:5,str:10,cost:300000000}		
     ],
     buff: [
         {name:'GodPotion',type:'potion',cost:1000000},
