@@ -157,7 +157,7 @@
                 <div class="inv-tab" onclick="game.filterInv('accessory',this)">ТАЛИСМАНЫ</div>
                 <div class="inv-tab" onclick="game.filterInv('material',this)">МАТЕРИАЛ</div>
                 <div class="inv-tab" onclick="game.filterInv('chest',this)">СУНДУКИ</div>
-                <div class="inv-tab" onclick="game.filterInv('buff',this)">БАФФЫ</div>
+                <div class="inv-tab" onclick="game.filterInv('potion',this)">БАФФЫ</div>
                 <div class="inv-tab" onclick="game.filterInv('pet',this)">ПИТОМЦЫ</div>
             </div>
             <div id="inv-list"></div>
@@ -210,8 +210,7 @@
         <button class="nav-item" onclick="game.switchTab('inventory',this)"><span>🎒</span>ИНВЕНТАРЬ</button>
     </nav>
    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   <!-- Use relative paths for iframe compatibility -->
-<script src="game.js"></script>
+   <script src="game.js"></script>
     <script src="news.js"></script>
     <script src="inventory.js"></script>
 <script src="top.js"></script>
@@ -220,7 +219,5 @@
 <script src="farming.js"></script>
 <script src="pets.js"></script>
 <script src="exchange.js"></script>
-
-
 </body>
 </html>
