@@ -53,7 +53,7 @@ const defaultState = {
 
 const shopItems = {
     weapon: [
-		{name:'Старый меч',type:'weapon',str:10,cost 1000},
+		{name:'Старый меч',type:'weapon',str:10,cost:1000},
         {name:'Каменный меч',type:'weapon',str:20,cost:25000},
         {name:'Железный Меч',type:'weapon',str:30,cost:500000},
         {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000},
