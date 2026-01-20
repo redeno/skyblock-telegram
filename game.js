@@ -58,7 +58,7 @@ const shopItems = {
         {name:'Железный Меч',type:'weapon',str:30,cost:500000},
         {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000},
         {name:'Незеритовый Меч',type:'weapon',str:50,cost:10000000},
-		{name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000},
+		{name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000}
     ],
     armor: [
         {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
