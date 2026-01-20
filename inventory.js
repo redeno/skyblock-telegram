@@ -11,8 +11,19 @@ Object.assign(game, {
         if (i.int) d += `+${i.int} ИНТЕЛЛЕКТА `;
         if (i.mag_amp) d += `+${i.mag_amp} МАГ УСИЛЕНИЯ `;
         if (i.xp_bonus) d += `+${i.xp_bonus}% ОПЫТА `;
+        if (i.farming_fortune) d += `+${i.farming_fortune} 🌾ФОРТУНЫ `;
+        if (i.farming_exp_bonus) d += `+${i.farming_exp_bonus}% 🌾ОПЫТА `;
         if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
         if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
+        if (i.resource_cost) {
+            const materialMap = {
+                wheat: 'Пшеница',
+                carrot: 'Морковь',
+                potato: 'Картофель'
+            };
+            const costs = Object.entries(i.resource_cost).map(([k, v]) => `${v} ${materialMap[k] || k}`).join(', ');
+            d += `[Цена: ${costs}] `;
+        }
         if (i.fast) d += 'БЫСТРАЯ ';
         if (i.dynamic_str === 'midas') d += 'МИДАС ';
         if (i.magic) d += 'МАГИЧЕСКОЕ ';
