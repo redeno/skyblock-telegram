@@ -39,8 +39,8 @@ const defaultState = {
     class: '',
     buffs: {godpotion:{endTime:0}, cookie:{endTime:0}},
     inventory: [
-        {id:1,name:'Старый меч',type:'weapon',str:15,equipped:false},
-        {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',equipped:true}
+        //{id:1,name:'Старый меч',type:'weapon',str:15,equipped:false},
+       // {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',equipped:true}
     ],
     minions: [
         {id:'wheat',name:'ПШЕНИЧНЫЙ',cost:50,count:0,stored:0,rate:0.5},
@@ -53,6 +53,7 @@ const defaultState = {
 
 const shopItems = {
     weapon: [
+		{name:'Старый меч',type:'weapon',str:15,cost 1000},
         {name:'Каменный меч',type:'weapon',str:10,cost:1000},
         {name:'Железный Меч',type:'weapon',str:20,cost:5000},
         {name:'Алмазный Меч',type:'weapon',str:30,cost:20000},
