@@ -53,11 +53,12 @@ const defaultState = {
 
 const shopItems = {
     weapon: [
-		{name:'Старый меч',type:'weapon',str:15,cost 1000},
-        {name:'Каменный меч',type:'weapon',str:10,cost:1000},
-        {name:'Железный Меч',type:'weapon',str:20,cost:5000},
-        {name:'Алмазный Меч',type:'weapon',str:30,cost:20000},
-        {name:'Незеритовый Меч',type:'weapon',str:50,cost:100000}
+		{name:'Старый меч',type:'weapon',str:10,cost 1000},
+        {name:'Каменный меч',type:'weapon',str:20,cost:25000},
+        {name:'Железный Меч',type:'weapon',str:30,cost:500000},
+        {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000},
+        {name:'Незеритовый Меч',type:'weapon',str:50,cost:10000000},
+		{name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000},
     ],
     armor: [
         {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
@@ -812,7 +813,7 @@ addPetXp(pet, amount) {
     }
 },      
     upgradeSwordInShop() {
-        const swordProgression = ['Старый меч', 'Каменный меч', 'Железный Меч', 'Алмазный Меч', 'Незеритовый Меч'];
+        const swordProgression = ['Старый меч', 'Каменный меч', 'Железный Меч', 'Алмазный Меч', 'Незеритовый Меч', 'Меч первопроходца'];
         const currentSword = this.state.inventory.find(i => i.type === 'weapon' && swordProgression.includes(i.name));
         if (!currentSword) return;
 
