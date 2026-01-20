@@ -90,6 +90,8 @@ Object.assign(game, {
                 a = `<button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>`;
             } else if (i.type === 'potion' && i.name === 'GodPotion') {
                 a = `<button class="act-btn" onclick="game.activateGodPotion(${i.id})">АКТИВИРОВАТЬ</button>`;
+            } else if (i.type === 'potion' && i.name === 'Печенька') {
+                a = `<button class="act-btn" onclick="game.activateCookie(${i.id})">АКТИВИРОВАТЬ</button>`;
             }
 
             l.innerHTML += `
@@ -165,6 +167,20 @@ Object.assign(game, {
         this.state.buffs.godpotion.endTime = Date.now() + 86400000;
         this.state.inventory = this.state.inventory.filter(x => x.id !== id);
         this.msg('GodPotion на 24 часа!');
+        this.updateUI();
+    },
+
+    activateCookie(id) {
+        const i = this.state.inventory.find(x => x.id === id);
+        if (!i || i.name !== 'Печенька') return;
+        if (Date.now() < this.state.buffs.cookie.endTime) {
+            this.msg('Уже активен!');
+            return;
+        }
+        // 4 hours = 4 * 60 * 60 * 1000 = 14400000 ms
+        this.state.buffs.cookie.endTime = Date.now() + 14400000;
+        this.state.inventory = this.state.inventory.filter(x => x.id !== id);
+        this.msg('Печенька активирована на 4 часа!');
         this.updateUI();
     },
 
