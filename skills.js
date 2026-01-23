@@ -6,7 +6,8 @@ const skillConfig = {
     fishing: { baseNext: 100, multiplier: 1.5 },
     combat: { baseNext: 100, multiplier: 1.5 },
     foraging: { baseNext: 100, multiplier: 1.5 },
-    dungeons: { baseNext: 200, multiplier: 1.4 } // 1.4 как просил
+    dungeons: { baseNext: 200, multiplier: 1.4 }, // 1.4 как просил
+    skyblock: { baseNext: 1, multiplier: 1.0 }
 };
 
 function initSkills() {
@@ -35,10 +36,17 @@ game.addXp = function(skillKey, amount) {
 
     sk.xp += amount;
 
-    while (sk.xp >= sk.next) {
+    // Use a small epsilon to prevent floating point issues with level ups
+    const epsilon = 0.00001;
+    while (sk.xp >= sk.next - epsilon) {
         sk.lvl++;
         sk.xp -= sk.next;
-        sk.next = Math.floor(sk.next * skillConfig[skillKey].multiplier);
+        // For SkyBlock skill, we want next to stay 1.0 (0.1 increments)
+        if (skillKey !== 'skyblock') {
+            sk.next = Math.floor(sk.next * skillConfig[skillKey].multiplier);
+        } else {
+            sk.next = 1.0;
+        }
         game.msg(`LEVEL UP! ${sk.label} ${sk.lvl}`);
     }
 };
