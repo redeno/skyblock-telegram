@@ -82,26 +82,43 @@ const farmingCrops = {
 
 Object.assign(game, {
     openFarmingMenu() {
-        this.renderFarmingMenu();
+        const list = document.getElementById('farming-list');
+        if (list) {
+            list.innerHTML = `
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,170,0,0.1); border-color:var(--accent);">
+                    <div>
+                        <b style="color:var(--accent)">📜 ТАЛАНТЫ</b><br>
+                        <small style="color:var(--gray)">ПРОКАЧКА ФЕРМЕРА</small>
+                    </div>
+                    <button class="act-btn" style="width:100px; height:40px; font-weight:bold;" onclick="game.showModal('talentsModal')">ОТКРЫТЬ</button>
+                </div>
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                    <b style="color:var(--green)">📅 КВЕСТЫ</b>
+                    <button class="act-btn" style="width:100px; height:40px;" onclick="game.renderQuests()">СМОТРЕТЬ</button>
+                </div>
+                <div id="crops-container"></div>
+            `;
+            this.renderCropsList();
+        }
         this.switchTab('farming-menu');
     },
-    renderFarmingMenu() {
-        const list = document.getElementById('farming-list');
-        if (!list) return;
+    renderCropsList() {
+        const container = document.getElementById('crops-container');
+        if (!container) return;
         
         const farmingLvl = this.state.skills.farming.lvl;
         let html = '';
         Object.values(farmingCrops).forEach(crop => {
             const locked = farmingLvl < crop.level;
             const btnClass = locked ? 'cooldown-btn disabled' : 'cooldown-btn';
-            const status = locked ? `🔒 Требуется LVL ${crop.level}` : 'ВЫБРАТЬ';
+            const status = locked ? `🔒 LVL ${crop.level}` : 'ВЫБРАТЬ';
             const onclick = locked ? '' : `onclick="game.startFarming('${crop.id}')"`;
-            const style = locked ? 'opacity:0.5; cursor:not-allowed' : '';
+            const style = locked ? 'opacity:0.5;' : '';
             html += `
                 <div class="card" style="${style}">
                     <div style="display:flex; justify-content:space-between; align-items:center">
                         <b>${crop.name}</b>
-                        <span>${crop.resource}</span>
+                        <small style="color:var(--gray)">${crop.resource}</small>
                     </div>
                     <button class="${btnClass}" ${onclick} style="margin-top:10px; height:40px">
                         ${status}
@@ -109,7 +126,7 @@ Object.assign(game, {
                 </div>
             `;
         });
-        list.innerHTML = html;
+        container.innerHTML = html;
     },
     startFarming(cropId) {
         const crop = farmingCrops[cropId];
@@ -153,6 +170,21 @@ Object.assign(game, {
         const guaranteed = Math.floor(fortune / 100);
         amount += guaranteed;
         if (Math.random() * 100 < (fortune % 100)) amount++;
+        
+        // Талант на двойной дроп
+        const ddLvl = this.state.farmingTalents?.double_drop?.lvl || 0;
+        if (ddLvl > 0 && Math.random() * 100 < (ddLvl * 2)) {
+            amount *= 2;
+            this.msg('🚜 ТАЛАНТ: Двойной урожай!');
+        }
+
+        // Талант на тройной дроп
+        const tdLvl = this.state.farmingTalents?.triple_drop?.lvl || 0;
+        if (tdLvl > 0 && Math.random() * 100 < (tdLvl * 0.5)) {
+            amount *= 3;
+            this.msg('🚜 ТАЛАНТ: Тройной урожай!');
+        }
+
         const equippedTool = this.state.inventory.find(i => i.equipped && i.type === 'tool' && i.sub_type === 'hoe');
         if (equippedTool) {
             if (equippedTool.triple_chance && Math.random() * 100 < equippedTool.triple_chance) amount *= 3;
@@ -173,6 +205,7 @@ Object.assign(game, {
             }
         }
         this.addMaterial(crop.resource, 'material', amount);
+        this.updateQuestProgress(crop.resource, amount);
 
         // 4. Rare Drops
         let dropMsg = '';
@@ -214,11 +247,17 @@ Object.assign(game, {
         }
         // 5. Finalize
         const coinsGain = 10 * skillLvl; // Simple coin gain per action
-        this.state.coins += coinsGain;
-        const final_xp = total_xp * amount; // Small bonus for big drops, not linear to avoid crazy numbers    
+        
+        // Бонус от овердрайва
+        const overdriveMult = this.state.overdriveActive ? 2 : 1;
+        
+        this.state.coins += coinsGain * overdriveMult;
+        const final_xp = total_xp * amount * overdriveMult; // Small bonus for big drops, not linear to avoid crazy numbers    
         this.addXp('farming', final_xp);
         if (pet) this.addPetXp(pet, final_xp * 0.5);
-        document.getElementById('loc-log').innerText = `+${coinsGain} 💰 | +${final_xp.toFixed(1)} XP | +${amount} ${crop.resource}${jackpotMsg}${dropMsg}`;
+        
+        const multText = overdriveMult > 1 ? ' (x2!)' : '';
+        document.getElementById('loc-log').innerText = `+${coinsGain * overdriveMult}${multText} 💰 | +${final_xp.toFixed(1)}${multText} XP | +${amount * overdriveMult}${multText} ${crop.resource}${jackpotMsg}${dropMsg}`;
         this.updateUI();
     }
 });
