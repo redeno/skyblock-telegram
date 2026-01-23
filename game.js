@@ -435,7 +435,7 @@ const game = {
                 pets: this.state.pets,
                 buffs: this.state.buffs,
                 farmingTalents: this.state.farmingTalents,
-                farmingQuests: this.state.farmingQuests
+                //farmingQuests: this.state.farmingQuests
             }, { onConflict: 'telegram_id' });
         if (error) console.error('Ошибка сохранения:', error);
     },
