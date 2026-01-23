@@ -433,9 +433,9 @@ const game = {
                 inventory: this.state.inventory,
                 minions: this.state.minions,
                 pets: this.state.pets,
-                buffs: this.state.buffs
-                //farmingTalents: this.state.farmingTalents
-                //farmingQuests: this.state.farmingQuests
+                buffs: this.state.buffs,
+                farmingTalents: this.state.farmingTalents,
+                farmingQuests: this.state.farmingQuests
             }, { onConflict: 'telegram_id' });
         if (error) console.error('Ошибка сохранения:', error);
     },
