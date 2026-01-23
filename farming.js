@@ -173,14 +173,14 @@ Object.assign(game, {
         
         // Талант на двойной дроп
         const ddLvl = this.state.farmingTalents?.double_drop?.lvl || 0;
-        if (ddLvl > 0 && Math.random() * 100 < (ddLvl * 2)) {
+        if (ddLvl > 0 && Math.random() * 100 < (ddLvl * 0.3)) {
             amount *= 2;
             this.msg('🚜 ТАЛАНТ: Двойной урожай!');
         }
 
         // Талант на тройной дроп
         const tdLvl = this.state.farmingTalents?.triple_drop?.lvl || 0;
-        if (tdLvl > 0 && Math.random() * 100 < (tdLvl * 0.5)) {
+        if (tdLvl > 0 && Math.random() * 100 < (tdLvl * 0.1)) {
             amount *= 3;
             this.msg('🚜 ТАЛАНТ: Тройной урожай!');
         }
