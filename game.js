@@ -38,6 +38,18 @@ const defaultState = {
     },
     class: '',
     buffs: {godpotion:{endTime:0}, cookie:{endTime:0}},
+    farmingTalents: {
+        fortune: { lvl: 0, max: 25 },
+        exp: { lvl: 0, max: 10 },
+        double_drop: { lvl: 0, max: 10, req: { id: 'fortune', lvl: 3 } },
+        triple_drop: { lvl: 0, max: 10, req: { id: 'double_drop', lvl: 5 } },
+        overdrive: { lvl: 0, max: 1, req: { id: 'fortune', lvl: 5 } },
+        overdrive_duration: { lvl: 0, max: 10, req: { id: 'overdrive', lvl: 1 } }
+    },
+    farmingQuests: {
+        lastReset: 0,
+        active: []
+    },
     inventory: [
         //{id:1,name:'Старый меч',type:'weapon',str:15,equipped:false},
        // {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',equipped:true}
@@ -53,12 +65,12 @@ const defaultState = {
 
 const shopItems = {
     weapon: [
-		{name:'Старый меч',type:'weapon',str:10,cost:1000},
+                {name:'Старый меч',type:'weapon',str:10,cost:1000},
         {name:'Каменный меч',type:'weapon',str:20,cost:25000},
         {name:'Железный Меч',type:'weapon',str:30,cost:500000},
         {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000},
         {name:'Незеритовый Меч',type:'weapon',str:50,cost:10000000},
-		{name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000}
+                {name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000}
     ],
     armor: [
         {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
@@ -66,7 +78,7 @@ const shopItems = {
         {name:'⚔️ Shaddow Assasins броня',type:'armor',def:25,str:25,cc:5,cd:10,cost:1000000},
         {name:'🧠 ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000},
         {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000},
-		{name: '🌾 Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 0,resource_cost: { wheat: 512 }},
+                {name: '🌾 Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 0,resource_cost: { wheat: 512 }},
         {name: '🌾 Melon Armor',type: 'armor',rarity: 'epic',farming_fortune: 125,farming_exp_bonus: 7,cost: 0,resource_cost: { wheat: 64, carrot: 64, potato: 64 }},
         {name: '🌾 Fermento Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 0,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
         {name: '🌾 Helianthus Armor',type: 'armor',rarity: 'legendary',farming_fortune: 300,farming_exp_bonus: 15,cost: 0,resource_cost: { wheat: 99999, carrot: 99999, potato: 99999,pumpkin: 99999,melon: 99999,cane: 99999 }}
@@ -89,7 +101,7 @@ const shopItems = {
         {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:200,cost:5000000},
         {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:300,cost:50000000},
         {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:500,cost:500000000},
-	{name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000}
+        {name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000}
     ],
     foraging_tool: [
         {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:25,cost:5000},
@@ -116,15 +128,15 @@ const shopItems = {
         {name:'🧠 Талисман знаний',type:'accessory',int:5,cost:5000},
         {name:'🧠 Талисман древних знаний',type:'accessory',int:25,mag_amp:1,cost:1000000},
         {name:'🍀 Кольцо опыта',type:'accessory',xp_bonus:1,cost:100000},
-		{name:'🍀 Golden Box Talisman',type:'accessory',gold_bonus:1,cost:5000000},
-		{name:'🌾 Hay Bale Talisman',type:'accessory',farming_fortune:5,cost:100000},
-		{name:'🌾 Farmer Orb Talisman',type:'accessory',farming_exp_bonus:1,cost:10000000},
-		{name:'⚔️ Tiger Talisman',type:'accessory',cc:7,cost:50000000},
-		{name:'🍀 Treasure Artifact',type:'accessory',gold_bonus:5,str:10,cost:300000000}		
+                {name:'🍀 Golden Box Talisman',type:'accessory',gold_bonus:1,cost:5000000},
+                {name:'🌾 Hay Bale Talisman',type:'accessory',farming_fortune:5,cost:100000},
+                {name:'🌾 Farmer Orb Talisman',type:'accessory',farming_exp_bonus:1,cost:10000000},
+                {name:'⚔️ Tiger Talisman',type:'accessory',cc:7,cost:50000000},
+                {name:'🍀 Treasure Artifact',type:'accessory',gold_bonus:5,str:10,cost:300000000}                
     ],
     buff: [
-        {name:'GodPotion',type:'potion',cost:25000000},
-        {name:'Печенька',type:'potion',cost:50000000}
+        {name:'GodPotion',type:'potion',cost:1000000},
+        {name:'Печенька',type:'potion',cost:10000000}
     ],
     pet: [
         {name:'Чешуйница',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'mining',base_bonus:0.1,cost:5000},
@@ -333,6 +345,18 @@ const game = {
                 cookie: { endTime: 0 } 
               };
 
+        this.state.farmingTalents = data.farmingTalents || {
+            fortune: { lvl: 0, max: 25 },
+            exp: { lvl: 0, max: 10 },
+            double_drop: { lvl: 0, max: 10, req: { id: 'fortune', lvl: 3 } },
+            triple_drop: { lvl: 0, max: 10, req: { id: 'double_drop', lvl: 5 } },
+            overdrive: { lvl: 0, max: 1, req: { id: 'fortune', lvl: 5 } },
+            overdrive_duration: { lvl: 0, max: 10, req: { id: 'overdrive', lvl: 1 } }
+        };
+
+        this.state.farmingQuests = data.farmingQuests || { lastReset: 0, active: [] };
+        this.checkDailyQuests();
+
         this.msg('Сохранение успешно загружено!');
     } else {
         // Новый игрок — создаём с дефолтными значениями
@@ -409,12 +433,106 @@ const game = {
                 inventory: this.state.inventory,
                 minions: this.state.minions,
                 pets: this.state.pets,
-                buffs: this.state.buffs
+                buffs: this.state.buffs,
+                farmingTalents: this.state.farmingTalents,
+                farmingQuests: this.state.farmingQuests
             }, { onConflict: 'telegram_id' });
         if (error) console.error('Ошибка сохранения:', error);
     },
 
-    init: async function() {
+    checkDailyQuests() {
+        const now = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000;
+        if (now - this.state.farmingQuests.lastReset > oneDay) {
+            this.state.farmingQuests.lastReset = now;
+            this.state.farmingQuests.active = this.generateQuests();
+        }
+    },
+
+    generateQuests() {
+        const pool = [
+            { id: 'q1', type: 'collect', target: 'Пшеница', goal: 500, reward: 15000 },  // 1 * 30 * 500
+            { id: 'q2', type: 'collect', target: 'Картофель', goal: 300, reward: 18000 }, // 2 * 30 * 300
+            { id: 'q3', type: 'collect', target: 'Морковь', goal: 200, reward: 18000 },   // 3 * 30 * 200
+            { id: 'q4', type: 'collect', target: 'Тыква', goal: 150, reward: 18000 },     // 4 * 30 * 150
+            { id: 'q5', type: 'collect', target: 'Арбуз', goal: 400, reward: 60000 },     // 5 * 30 * 400
+            { id: 'q6', type: 'collect', target: 'Тростник', goal: 600, reward: 108000 }  // 6 * 30 * 600
+        ];
+        return pool.sort(() => 0.5 - Math.random()).slice(0, 3).map(q => ({ ...q, progress: 0, completed: false }));
+    },
+
+    updateQuestProgress(target, amount) {
+        if (!this.state.farmingQuests.active) return;
+        this.state.farmingQuests.active.forEach(q => {
+            if (q.type === 'collect' && q.target === target && !q.completed) {
+                q.progress += amount;
+                
+                // Начисляем опыт за прогресс: (Порядковый номер * 0.5 + 0.5) * 50
+                const cropOrder = {
+                    'Пшеница': 1,
+                    'Картофель': 2,
+                    'Морковь': 3,
+                    'Тыква': 4,
+                    'Арбуз': 5,
+                    'Тростник': 6
+                };
+                const order = cropOrder[target] || 1;
+                const multiplier = 1 + (order - 1) * 0.1;
+                const xpGain = amount * multiplier * 3;
+                this.addXp('farming', xpGain);
+
+                if (q.progress >= q.goal) {
+                    q.completed = true;
+                    this.state.coins += q.reward;
+                    this.addXp('skyblock', 0.5);
+                    this.msg(`✅ КВЕСТ ВЫПОЛНЕН: ${q.target}! +${q.reward}💰`);
+                }
+            }
+        });
+    },
+
+    renderQuests() {
+        const div = document.getElementById('farming-list');
+        if (!div) return;
+        
+        // Проверяем наличие активных квестов и генерируем, если их нет
+        if (!this.state.farmingQuests.active || this.state.farmingQuests.active.length === 0) {
+            this.state.farmingQuests.active = this.generateQuests();
+        }
+
+        let html = `<h3 style="color:var(--accent); text-align:center;">📅 ЕЖЕДНЕВНЫЕ КВЕСТЫ</h3>`;
+        this.state.farmingQuests.active.forEach(q => {
+            const prog = Math.min(100, (q.progress / q.goal) * 100);
+            html += `
+                <div class="card" style="margin-bottom:10px; border-left:4px solid ${q.completed ? 'var(--green)' : 'var(--accent)'}">
+                    <div style="display:flex; justify-content:space-between;">
+                        <b>📦 Собрать: ${q.target}</b>
+                        ${q.completed ? '<b style="color:var(--green)">✅ ГОТОВО</b>' : ''}
+                    </div>
+                    <div style="margin:8px 0;">
+                        <small style="color:var(--gray)">Прогресс: ${q.progress} / ${q.goal}</small>
+                        <div class="hp-bar" style="height:12px; background:rgba(255,255,255,0.1); border-radius:6px; overflow:hidden; margin-top:4px;">
+                            <div class="hp-fill" style="width:${prog}%; height:100%; background:linear-gradient(90deg, var(--accent), #ffaa00); transition:width 0.3s;"></div>
+                        </div>
+                    </div>
+                    ${!q.completed ? `<div style="display:flex; justify-content:space-between; align-items:center;">
+                        <small style="color:var(--gray)">Награда:</small>
+                        <b style="color:var(--yellow)">${q.reward.toLocaleString()} 💰 + ${Math.floor(q.goal * (1 + ({'Пшеница':1,'Картофель':2,'Морковь':3,'Тыква':4,'Арбуз':5,'Тростник':6}[q.target]-1)*0.1) * 3).toLocaleString()} Ферм. XP</b>
+                    </div>` : ''}
+                </div>
+            `;
+        });
+        
+        div.innerHTML = `
+            <div style="padding:10px;">
+                ${html}
+                <button class="act-btn" style="width:100%; height:45px; margin-top:15px; background:var(--bg-secondary);" onclick="game.openFarmingMenu()">
+                    ⬅️ НАЗАД К ГРЯДКАМ
+                </button>
+            </div>
+        `;
+    },
+    async init() {
         this.playerTelegramId = tg.initDataUnsafe?.user?.id;
         if (!this.playerTelegramId) {
             this.msg('Запуск вне Telegram — тестовый режим');
@@ -455,18 +573,16 @@ const game = {
     const cookieEnd = buffs.cookie?.endTime || 0;
 
     if (Date.now() < godEnd) {
-    s.str += 5; s.cc += 5; s.cd += 5; s.mf += 5; s.def += 5; s.int += 5; s.mag_amp += 5;
-    s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
-    s.mining_exp_bonus += 1; s.farming_exp_bonus += 1; s.foraging_exp_bonus += 1; s.fishing_exp_bonus += 1;
-    s.magic_res += 5;
-}
-if (Date.now() < cookieEnd) {
-    s.str += 50; s.cc += 10; s.cd += 25; s.mf += 30; s.def += 30; s.int += 30; s.mag_amp += 5;
-    s.mining_fortune += 50; s.farming_fortune += 50; s.foraging_fortune += 50; s.fishing_fortune += 50;
-    s.mining_exp_bonus += 5; s.farming_exp_bonus += 5; s.foraging_exp_bonus += 5; s.fishing_exp_bonus += 5;
-    s.dungeon_exp_bonus += 5;
-    s.magic_res += 20; s.gold_bonus += 5;
-}
+        s.str += 5; s.cc += 5; s.cd += 5; s.mf += 10; s.def += 5; s.int += 5; s.mag_amp += 5;
+        s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
+        s.xp_bonus += 1; s.magic_res += 5;
+    }
+
+    if (Date.now() < cookieEnd) {
+        s.str += 50; s.cc += 10; s.cd += 25; s.mf += 25; s.def += 50; s.int += 50; s.mag_amp += 5;
+        s.mining_fortune += 25; s.farming_fortune += 25; s.foraging_fortune += 25; s.fishing_fortune += 25;
+        s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25;
+    }
 
         // Tiger Stats
         const tiger = this.state.pets.find(p => p.equipped && p.name === 'Тигр');
@@ -522,6 +638,9 @@ if (Date.now() < cookieEnd) {
             s.farming_fortune += Math.floor(fortune);
         }
         
+        s.farming_fortune += (this.state.farmingTalents?.fortune?.lvl || 0) * 3;
+        s.farming_exp_bonus += (this.state.farmingTalents?.exp?.lvl || 0) * 0.5;
+
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -535,7 +654,7 @@ if (Date.now() < cookieEnd) {
         s.farming_fortune += 3 * (this.state.skills.farming.lvl - 1);
         s.foraging_fortune += 3 * (this.state.skills.foraging.lvl - 1);
         s.fishing_fortune += 3 * (this.state.skills.fishing.lvl - 1);  // ← вот он, вернулся
-	s.mining_exp_bonus += 0.5 * (this.state.skills.mining.lvl - 1);
+        s.mining_exp_bonus += 0.5 * (this.state.skills.mining.lvl - 1);
         s.farming_exp_bonus += 0.5 * (this.state.skills.farming.lvl - 1);
         s.foraging_exp_bonus += 0.5 * (this.state.skills.foraging.lvl - 1);
         s.fishing_exp_bonus += 0.5 * (this.state.skills.fishing.lvl - 1);
@@ -559,22 +678,8 @@ if (Date.now() < cookieEnd) {
         document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
         
         // Расчет SkyBlock уровня
-        let totalXp = 0;
-        // Навыки: 1 уровень = 1 опыт
-        Object.values(this.state.skills).forEach(sk => totalXp += (sk.lvl - 1));
-        
-        // Уникальные питомцы
-        const uniquePets = new Map();
-        this.state.pets.forEach(p => {
-            const rarityWeight = {common:0, rare:1, epic:2, legendary:3}[p.rarity] || 0;
-            const currentScore = 1 + rarityWeight;
-            if (!uniquePets.has(p.name) || uniquePets.get(p.name) < currentScore) {
-                uniquePets.set(p.name, currentScore);
-            }
-        });
-        uniquePets.forEach(score => totalXp += score);
-        
-        document.getElementById('sb-lvl').innerText = (totalXp / 10).toFixed(2);
+        const sbSkill = this.state.skills.skyblock || { lvl: 0, xp: 0 };
+        document.getElementById('sb-lvl').innerText = (sbSkill.lvl + sbSkill.xp).toFixed(2);
         document.getElementById('stats-display').innerHTML = `
             <div class="stat-row">
                 <span class="stat-label">❤️ ЗДОРОВЬЕ</span> <span class="stat-val">${Math.floor(s.hp || 0)}</span>
@@ -1064,10 +1169,77 @@ addPetXp(pet, amount) {
         if (id === 'skillsModal') {
             let html = '';
             Object.values(this.state.skills).forEach(sk => {
-                const progress = (sk.xp / sk.next * 100).toFixed(1);
-                html += `<div class="card"><b>${sk.label} LVL ${sk.lvl}</b><br><small>${Math.floor(sk.xp)} / ${Math.floor(sk.next)} XP</small><div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${progress}%;background:var(--green)"></div></div></div>`;
+                const progress = Math.min(100, (sk.xp / sk.next * 100)).toFixed(1);
+                html += `<div class="card"><b>${sk.label} LVL ${sk.lvl}</b><br><small>${sk.xp.toFixed(2)} / ${sk.next.toFixed(2)} XP</small><div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${progress}%;background:var(--green)"></div></div></div>`;
             });
             document.getElementById('skills-content').innerHTML = html;
+        }
+        if (id === 'talentsModal') {
+            let html = '';
+            const talents = [
+                { id: 'fortune', name: '🌾 Фортуна', desc: 'прирост +3', costBase: 5000, valPrefix: '+', valSuffix: ' фортуны' },
+                { id: 'exp', name: '🌟 Бонус опыта', desc: 'прирост +0.5%', costBase: 10000, valPrefix: '+', valSuffix: '%' },
+                { id: 'double_drop', name: '🚜 Двойной дроп', desc: 'прирост +2%', costBase: 50000, reqText: 'Нужна Фортуна Ур. 3', valPrefix: '+', valSuffix: '%' },
+                { id: 'triple_drop', name: '🚜 Тройной дроп', desc: 'прирост +0.5%', costBase: 150000, reqText: 'Нужен Дв. дроп Ур. 5', valPrefix: '+', valSuffix: '%' },
+                { id: 'overdrive', name: '⚡ Овердрайв', desc: 'Способность: x2 ресурсы', costBase: 500000, reqText: 'Нужна Фортуна Ур. 5', valPrefix: '', valSuffix: ' ур.' },
+                { id: 'overdrive_duration', name: '⏳ Продление', desc: 'прирост +1с', costBase: 250000, reqText: 'Нужен Овердрайв Ур. 1', valPrefix: '+', valSuffix: 'с' }
+            ];
+            talents.forEach(t => {
+                const state = this.state.farmingTalents[t.id];
+                let cost = 0;
+                let resReq = '';
+                
+                // Проверка условий (зависимости)
+                let locked = false;
+                if (state.req) {
+                    const dep = this.state.farmingTalents[state.req.id];
+                    if (dep.lvl < state.req.lvl) locked = true;
+                }
+
+                if (t.id === 'fortune') {
+                    const costs = [5000, 25000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000];
+                    cost = costs[state.lvl] || 500000;
+                    if (state.lvl === 2) resReq = '<br><small style="color:var(--accent)">+ 256 Пшеницы</small>';
+                } else {
+                    cost = t.costBase * (state.lvl + 1);
+                }
+                const isMax = state.lvl >= state.max;
+                
+                // Расчет текущего и следующего значения
+                const getVal = (lvl) => {
+                    if (t.id === 'fortune') return lvl * 3;
+                    if (t.id === 'exp') return (lvl * 0.5).toFixed(1);
+                    if (t.id === 'double_drop') return lvl * 2;
+                    if (t.id === 'triple_drop') return (lvl * 0.5).toFixed(1);
+                    if (t.id === 'overdrive') return lvl;
+                    if (t.id === 'overdrive_duration') return lvl * 1;
+                    return 0;
+                };
+
+                const currentVal = getVal(state.lvl);
+                const nextVal = isMax ? null : getVal(state.lvl + 1);
+                const progressText = isMax 
+                    ? `<span style="color:var(--green)">${t.valPrefix}${currentVal}${t.valSuffix} (МАКС)</span>`
+                    : `<span>${t.valPrefix}${currentVal}${t.valSuffix} ➔ <b style="color:var(--accent)">${t.valPrefix}${nextVal}${t.valSuffix}</b></span>`;
+
+                html += `
+                    <div class="card" style="${locked ? 'opacity:0.5' : ''}">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5px;">
+                            <b>${t.name} (Ур. ${state.lvl}/${state.max})</b>
+                            <small style="color:var(--gray)">${t.desc}</small>
+                        </div>
+                        <div style="margin-bottom:8px;">${progressText}</div>
+                        ${resReq}
+                        ${locked ? `<small style="color:var(--red)">🔒 ${t.reqText}</small>` : ''}
+                        <div class="item-actions" style="margin-top:10px">
+                            <button class="act-btn" ${isMax || locked ? 'disabled' : ''} onclick="game.upgradeTalent('${t.id}')">
+                                ${isMax ? 'МАКСИМУМ' : locked ? 'ЗАБЛОКИРОВАНО' : `УЛУЧШИТЬ (${cost.toLocaleString()}💰)`}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('talents-content').innerHTML = html;
         }
         if (id === 'updatesModal') {
             if (typeof renderUpdates === 'function') {
@@ -1082,6 +1254,61 @@ addPetXp(pet, amount) {
         document.getElementById(id).style.display = 'none';
     },
 
+    upgradeTalent(id) {
+        const t = this.state.farmingTalents[id];
+        if (!t || t.lvl >= t.max) return;
+
+        // Проверка требований
+        if (t.req) {
+            const dep = this.state.farmingTalents[t.req.id];
+            if (dep.lvl < t.req.lvl) {
+                this.msg('Сначала вкачайте ' + t.req.id + ' до ' + t.req.lvl + '!');
+                return;
+            }
+        }
+
+        let cost = 0;
+        let resCost = null;
+
+        if (id === 'fortune') {
+            const costs = [5000, 25000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000];
+            cost = costs[t.lvl] || 500000;
+            if (t.lvl === 2) resCost = { name: 'Пшеница', count: 256 };
+        } else {
+            cost = 10000 * (t.lvl + 1);
+        }
+
+        if (this.state.coins < cost) {
+            this.msg('Не хватает монет!');
+            return;
+        }
+
+        if (resCost) {
+            const invItem = this.state.inventory.find(i => i.name === resCost.name && i.type === 'material');
+            if (!invItem || invItem.count < resCost.count) {
+                this.msg(`Нужно ${resCost.count} ${resCost.name}!`);
+                return;
+            }
+            invItem.count -= resCost.count;
+            if (invItem.count <= 0) {
+                this.state.inventory = this.state.inventory.filter(i => i.id !== invItem.id);
+            }
+        }
+
+        this.state.coins -= cost;
+        t.lvl++;
+        this.addXp('skyblock', 0.01); 
+        this.msg('Талант улучшен!');
+        this.showModal('talentsModal');
+        this.updateUI();
+    },
+
+    initSkills() {
+        if (!this.state.skills.skyblock) {
+            this.state.skills.skyblock = { lvl: 0, xp: 0, next: 1, label: 'SKYBLOCK' };
+        }
+    },
+
     setClass(val) {
         this.state.class = val;
         this.msg(val ? `Класс: ${val.toUpperCase()}` : 'Класс снят');
@@ -1094,6 +1321,47 @@ addPetXp(pet, amount) {
         const titles = {mine:'ШАХТА',farm:'ФЕРМА',fish:'РЫБАЛКА',forage:'ЛЕС'};
         document.getElementById('loc-title').innerText = titles[loc] || 'ЛОКАЦИЯ';
         document.getElementById('loc-log').innerText = '';
+
+        // Показываем кнопку способности, если она вкачана
+        const extraBtn = document.getElementById('extra-action-container');
+        if (loc === 'farm' && this.state.farmingTalents?.overdrive?.lvl > 0) {
+            if (!extraBtn) {
+                const card = document.querySelector('#action-loc .card');
+                const div = document.createElement('div');
+                div.id = 'extra-action-container';
+                div.style.marginTop = '10px';
+                div.innerHTML = `
+                    <button id="overdrive-btn" class="act-btn" style="width:100%; height:45px; background:var(--blue); font-weight:bold;" onclick="game.useOverdrive()">
+                        ⚡ ОВЕРДРАЙВ (10с)
+                    </button>
+                `;
+                card.appendChild(div);
+            } else {
+                extraBtn.style.display = 'block';
+            }
+        } else if (extraBtn) {
+            extraBtn.style.display = 'none';
+        }
+    },
+
+    useOverdrive() {
+        if (this.state.overdriveActive) {
+            this.msg('Уже активно!');
+            return;
+        }
+        const extraDuration = (this.state.farmingTalents?.overdrive_duration?.lvl || 0) * 1000;
+        const totalDuration = 10000 + extraDuration;
+        
+        this.state.overdriveActive = true;
+        this.msg(`⚡ ОВЕРДРАЙВ АКТИВИРОВАН! (x2 на ${totalDuration/1000} сек)`);
+        const btn = document.getElementById('overdrive-btn');
+        if (btn) btn.disabled = true;
+        
+        setTimeout(() => {
+            this.state.overdriveActive = false;
+            this.msg('Овердрайв закончился');
+            if (btn) btn.disabled = false;
+        }, totalDuration);
     },
 
     executeAction() {
