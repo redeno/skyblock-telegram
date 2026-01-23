@@ -2,7 +2,7 @@
 
 const skillConfig = {
     mining: { baseNext: 100, multiplier: 1.4 },
-    farming: { baseNext: 100, multiplier: 1.3 },
+    farming: { baseNext: 100, multiplier: 1.4 },
     fishing: { baseNext: 100, multiplier: 1.4 },
     combat: { baseNext: 100, multiplier: 1.4 },
     foraging: { baseNext: 100, multiplier: 1.4 },
