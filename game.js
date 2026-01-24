@@ -55,10 +55,25 @@ const defaultState = {
        // {id:2,name:'Начальная кирка',type:'tool',sub_type:'pickaxe',equipped:true}
     ],
     minions: [
-        {id:'wheat',name:'ПШЕНИЧНЫЙ',cost:50,count:0,stored:0,rate:0.5},
-        {id:'fish',name:'РЫБНЫЙ',cost:75,count:0,stored:0,rate:0.75},
-        {id:'oak',name:'ДУБОВЫЙ',cost:100,count:0,stored:0,rate:1.0},
-        {id:'coal',name:'УГОЛЬНЫЙ',cost:125,count:0,stored:0,rate:1.5}
+        // Mining
+        {id:'coal', name:'УГОЛЬНЫЙ', category:'mining', resource:'Уголь', lvl:1, stored:0},
+        // Farming
+        {id:'wheat', name:'ПШЕНИЧНЫЙ', category:'farming', resource:'Пшеница', lvl:1, stored:0},
+        {id:'potato', name:'КАРТОФЕЛЬНЫЙ', category:'farming', resource:'Картофель', lvl:0, stored:0},
+        {id:'carrot', name:'МОРКОВНЫЙ', category:'farming', resource:'Морковь', lvl:0, stored:0},
+        {id:'cane', name:'ТРОСТНИКОВЫЙ', category:'farming', resource:'Тростник', lvl:0, stored:0},
+        {id:'pumpkin', name:'ТЫКВЕННЫЙ', category:'farming', resource:'Тыква', lvl:0, stored:0},
+        {id:'melon', name:'АРБУЗНЫЙ', category:'farming', resource:'Арбуз', lvl:0, stored:0},
+        {id:'mushroom', name:'ГРИБНОЙ', category:'farming', resource:'Грибы', lvl:0, stored:0},
+        {id:'wart', name:'АДСКИЙ', category:'farming', resource:'Адский нарост', lvl:0, stored:0},
+        // Fishing
+        {id:'fish', name:'РЫБНЫЙ', category:'fishing', resource:'Рыба', lvl:1, stored:0},
+        // Foraging
+        {id:'oak', name:'ДУБОВЫЙ', category:'foraging', resource:'Дерево', lvl:1, stored:0},
+        // Combat
+        {id:'zombie', name:'ЗОМБИ', category:'combat', resource:'Гнилая плоть', lvl:0, stored:0},
+        {id:'skeleton', name:'СКЕЛЕТ', category:'combat', resource:'Кость', lvl:0, stored:0},
+        {id:'spider', name:'ПАУК', category:'combat', resource:'Нить', lvl:0, stored:0}
     ],
     pets: []
 };
@@ -78,10 +93,10 @@ const shopItems = {
         {name:'⚔️ Shaddow Assasins броня',type:'armor',def:25,str:25,cc:5,cd:10,cost:1000000},
         {name:'🧠 ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000},
         {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000},
-                {name: '🌾 Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 20000,resource_cost: { wheat: 512 }},
-        {name: '🌾 Melon Armor',type: 'armor',rarity: 'epic',farming_fortune: 125,farming_exp_bonus: 7,cost: 500000,resource_cost: { wheat: 64, carrot: 64, potato: 64 }},
-        {name: '🌾 Fermento Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 45000000,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
-        {name: '🌾 Helianthus Armor',type: 'armor',rarity: 'legendary',farming_fortune: 300,farming_exp_bonus: 15,cost: 9999999999999,resource_cost: { wheat: 99999, carrot: 99999, potato: 99999,pumpkin: 99999,melon: 99999,cane: 99999 }}
+                {name: '🌾 Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 0,resource_cost: { wheat: 512 }},
+        {name: '🌾 Melon Armor',type: 'armor',rarity: 'epic',farming_fortune: 125,farming_exp_bonus: 7,cost: 0,resource_cost: { wheat: 64, carrot: 64, potato: 64 }},
+        {name: '🌾 Fermento Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 0,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
+        {name: '🌾 Helianthus Armor',type: 'armor',rarity: 'legendary',farming_fortune: 300,farming_exp_bonus: 15,cost: 0,resource_cost: { wheat: 99999, carrot: 99999, potato: 99999,pumpkin: 99999,melon: 99999,cane: 99999 }}
     ],
     tool: [], // Deprecated, split into subsections
     mining_tool: [
@@ -175,7 +190,7 @@ const shopItems = {
     ]
 };
 
-const petRarityBonuses = {
+window.petRarityBonuses = {
     common: 0.1,
     rare: 0.2,
     epic: 0.3,
@@ -238,18 +253,18 @@ const farmingArmorTiers = [
     }
 ];
 const minionConfig = {
-    1: { cost: 50, resources: 0, storage: 32 },
-    2: { cost: 250, resources: 32, storage: 40 },
-    3: { cost: 1250, resources: 128, storage: 48 },
-    4: { cost: 6250, resources: 512, storage: 56 },
-    5: { cost: 31250, resources: 1024, storage: 64 },
-    6: { cost: 156250, resources: 8, resourceName: 'Стог Пшена', storage: 72 },
-    7: { cost: 781250, resources: 32, resourceName: 'Стог Пшена', storage: 80 },
-    8: { cost: 3906250, resources: 64, resourceName: 'Стог Пшена', storage: 88 },
-    9: { cost: 19531250, resources: 128, resourceName: 'Стог Пшена', storage: 96 },
-    10: { cost: 97656250, resources: 256, resourceName: 'Стог Пшена', storage: 104 },
-    11: { cost: 488281250, resources: 1, resourceName: 'Апгрейд Пшена', storage: 112 },
-    12: { cost: 0, resources: 8, resourceName: 'Изумруд', storage: 120 },
+    1: { cost: 0, resources: 32, storage: 32 },
+    2: { cost: 500, resources: 64, storage: 40 },
+    3: { cost: 2500, resources: 128, storage: 48 },
+    4: { cost: 12500, resources: 256, storage: 56 },
+    5: { cost: 62500, resources: 512, storage: 64 },
+    6: { cost: 312500, resources: 1024, storage: 72 },
+    7: { cost: 1562500, resources: 2048, storage: 80 },
+    8: { cost: 7812500, resources: 4096, storage: 88 },
+    9: { cost: 39062500, resources: 8192, storage: 96 },
+    10: { cost: 100000000, resources: 16384, storage: 104 },
+    11: { cost: 0, resources: 8, resourceName: 'Изумруд', storage: 112 },
+    12: { cost: 0, resources: 16, resourceName: 'Изумруд', storage: 120 },
     13: { cost: 0, resources: 1, resourceName: 'Сингулярность Пшена', storage: 128 },
     14: { cost: 0, resources: 2, resourceName: 'Сингулярность Пшена', storage: 256 },
     15: { cost: 0, resources: 4, resourceName: 'Сингулярность Пшена', storage: 512 }
@@ -323,10 +338,16 @@ const game = {
             ? data.inventory 
             : defaultState.inventory;
 
-        // Миньоны
-        this.state.minions = Array.isArray(data.minions) 
-            ? data.minions 
-            : defaultState.minions;
+        // Миньоны — с миграцией
+        const savedMinions = Array.isArray(data.minions) ? data.minions : [];
+        this.state.minions = defaultState.minions.map(defM => {
+            const saved = savedMinions.find(s => s.id === defM.id);
+            if (saved) {
+                // Сохраняем прогресс (уровень и накопленное)
+                return { ...defM, lvl: saved.lvl, stored: saved.stored };
+            }
+            return defM;
+        });
 
         // Питомцы
         this.state.pets = Array.isArray(data.pets) 
@@ -565,7 +586,7 @@ const game = {
                  'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus', 'hp', 'dungeon_exp_bonus'].forEach(st => {
                     if (i[st]) s[st] += i[st];
                 });
-                if (i.dynamic_str === 'midas') s.str += Math.floor(25 * (this.state.coins / 1000000));
+                if (i.dynamic_str === 'midas') s.str += Math.floor(Math.min(this.state.coins, 1000000000) / 1000000) * 0.5;
             }
         });
         const buffs = this.state.buffs || {};
@@ -947,30 +968,37 @@ addPetXp(pet, amount) {
         const hasCookie = Date.now() < this.state.buffs.cookie.endTime;
         
         this.state.minions.forEach(m => {
-            if (m.count > 0) {
-                const lvl = m.lvl || 0;
-                const config = minionConfig[lvl] || { storage: 32 };
-                let yieldPerMin = (lvl || 1) * 40;
-                if (hasCookie) yieldPerMin *= 1.25;
+            if (m.lvl > 0) {
+                const config = minionConfig[m.lvl] || { storage: 32 };
+                // Базовая скорость: 1 ресурс в минуту + 10% за уровень
+                let speed = 1 + (m.lvl - 1) * 0.1; 
+                if (hasCookie) speed *= 1.25;
                 
                 // Накапливаем ресурсы
-                m.stored = Math.min(config.storage || 32, (m.stored || 0) + (1 / 60)); // 1 единица ресурса в минуту
-                m.yieldPerUnit = yieldPerMin; // Сохраняем цену за единицу
+                m.stored = Math.min(config.storage || 32, (m.stored || 0) + (speed / 60)); 
             }
         });
-        this.updateUI();
+        // Обновляем UI только если открыта вкладка миньонов (оптимизация)
+        if (document.getElementById('minions')?.classList.contains('active')) {
+            this.renderMinions();
+            // Обновляем кошелек миньонов... а, его больше нет, но текст остался
+            const coinText = document.getElementById('m-coins-val');
+            if(coinText) coinText.innerText = Math.floor(this.state.coins).toLocaleString();
+        }
     },
 
     collectMinion(i) {
         const m = this.state.minions[i];
-        if (!m || !m.stored) return;
-        const count = Math.floor(m.stored);
-        const pricePerUnit = m.yieldPerUnit || ((m.lvl || 1) * 40);
-        const total = count * pricePerUnit;
+        if (!m || !m.stored || m.stored < 1) return;
         
-        this.state.coins += total;
-        m.stored = 0;
-        this.msg(`Собрано ${count} шт. на сумму ${total.toLocaleString()} 💰 с миньона ${m.name}`);
+        const count = Math.floor(m.stored);
+        if (count <= 0) return;
+
+        // Добавляем ресурс в инвентарь
+        this.addMaterial(m.resource, 'material', count);
+        
+        m.stored -= count;
+        this.msg(`Собрано: ${count} ${m.resource}`);
         this.updateUI();
     },
 
@@ -981,14 +1009,9 @@ addPetXp(pet, amount) {
         if (nextLvl > 15) { this.msg('Максимальный уровень!'); return; }
         
         const config = minionConfig[nextLvl];
-        const minionResourceMap = {
-            wheat: 'Пшеница',
-            fish: 'Рыба',
-            oak: 'Дерево',
-            coal: 'Уголь'
-        };
-        const baseResName = minionResourceMap[m.id] || 'Пшеница';
-        const resName = config.resourceName || baseResName;
+        // Используем ресурс миньона или спец. ресурс из конфига (например, для 11+ уровней)
+        const resName = config.resourceName || m.resource;
+        
         const resItem = this.state.inventory.find(i => i.name === resName && i.type === 'material');
         const resCount = resItem ? resItem.count || 0 : 0;
         
@@ -996,61 +1019,112 @@ addPetXp(pet, amount) {
             this.msg(`Недостаточно монет! Нужно ${config.cost.toLocaleString()} 💰`);
             return;
         }
-        if (resCount < config.resources) {
-            this.msg(`Недостаточно ресурсов! Нужно ${config.resources} ${resName} (у вас ${resCount})`);
-            return;
-        }
         
-        this.state.coins -= config.cost;
-        if (resItem) {
-            resItem.count -= config.resources;
-            if (resItem.count <= 0) {
-                this.state.inventory = this.state.inventory.filter(i => i.id !== resItem.id);
+        // Проверяем ресурсы только если требуются
+        if (config.resources > 0) {
+            if (resCount < config.resources) {
+                this.msg(`Недостаточно ресурсов! Нужно ${config.resources} ${resName} (у вас ${resCount})`);
+                return;
+            }
+             // Списываем ресурсы
+            if (resItem) {
+                resItem.count -= config.resources;
+                if (resItem.count <= 0) {
+                    this.state.inventory = this.state.inventory.filter(i => i.id !== resItem.id);
+                }
             }
         }
         
+        this.state.coins -= config.cost;
         m.lvl = nextLvl;
-        m.count = 1;
+        if (m.lvl === 1 && m.stored === undefined) m.stored = 0; 
+        
         this.msg(`Миньон ${m.name} улучшен до ${nextLvl} уровня!`);
         this.updateUI();
+    },
+
+    filterMinions(cat) {
+        this.lastMinionFilter = cat;
+        this.renderMinions();
     },
 
     renderMinions() {
         const l = document.getElementById('minions-list');
         if (!l) return;
-        l.innerHTML = '';
-        this.state.minions.forEach((m, idx) => {
-            const lvl = m.lvl || 0;
-            const nextLvl = lvl + 1;
-            const config = minionConfig[lvl] || { storage: 32 };
-            const nextConfig = minionConfig[nextLvl];
-            
-            const minionResourceMap = {
-                wheat: 'Пшеница',
-                fish: 'Рыба',
-                oak: 'Дерево',
-                coal: 'Уголь'
-            };
-            const baseResName = minionResourceMap[m.id] || 'Пшеница';
+        
+        const currentCat = this.lastMinionFilter || 'farming'; 
+        
+        // Вкладки категорий
+        const categories = [
+            {id:'farming', label:'🌾 ФЕРМА'},
+            {id:'mining', label:'⛏️ ШАХТА'},
+            {id:'foraging', label:'🌲 ЛЕС'},
+            {id:'fishing', label:'🎣 РЫБАЛКА'},
+            {id:'combat', label:'⚔️ БОЙ'}
+        ];
 
-            let upgradeBtn = '';
-            if (nextConfig) {
-                const resName = nextConfig.resourceName || baseResName;
-                upgradeBtn = `<button class="act-btn" onclick="game.upgradeMinion('${m.id}')">АП (${nextLvl} LVL): ${nextConfig.cost.toLocaleString()}💰 + ${nextConfig.resources} ${resName}</button>`;
-            }
-
-            l.innerHTML += `
-                <div class="card">
-                    <div style="display:flex;justify-content:space-between">
-                        <b>${m.name} (LVL ${lvl})</b>
-                        <span style="color:var(--accent)">${Math.floor(m.stored || 0)} / ${config.storage || 32} шт.</span>
-                    </div>
-                    <div class="item-actions">
-                        <button class="act-btn" onclick="game.collectMinion(${idx})">СОБРАТЬ</button>
-                        ${upgradeBtn}
-                    </div>
-                </div>`;
+        let html = '<div class="inv-tabs">';
+        categories.forEach(c => {
+            const active = c.id === currentCat ? 'active' : '';
+            html += `<div class="inv-tab ${active}" onclick="game.filterMinions('${c.id}')">${c.label}</div>`;
         });
+        html += '</div>';
+
+        // Фильтрация
+        const list = this.state.minions.filter(m => m.category === currentCat);
+        
+        if (list.length === 0) {
+            html += '<div class="card" style="text-align:center;color:#666">Нет миньонов в этой категории</div>';
+        } else {
+            list.forEach((m) => {
+                // Ищем оригинальный индекс для actions
+                const originalIdx = this.state.minions.findIndex(x => x.id === m.id);
+                
+                const lvl = m.lvl || 0;
+                const nextLvl = lvl + 1;
+                const config = minionConfig[lvl] || { storage: 32 };
+                const nextConfig = minionConfig[nextLvl];
+                
+                if (lvl === 0) {
+                    // ЗАБЛОКИРОВАН (нужно купить 1 уровень за ресурсы)
+                    const resCost = minionConfig[1].resources;
+                    html += `
+                        <div class="card" style="opacity:0.8; border:1px dashed #555">
+                            <div style="display:flex;justify-content:space-between">
+                                <b>🔒 ${m.name}</b>
+                                <small>Ресурс: ${m.resource}</small>
+                            </div>
+                            <div class="item-actions" style="margin-top:10px">
+                                <button class="act-btn" onclick="game.upgradeMinion('${m.id}')">КУПИТЬ (${resCost} ${m.resource})</button>
+                            </div>
+                        </div>`;
+                } else {
+                    // РАЗБЛОКИРОВАН
+                    let upgradeBtn = '';
+                    if (nextConfig) {
+                        const resName = nextConfig.resourceName || m.resource;
+                        upgradeBtn = `<button class="act-btn" onclick="game.upgradeMinion('${m.id}')">АП (${nextLvl} LVL): ${nextConfig.cost.toLocaleString()}💰 + ${nextConfig.resources} ${resName}</button>`;
+                    } else {
+                         upgradeBtn = `<small style="color:var(--green); font-weight:bold">МАКС УРОВЕНЬ</small>`;
+                    }
+
+                    html += `
+                        <div class="card">
+                            <div style="display:flex;justify-content:space-between">
+                                <b>${m.name} (LVL ${lvl})</b>
+                                <span style="color:var(--accent)">${Math.floor(m.stored || 0)} / ${config.storage} шт.</span>
+                            </div>
+                            <small style="color:#888">Добывает: ${m.resource}</small>
+                            <div class="item-actions">
+                                <button class="act-btn" onclick="game.collectMinion(${originalIdx})">СОБРАТЬ</button>
+                                ${upgradeBtn}
+                            </div>
+                        </div>`;
+                }
+            });
+        }
+        
+        l.innerHTML = html;
     },
 
     shopFilter(t,e){
@@ -1117,7 +1191,51 @@ addPetXp(pet, amount) {
 
     buyShopItem(t,x){
         const i = shopItems[t][x];
+
+        // Проверка ресурсов
+        if (i.resource_cost) {
+            const resourceMap = {
+                wheat: 'Пшеница',
+                carrot: 'Морковь',
+                potato: 'Картофель',
+                pumpkin: 'Тыква',
+                melon: 'Арбуз',
+                cane: 'Тростник'
+            };
+
+            for (const [key, amount] of Object.entries(i.resource_cost)) {
+                const resName = resourceMap[key] || key;
+                const invItem = this.state.inventory.find(inv => inv.name === resName && inv.type === 'material');
+                if (!invItem || (invItem.count || 0) < amount) {
+                    this.msg(`Не хватает ресурсов: ${resName} (${amount} шт.)`);
+                    return;
+                }
+            }
+        }
+
         if(this.state.coins < i.cost){this.msg('Не хватает монет!');return;}
+
+        // Списание ресурсов
+        if (i.resource_cost) {
+            const resourceMap = {
+                wheat: 'Пшеница',
+                carrot: 'Морковь',
+                potato: 'Картофель',
+                pumpkin: 'Тыква',
+                melon: 'Арбуз',
+                cane: 'Тростник'
+            };
+            for (const [key, amount] of Object.entries(i.resource_cost)) {
+                const resName = resourceMap[key] || key;
+                const invItem = this.state.inventory.find(inv => inv.name === resName && inv.type === 'material');
+                if (invItem) {
+                    invItem.count -= amount;
+                    if (invItem.count <= 0) {
+                        this.state.inventory = this.state.inventory.filter(inv => inv.id !== invItem.id);
+                    }
+                }
+            }
+        }
 
         if (t.endsWith('_tool')) {
             // Удаляем предыдущий тир при улучшении
@@ -1177,17 +1295,21 @@ addPetXp(pet, amount) {
         if (id === 'talentsModal') {
             let html = '';
             const talents = [
-                { id: 'fortune', name: '🌾 Фортуна', desc: 'прирост +3', costBase: 5000, valPrefix: '+', valSuffix: ' фортуны' },
-                { id: 'exp', name: '🌟 Бонус опыта', desc: 'прирост +0.5%', costBase: 10000, valPrefix: '+', valSuffix: '%' },
-                { id: 'double_drop', name: '🚜 Двойной дроп', desc: 'прирост +2%', costBase: 50000, reqText: 'Нужна Фортуна Ур. 3', valPrefix: '+', valSuffix: '%' },
-                { id: 'triple_drop', name: '🚜 Тройной дроп', desc: 'прирост +0.5%', costBase: 150000, reqText: 'Нужен Дв. дроп Ур. 5', valPrefix: '+', valSuffix: '%' },
-                { id: 'overdrive', name: '⚡ Овердрайв', desc: 'Способность: x2 ресурсы', costBase: 500000, reqText: 'Нужна Фортуна Ур. 5', valPrefix: '', valSuffix: ' ур.' },
-                { id: 'overdrive_duration', name: '⏳ Продление', desc: 'прирост +1с', costBase: 250000, reqText: 'Нужен Овердрайв Ур. 1', valPrefix: '+', valSuffix: 'с' }
+                { id: 'fortune', name: '🌾 Фортуна', desc: 'прирост +3', valPrefix: '+', valSuffix: ' фортуны' },
+                { id: 'exp', name: '🌟 Бонус опыта', desc: 'прирост +0.5%', valPrefix: '+', valSuffix: '%' },
+                { id: 'double_drop', name: '🚜 Двойной дроп', desc: 'прирост +2%', reqText: 'Нужна Фортуна Ур. 3', valPrefix: '+', valSuffix: '%' },
+                { id: 'triple_drop', name: '🚜 Тройной дроп', desc: 'прирост +0.5%', reqText: 'Нужен Дв. дроп Ур. 5', valPrefix: '+', valSuffix: '%' },
+                { id: 'overdrive', name: '⚡ Овердрайв', desc: 'Способность: x2 ресурсы', reqText: 'Нужна Фортуна Ур. 5', valPrefix: '', valSuffix: ' ур.' },
+                { id: 'overdrive_duration', name: '⏳ Продление', desc: 'прирост +1с', reqText: 'Нужен Овердрайв Ур. 1', valPrefix: '+', valSuffix: 'с' }
             ];
             talents.forEach(t => {
                 const state = this.state.farmingTalents[t.id];
-                let cost = 0;
+                const costInfo = this.getTalentCost(t.id, state.lvl);
+                let cost = costInfo.coins;
                 let resReq = '';
+                if (costInfo.count > 0) {
+                    resReq = `<br><small style="color:var(--accent)">+ ${costInfo.count.toLocaleString()} ${costInfo.res}</small>`;
+                }
                 
                 // Проверка условий (зависимости)
                 let locked = false;
@@ -1196,13 +1318,6 @@ addPetXp(pet, amount) {
                     if (dep.lvl < state.req.lvl) locked = true;
                 }
 
-                if (t.id === 'fortune') {
-                    const costs = [5000, 25000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000];
-                    cost = costs[state.lvl] || 500000;
-                    if (state.lvl === 2) resReq = '<br><small style="color:var(--accent)">+ 256 Пшеницы</small>';
-                } else {
-                    cost = t.costBase * (state.lvl + 1);
-                }
                 const isMax = state.lvl >= state.max;
                 
                 // Расчет текущего и следующего значения
@@ -1254,6 +1369,27 @@ addPetXp(pet, amount) {
         document.getElementById(id).style.display = 'none';
     },
 
+    getTalentCost(talentId, lvl) {
+        // Экспоненциальная прогрессия стоимости (макс 100М монет)
+        // Каждый уровень требует ресурсы + монеты
+        const baseCosts = {
+            fortune: { base: 10000, mult: 2.5, res: 'Пшеница', resBase: 64, resMult: 2 },
+            exp: { base: 15000, mult: 2.2, res: 'Картофель', resBase: 32, resMult: 2 },
+            double_drop: { base: 100000, mult: 2.8, res: 'Морковь', resBase: 128, resMult: 2 },
+            triple_drop: { base: 500000, mult: 3.0, res: 'Тыква', resBase: 256, resMult: 2 },
+            overdrive: { base: 1000000, mult: 3.5, res: 'Арбуз', resBase: 512, resMult: 2 },
+            overdrive_duration: { base: 750000, mult: 3.2, res: 'Грибы', resBase: 256, resMult: 2 }
+        };
+        const cfg = baseCosts[talentId] || { base: 50000, mult: 2, res: 'Пшеница', resBase: 64, resMult: 2 };
+        
+        let coins = Math.floor(cfg.base * Math.pow(cfg.mult, lvl));
+        coins = Math.min(coins, 100000000); // Макс 100М
+        
+        const resCount = Math.floor(cfg.resBase * Math.pow(cfg.resMult, lvl));
+        
+        return { coins, res: cfg.res, count: resCount };
+    },
+
     upgradeTalent(id) {
         const t = this.state.farmingTalents[id];
         if (!t || t.lvl >= t.max) return;
@@ -1267,29 +1403,22 @@ addPetXp(pet, amount) {
             }
         }
 
-        let cost = 0;
-        let resCost = null;
-
-        if (id === 'fortune') {
-            const costs = [5000, 25000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000];
-            cost = costs[t.lvl] || 500000;
-            if (t.lvl === 2) resCost = { name: 'Пшеница', count: 256 };
-        } else {
-            cost = 10000 * (t.lvl + 1);
-        }
+        const costInfo = this.getTalentCost(id, t.lvl);
+        const cost = costInfo.coins;
 
         if (this.state.coins < cost) {
             this.msg('Не хватает монет!');
             return;
         }
 
-        if (resCost) {
-            const invItem = this.state.inventory.find(i => i.name === resCost.name && i.type === 'material');
-            if (!invItem || invItem.count < resCost.count) {
-                this.msg(`Нужно ${resCost.count} ${resCost.name}!`);
+        // Проверка ресурсов
+        if (costInfo.count > 0) {
+            const invItem = this.state.inventory.find(i => i.name === costInfo.res && i.type === 'material');
+            if (!invItem || invItem.count < costInfo.count) {
+                this.msg(`Нужно ${costInfo.count.toLocaleString()} ${costInfo.res}!`);
                 return;
             }
-            invItem.count -= resCost.count;
+            invItem.count -= costInfo.count;
             if (invItem.count <= 0) {
                 this.state.inventory = this.state.inventory.filter(i => i.id !== invItem.id);
             }
@@ -1325,19 +1454,29 @@ addPetXp(pet, amount) {
         // Показываем кнопку способности, если она вкачана
         const extraBtn = document.getElementById('extra-action-container');
         if (loc === 'farm' && this.state.farmingTalents?.overdrive?.lvl > 0) {
+            const now = Date.now();
+            const cd = this.state.overdriveCooldown || 0;
+            const onCooldown = now < cd;
+            const btnText = onCooldown ? `⏳ КД (${Math.ceil((cd - now)/60000)}м)` : '⚡ ОВЕРДРАЙВ (10с)';
+            
             if (!extraBtn) {
                 const card = document.querySelector('#action-loc .card');
                 const div = document.createElement('div');
                 div.id = 'extra-action-container';
                 div.style.marginTop = '10px';
                 div.innerHTML = `
-                    <button id="overdrive-btn" class="act-btn" style="width:100%; height:45px; background:var(--blue); font-weight:bold;" onclick="game.useOverdrive()">
-                        ⚡ ОВЕРДРАЙВ (10с)
+                    <button id="overdrive-btn" class="act-btn" style="width:100%; height:45px; background:var(--blue); font-weight:bold;" onclick="game.useOverdrive()" ${onCooldown ? 'disabled' : ''}>
+                        ${btnText}
                     </button>
                 `;
                 card.appendChild(div);
             } else {
                 extraBtn.style.display = 'block';
+                const btn = document.getElementById('overdrive-btn');
+                if (btn) {
+                    btn.innerText = btnText;
+                    btn.disabled = onCooldown;
+                }
             }
         } else if (extraBtn) {
             extraBtn.style.display = 'none';
@@ -1349,18 +1488,37 @@ addPetXp(pet, amount) {
             this.msg('Уже активно!');
             return;
         }
+
+        const now = Date.now();
+        if (this.state.overdriveCooldown && now < this.state.overdriveCooldown) {
+             const left = Math.ceil((this.state.overdriveCooldown - now) / 1000);
+             this.msg(`Овердрайв на перезарядке! (${left}с)`);
+             return;
+        }
+
         const extraDuration = (this.state.farmingTalents?.overdrive_duration?.lvl || 0) * 1000;
         const totalDuration = 10000 + extraDuration;
         
         this.state.overdriveActive = true;
+        this.state.overdriveCooldown = now + 300000; // 5 минут КД
+
         this.msg(`⚡ ОВЕРДРАЙВ АКТИВИРОВАН! (x2 на ${totalDuration/1000} сек)`);
         const btn = document.getElementById('overdrive-btn');
-        if (btn) btn.disabled = true;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = '⚡ АКТИВНО!';
+        }
         
         setTimeout(() => {
             this.state.overdriveActive = false;
             this.msg('Овердрайв закончился');
-            if (btn) btn.disabled = false;
+            // Обновляем кнопку, если мы всё ещё на экране
+            const currentBtn = document.getElementById('overdrive-btn');
+            if (currentBtn) {
+                // Она останется disabled, так как КД 5 минут, а действие ~10-20 сек
+                const timeLeft = Math.ceil((this.state.overdriveCooldown - Date.now()) / 60000);
+                currentBtn.innerText = `⏳ КД (${timeLeft}м)`;
+            }
         }, totalDuration);
     },
 
