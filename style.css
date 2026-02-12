@@ -1,242 +1,60 @@
-:root {
-    --bg: #0b0b0d;
-    --card: #16161a;
-    --accent: #ffaa00;
-    --blue: #5555ff;
-    --red: #ff5555;
-    --gray: #aaaaaa;
-    --white: #ffffff;
-    --green: #55ff55;
-    --dark-gray: #333333;
+// skills.js — множитель 1.4 для данжей
+
+const skillConfig = {
+    mining: { baseNext: 100, multiplier: 1.4 },
+    farming: { baseNext: 100, multiplier: 1.4 },
+    fishing: { baseNext: 100, multiplier: 1.4 },
+    combat: { baseNext: 100, multiplier: 1.4 },
+    foraging: { baseNext: 100, multiplier: 1.4 },
+    dungeons: { baseNext: 200, multiplier: 1.4 }, // 1.4 как просил
+    skyblock: { baseNext: 1, multiplier: 1.0 },
+};
+
+function initSkills() {
+    Object.keys(skillConfig).forEach((key) => {
+        if (!game.state.skills[key]) {
+            game.state.skills[key] = {
+                lvl: 1,
+                xp: 0,
+                next: skillConfig[key].baseNext,
+                label: key === "dungeons" ? "ДАНЖИ" : key.toUpperCase(),
+            };
+        } else {
+            if (game.state.skills[key].next === undefined) {
+                game.state.skills[key].next = skillConfig[key].baseNext;
+            }
+        }
+    });
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    background: var(--bg);
-    color: var(--white);
-    font-family: 'Courier New', monospace;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
+game.addXp = function (skillKey, amount) {
+    if (!game.state.skills[skillKey]) return;
 
-#header-ui {
-    padding: 10px 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(0,0,0,0.8);
-    border-bottom: 2px solid var(--dark-gray);
-    flex-wrap: wrap;
-    gap: 5px;
-}
+    const sk = game.state.skills[skillKey];
+    const petBonus = game.calcPetBonus ? game.calcPetBonus(skillKey) : 0;
+    amount *= 1 + petBonus / 100;
 
-.sb-lvl-badge {
-    color: var(--accent);
-    font-weight: bold;
-    border: 1px solid var(--accent);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
+    sk.xp += amount;
 
-.top-btn {
-    background: var(--dark-gray);
-    border: 1px solid #555;
-    color: white;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    cursor: pointer;
-}
+    // Use a small epsilon to prevent floating point issues with level ups
+    const epsilon = 0.00001;
+    while (sk.xp >= sk.next - epsilon) {
+        sk.lvl++;
+        sk.xp -= sk.next;
+        // For SkyBlock skill, we want next to stay 1.0 (0.1 increments)
+        if (skillKey !== "skyblock") {
+            sk.next = Math.floor(sk.next * skillConfig[skillKey].multiplier);
+        } else {
+            sk.next = 1.0;
+        }
+        game.msg(`LEVEL UP! ${sk.label} ${sk.lvl}`);
+    }
+};
 
-#viewport {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-    padding-bottom: 90px;
-}
+game.initSkills = function () {
+    initSkills();
+};
 
-.screen {
-    display: none;
-}
-
-.screen.active {
-    display: block;
-}
-
-.card {
-    background: var(--card);
-    border: 2px solid var(--dark-gray);
-    padding: 15px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-}
-
-.stat-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    font-size: 0.85rem;
-}
-
-.stat-label {
-    color: var(--gray);
-}
-
-.stat-val {
-    color: var(--red);
-    font-weight: bold;
-}
-
-.cooldown-btn {
-    position: relative;
-    width: 100%;
-    height: 55px;
-    background: #222;
-    border: 2px solid #444;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    overflow: hidden;
-    margin-top: 5px;
-    border-radius: 8px;
-}
-
-.progress-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 0%;
-    background: rgba(255, 170, 0, 0.3);
-}
-
-.portal-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-}
-
-.portal-node {
-    background: #222;
-    border: 2px solid #444;
-    padding: 15px;
-    text-align: center;
-    font-size: 0.9rem;
-    cursor: pointer;
-    border-radius: 8px;
-}
-
-#nav {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    height: 70px;
-    background: #1c1c1c;
-    display: flex;
-    border-top: 3px solid var(--dark-gray);
-}
-
-.nav-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #777;
-    font-size: 0.7rem;
-    background: none;
-    border: none;
-    text-transform: uppercase;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.nav-item.active {
-    color: var(--accent);
-    background: #252525;
-}
-
-.nav-item span {
-    font-size: 1.4rem;
-    margin-bottom: 2px;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.95);
-    z-index: 1000;
-    padding: 20px;
-    overflow-y: auto;
-}
-
-.hp-bar {
-    width: 100%;
-    height: 12px;
-    background: #333;
-    border: 1px solid #555;
-    margin: 8px 0;
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.hp-fill {
-    height: 100%;
-    background: var(--red);
-    transition: width 0.2s;
-}
-
-.inv-tabs {
-    display: flex;
-    gap: 5px;
-    overflow-x: auto;
-    margin-bottom: 15px;
-    padding-bottom: 5px;
-}
-
-.inv-tab {
-    background: #222;
-    border: 1px solid #444;
-    color: #888;
-    padding: 6px 12px;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.inv-tab.active {
-    border-color: var(--accent);
-    color: var(--white);
-}
-
-.item-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 5px;
-    margin-top: 8px;
-}
-
-.act-btn {
-    background: #333;
-    border: 1px solid #555;
-    color: white;
-    padding: 4px;
-    font-size: 0.65rem;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.changelog-section {
-    margin-bottom: 25px;
-}
-
-.changelog-section h3 {
-    color: var(--accent);
-    margin-bottom: 8px;
+if (game.state && game.state.skills) {
+    initSkills();
 }
