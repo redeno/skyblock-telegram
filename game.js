@@ -9,13 +9,19 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const defaultState = {
     coins: 500000000,
     nextItemId: 10,
+    mayor: {
+        current: 'dodoll',
+        lastSwitch: Date.now(),
+        rotation: ['dodoll', 'waifu625', 'necronchik']
+    },
     skills: {
         mining: {lvl:1,xp:0,next:100,label:'ШАХТА'},
         farming: {lvl:1,xp:0,next:100,label:'ФЕРМА'},
         fishing: {lvl:1,xp:0,next:100,label:'РЫБАЛКА'},
         combat: {lvl:1,xp:0,next:100,label:'БОЙ'},
         foraging: {lvl:1,xp:0,next:100,label:'ЛЕС'},
-        dungeons: {lvl:1,xp:0,next:200,label:'ДАНЖИ'}
+        dungeons: {lvl:1,xp:0,next:200,label:'ДАНЖИ'},
+        skyblock: {lvl:1,xp:0,next:1,label:'SKYBLOCK'}
     },
     stats: {
         hp:100,
@@ -46,6 +52,15 @@ const defaultState = {
         overdrive: { lvl: 0, max: 1, req: { id: 'fortune', lvl: 5 } },
         overdrive_duration: { lvl: 0, max: 10, req: { id: 'overdrive', lvl: 1 } }
     },
+    foragingTalents: {
+        fortune: { lvl: 0, max: 25 },
+        exp: { lvl: 0, max: 10 },
+        double_drop: { lvl: 0, max: 10, req: { id: 'fortune', lvl: 3 } },
+        triple_drop: { lvl: 0, max: 10, req: { id: 'double_drop', lvl: 5 } },
+        instant_chop: { lvl: 0, max: 5, req: { id: 'fortune', lvl: 5 } }
+    },
+    activeEvent: null,
+    eventEndTime: 0,
     farmingQuests: {
         lastReset: 0,
         active: []
@@ -56,7 +71,19 @@ const defaultState = {
     ],
     minions: [
         // Mining
-        {id:'coal', name:'УГОЛЬНЫЙ', category:'mining', resource:'Уголь', lvl:1, stored:0},
+        {id:'cobble', name:'БУЛЫЖНИКОВЫЙ', category:'mining', resource:'Булыжник', lvl:1, stored:0},
+        {id:'coal', name:'УГОЛЬНЫЙ', category:'mining', resource:'Уголь', lvl:0, stored:0},
+        {id:'copper', name:'МЕДНЫЙ', category:'mining', resource:'Медь', lvl:0, stored:0},
+        {id:'iron', name:'ЖЕЛЕЗНЫЙ', category:'mining', resource:'Железо', lvl:0, stored:0},
+        {id:'gold', name:'ЗОЛОТОЙ', category:'mining', resource:'Золото', lvl:0, stored:0},
+        {id:'lapis', name:'ЛАЗУРИТОВЫЙ', category:'mining', resource:'Лазурит', lvl:0, stored:0},
+        {id:'redstone', name:'РЕДСТОУНОВЫЙ', category:'mining', resource:'Редстоун', lvl:0, stored:0},
+        {id:'mithril', name:'МИФРИЛОВЫЙ', category:'mining', resource:'Мифрил', lvl:0, stored:0},
+        {id:'ruby', name:'РУБИНОВЫЙ', category:'mining', resource:'Рубин', lvl:0, stored:0},
+        {id:'sapphire', name:'САПФИРОВЫЙ', category:'mining', resource:'Сапфир', lvl:0, stored:0},
+        {id:'diamond', name:'АЛМАЗНЫЙ', category:'mining', resource:'Алмаз', lvl:0, stored:0},
+        {id:'quartz', name:'КВАРЦЕВЫЙ', category:'mining', resource:'Кварц', lvl:0, stored:0},
+        {id:'obsidian', name:'ОБСИДИАНОВЫЙ', category:'mining', resource:'Обсидиан', lvl:0, stored:0},
         // Farming
         {id:'wheat', name:'ПШЕНИЧНЫЙ', category:'farming', resource:'Пшеница', lvl:1, stored:0},
         {id:'potato', name:'КАРТОФЕЛЬНЫЙ', category:'farming', resource:'Картофель', lvl:0, stored:0},
@@ -67,9 +94,27 @@ const defaultState = {
         {id:'mushroom', name:'ГРИБНОЙ', category:'farming', resource:'Грибы', lvl:0, stored:0},
         {id:'wart', name:'АДСКИЙ', category:'farming', resource:'Адский нарост', lvl:0, stored:0},
         // Fishing
-        {id:'fish', name:'РЫБНЫЙ', category:'fishing', resource:'Рыба', lvl:1, stored:0},
+        {id:'karas', name:'КАРАСЁВЫЙ', category:'fishing', resource:'Карась', lvl:1, stored:0},
+        {id:'okun', name:'ОКУНЁВЫЙ', category:'fishing', resource:'Окунь', lvl:0, stored:0},
+        {id:'shuka', name:'ЩУЧИЙ', category:'fishing', resource:'Щука', lvl:0, stored:0},
+        {id:'treska', name:'ТРЕСКОВЫЙ', category:'fishing', resource:'Треска', lvl:0, stored:0},
+        {id:'losos', name:'ЛОСОСЁВЫЙ', category:'fishing', resource:'Лосось', lvl:0, stored:0},
+        {id:'tunec', name:'ТУНЦОВЫЙ', category:'fishing', resource:'Тунец', lvl:0, stored:0},
+        {id:'caveFish', name:'ПЕЩЕРНЫЙ', category:'fishing', resource:'Пещерная Рыба', lvl:0, stored:0},
+        {id:'magmaFish', name:'МАГМОВЫЙ', category:'fishing', resource:'Магмовая Рыба', lvl:0, stored:0},
         // Foraging
-        {id:'oak', name:'ДУБОВЫЙ', category:'foraging', resource:'Дерево', lvl:1, stored:0},
+        {id:'oak', name:'ДУБОВЫЙ', category:'foraging', resource:'Дуб', lvl:1, stored:0},
+        {id:'birch', name:'БЕРЁЗОВЫЙ', category:'foraging', resource:'Берёза', lvl:0, stored:0},
+        {id:'aspen', name:'ОСИНОВЫЙ', category:'foraging', resource:'Осина', lvl:0, stored:0},
+        {id:'spruce', name:'ЕЛОВЫЙ', category:'foraging', resource:'Ель', lvl:0, stored:0},
+        {id:'darkoak', name:'ТЁМНОДУБОВЫЙ', category:'foraging', resource:'Тёмный Дуб', lvl:0, stored:0},
+        {id:'acacia', name:'АКАЦИЕВЫЙ', category:'foraging', resource:'Акация', lvl:0, stored:0},
+        {id:'darkelm', name:'ВЯЗ ТЬМЫ', category:'foraging', resource:'Вяз Тьмы', lvl:0, stored:0},
+        {id:'blackwillow', name:'ЧЁРНОИВОВЫЙ', category:'foraging', resource:'Чёрная Ива', lvl:0, stored:0},
+        {id:'lifetree', name:'ДРЕВОЖИЗНИ', category:'foraging', resource:'Древо Жизни', lvl:0, stored:0},
+        {id:'crystalcedar', name:'КРИСТАЛКЕДРОВЫЙ', category:'foraging', resource:'Кристальный Кедр', lvl:0, stored:0},
+        {id:'starseq', name:'ЗВЁЗДНОСЕКВОЙНЫЙ', category:'foraging', resource:'Звёздная Секвойя', lvl:0, stored:0},
+        {id:'moonash', name:'ЛУННОЯСЕНЕВЫЙ', category:'foraging', resource:'Лунный Ясень', lvl:0, stored:0},
         // Combat
         {id:'zombie', name:'ЗОМБИ', category:'combat', resource:'Гнилая плоть', lvl:0, stored:0},
         {id:'skeleton', name:'СКЕЛЕТ', category:'combat', resource:'Кость', lvl:0, stored:0},
@@ -92,48 +137,71 @@ const shopItems = {
         {name:'🛡️ Алмазная броня',type:'armor',def:20,cost:50000},
         {name:'⚔️ Shaddow Assasins броня',type:'armor',def:25,str:25,cc:5,cd:10,cost:1000000},
         {name:'🧠 ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000},
-        {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000},
-                {name: '🌾 Farmer Armor',type: 'armor',rarity: 'rare',farming_fortune: 50,farming_exp_bonus: 5,cost: 0,resource_cost: { wheat: 512 }},
-        {name: '🌾 Melon Armor',type: 'armor',rarity: 'epic',farming_fortune: 125,farming_exp_bonus: 7,cost: 0,resource_cost: { wheat: 64, carrot: 64, potato: 64 }},
-        {name: '🌾 Fermento Armor',type: 'armor',rarity: 'legendary',farming_fortune: 200,farming_exp_bonus: 10,cost: 0,resource_cost: { wheat: 512, carrot: 512, potato: 512,pumpkin: 512,melon: 512,cane: 512 }},
-        {name: '🌾 Helianthus Armor',type: 'armor',rarity: 'legendary',farming_fortune: 300,farming_exp_bonus: 15,cost: 0,resource_cost: { wheat: 99999, carrot: 99999, potato: 99999,pumpkin: 99999,melon: 99999,cane: 99999 }}
+        {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000}
+    ],
+    mining_armor: [
+        {name:'⛏️ Шахтёрская броня',type:'armor',mining_fortune:50,mining_exp_bonus:5,def:5,cost:50000,desc:'Базовая броня шахтёра. +50 фортуны, +5% опыта шахты, +5 защиты.'},
+        {name:'⛏️ Рудокопная броня',type:'armor',mining_fortune:125,mining_exp_bonus:7,def:10,cost:500000,desc:'Улучшенная шахтёрская экипировка. +125 фортуны, +7% опыта шахты, +10 защиты.'},
+        {name:'⛏️ Мифриловая броня',type:'armor',mining_fortune:200,mining_exp_bonus:10,def:20,mf:10,cost:5000000,desc:'Редкая мифриловая броня. +200 фортуны, +10% опыта шахты, +20 защиты, +10 удачи.'},
+        {name:'⛏️ Кристальная броня',type:'armor',mining_fortune:300,mining_exp_bonus:15,def:30,mf:20,cost:50000000,desc:'Легендарная кристальная броня. +300 фортуны, +15% опыта шахты, +30 защиты, +20 удачи.'}
+    ],
+    farming_armor: [
+        {name:'🌾 Фермерская броня',type:'armor',farming_fortune:50,farming_exp_bonus:5,cost:50000,desc:'Базовая фермерская броня. +50 фортуны, +5% опыта фермы.'},
+        {name:'🌾 Арбузная броня',type:'armor',farming_fortune:125,farming_exp_bonus:7,cost:500000,desc:'Улучшенная фермерская экипировка. +125 фортуны, +7% опыта фермы.'},
+        {name:'🌾 Ферменто броня',type:'armor',farming_fortune:200,farming_exp_bonus:10,cost:5000000,desc:'Редкая ферментированная броня. +200 фортуны, +10% опыта фермы.'},
+        {name:'🌾 Гелиантус броня',type:'armor',farming_fortune:300,farming_exp_bonus:15,cost:50000000,desc:'Легендарная солнечная броня. +300 фортуны, +15% опыта фермы.'}
+    ],
+    fishing_armor: [
+        {name:'🎣 Рыбацкая броня',type:'armor',fishing_fortune:50,fishing_exp_bonus:5,cost:50000,desc:'Базовая рыбацкая экипировка. +50 фортуны, +5% опыта рыбалки.'},
+        {name:'🎣 Морская броня',type:'armor',fishing_fortune:125,fishing_exp_bonus:7,def:8,cost:500000,desc:'Улучшенная морская экипировка. +125 фортуны, +7% опыта рыбалки, +8 защиты.'},
+        {name:'🎣 Броня глубин',type:'armor',fishing_fortune:200,fishing_exp_bonus:10,def:15,hp:25,cost:5000000,desc:'Редкая броня из глубин океана. +200 фортуны, +10% опыта рыбалки, +15 защиты, +25 ХП.'},
+        {name:'🎣 Левиафанова броня',type:'armor',fishing_fortune:300,fishing_exp_bonus:15,def:25,hp:50,cost:50000000,desc:'Легендарная броня из чешуи Левиафана. +300 фортуны, +15% опыта рыбалки, +25 защиты, +50 ХП.'}
+    ],
+    foraging_armor: [
+        {name:'🌲 Лесная броня',type:'armor',foraging_fortune:50,foraging_exp_bonus:5,cost:50000,desc:'Базовая лесная экипировка. +50 фортуны, +5% опыта леса.'},
+        {name:'🌲 Броня лесника',type:'armor',foraging_fortune:125,foraging_exp_bonus:7,str:10,cost:500000,desc:'Улучшенная лесная экипировка. +125 фортуны, +7% опыта леса, +10 силы.'},
+        {name:'🌲 Древесная броня',type:'armor',foraging_fortune:200,foraging_exp_bonus:10,str:20,def:10,cost:5000000,desc:'Редкая древесная броня. +200 фортуны, +10% опыта леса, +20 силы, +10 защиты.'},
+        {name:'🌲 Броня Друида',type:'armor',foraging_fortune:300,foraging_exp_bonus:15,str:30,def:20,hp:30,cost:50000000,desc:'Легендарная броня Друида. +300 фортуны, +15% опыта леса, +30 силы, +20 защиты, +30 ХП.'}
     ],
     tool: [], // Deprecated, split into subsections
     mining_tool: [
-        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:25,cost:5000},
-        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:50,cost:25000},
-        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:100,cost:125000},
-        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,cost:750000},
-        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:200,cost:5000000},
-        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:300,cost:50000000},
-        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:500,cost:500000000}
+        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:500},
+        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:30,cost:2500},
+        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:60,double_chance:10,cost:15000},
+        {name:'Золотая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:100,double_chance:25,cost:50000},
+        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,triple_chance:10,cost:250000},
+        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:250,triple_chance:20,cost:1000000},
+        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:400,triple_chance:30,cost:10000000},
+        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:600,triple_chance:50,cost:100000000},
+        {name:'Разрушитель Границ',type:'tool',sub_type:'pickaxe',mining_fortune:1000,triple_chance:70,cost:5000000000}
     ],
     farming_tool: [
-        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:25,cost:5000},
-        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:50,cost:25000},
-        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:100,cost:125000},
-        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:750000},
-        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:200,cost:5000000},
-        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:300,cost:50000000},
-        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:500,cost:500000000},
+        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:500},
+        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:30,cost:2500},
+        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:60,cost:15000},
+        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:250000},
+        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:250,cost:1000000},
+        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:400,cost:10000000},
+        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:600,cost:100000000},
         {name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000}
     ],
     foraging_tool: [
-        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:25,cost:5000},
-        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:50,cost:25000},
-        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:100,cost:125000},
-        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:750000},
-        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:200,cost:5000000},
-        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:300,cost:50000000},
-        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:500,cost:500000000}
+        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:500},
+        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:30,cost:2500},
+        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:60,cost:15000},
+        {name:'Золотой топор',type:'tool',sub_type:'axe',foraging_fortune:100,cost:50000},
+        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:250000},
+        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:250,cost:1000000},
+        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:400,cost:10000000},
+        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:600,cost:100000000}
     ],
     fishing_tool: [
-        {name:'Обычная удочка',type:'tool',sub_type:'rod',fishing_fortune:5,cost:2000},
-        {name:'Необыкновенная удочка',type:'tool',sub_type:'rod',fishing_fortune:10,cost:100000},
-        // Fast Rod removed as requested
-        {name:'Великая удочка',type:'tool',sub_type:'rod',fishing_fortune:30,cost:25000000},
-        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_fortune:50,triple_chance:25,cost:100000000},
-        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_fortune:100,triple_chance:25,cost:500000000}
+        {name:'Старая удочка',type:'tool',sub_type:'rod',fishing_fortune:10,cost:500},
+        {name:'Укрепленная удочка',type:'tool',sub_type:'rod',fishing_fortune:30,cost:5000},
+        {name:'Удочка мастера',type:'tool',sub_type:'rod',fishing_fortune:70,cost:50000},
+        {name:'Морская удочка',type:'tool',sub_type:'rod',fishing_fortune:150,cost:500000},
+        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_fortune:300,triple_chance:25,cost:100000000},
+        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_fortune:500,triple_chance:25,cost:500000000}
     ],
     accessory: [ 
         {name:'🍀 Талисман удачи',type:'accessory',mf:10,cost:10000},
@@ -186,6 +254,36 @@ const shopItems = {
         xp: 0,
         next: 100,
         cost: 1000000
+        },
+        {
+        name: 'Бобёр',
+        type: 'pet',
+        skill: 'foraging',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 25000
+        },
+        {
+        name: 'Дельфин',
+        type: 'pet',
+        skill: 'fishing',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 25000
+        },
+        {
+        name: 'Черепаха',
+        type: 'pet',
+        skill: 'fishing',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 100000
         }
     ]
 };
@@ -206,8 +304,8 @@ const petUpgradeCosts = {
 const petResourceMap = {
     mining: 'Уголь',
     farming: 'Пшеница',
-    fishing: 'Рыба',
-    foraging: 'Дерево',
+    fishing: 'Карась',
+    foraging: 'Дуб',
     combat: 'Фрагмент из Данжа' 
 };
 const farmingArmorTiers = [
@@ -375,7 +473,19 @@ const game = {
             overdrive_duration: { lvl: 0, max: 10, req: { id: 'overdrive', lvl: 1 } }
         };
 
+        this.state.foragingTalents = data.foragingTalents || {
+            fortune: { lvl: 0, max: 25 },
+            exp: { lvl: 0, max: 10 },
+            double_drop: { lvl: 0, max: 10, req: { id: 'fortune', lvl: 3 } },
+            triple_drop: { lvl: 0, max: 10, req: { id: 'double_drop', lvl: 5 } },
+            instant_chop: { lvl: 0, max: 5, req: { id: 'fortune', lvl: 5 } }
+        };
+
+        this.state.activeEvent = data.activeEvent || null;
+        this.state.eventEndTime = data.eventEndTime || 0;
+
         this.state.farmingQuests = data.farmingQuests || { lastReset: 0, active: [] };
+        this.state.mayor = data.mayor || defaultState.mayor;
         this.checkDailyQuests();
 
         this.msg('Сохранение успешно загружено!');
@@ -456,7 +566,11 @@ const game = {
                 pets: this.state.pets,
                 buffs: this.state.buffs,
                 farmingTalents: this.state.farmingTalents,
-                farmingQuests: this.state.farmingQuests
+                foragingTalents: this.state.foragingTalents,
+                activeEvent: this.state.activeEvent,
+                eventEndTime: this.state.eventEndTime,
+                farmingQuests: this.state.farmingQuests,
+                mayor: this.state.mayor
             }, { onConflict: 'telegram_id' });
         if (error) console.error('Ошибка сохранения:', error);
     },
@@ -559,6 +673,7 @@ const game = {
             this.msg('Запуск вне Telegram — тестовый режим');
         }
         await this.loadFromSupabase();
+        if (typeof this.initMayor === 'function') this.initMayor();
         setInterval(() => this.minionTick(), 1000);
         setInterval(() => this.saveToSupabase(), 10000);
         tg.expand?.();
@@ -578,7 +693,7 @@ const game = {
     },
 
     calcStats(inDungeon = false) {
-        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0};
+        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0};
         this.state.inventory.forEach(i => {
             if (i.equipped) {
                 ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
@@ -662,6 +777,43 @@ const game = {
         s.farming_fortune += (this.state.farmingTalents?.fortune?.lvl || 0) * 3;
         s.farming_exp_bonus += (this.state.farmingTalents?.exp?.lvl || 0) * 0.5;
 
+        s.foraging_fortune += (this.state.foragingTalents?.fortune?.lvl || 0) * 3;
+        s.foraging_exp_bonus += (this.state.foragingTalents?.exp?.lvl || 0) * 0.5;
+
+        const beaver = this.state.pets.find(p => p.equipped && p.name === 'Бобёр');
+        if (beaver) {
+            const lvl = beaver.lvl || 1;
+            let fortuneMax = 20;
+            if (beaver.rarity === 'rare') fortuneMax = 40;
+            if (beaver.rarity === 'epic') fortuneMax = 60;
+            if (beaver.rarity === 'legendary') fortuneMax = 100;
+            const fortune = 1 + (fortuneMax - 1) * ((lvl - 1) / 99);
+            s.foraging_fortune += Math.floor(fortune);
+        }
+
+        const dolphin = this.state.pets.find(p => p.equipped && p.name === 'Дельфин');
+        if (dolphin) {
+            const lvl = dolphin.lvl || 1;
+            let fortuneMax = 20;
+            if (dolphin.rarity === 'rare') fortuneMax = 40;
+            if (dolphin.rarity === 'epic') fortuneMax = 60;
+            if (dolphin.rarity === 'legendary') fortuneMax = 100;
+            const fortune = 1 + (fortuneMax - 1) * ((lvl - 1) / 99);
+            s.fishing_fortune += Math.floor(fortune);
+        }
+
+        const turtle = this.state.pets.find(p => p.equipped && p.name === 'Черепаха');
+        if (turtle) {
+            const lvl = turtle.lvl || 1;
+            let defMax = 15;
+            if (turtle.rarity === 'rare') defMax = 30;
+            if (turtle.rarity === 'epic') defMax = 50;
+            if (turtle.rarity === 'legendary') defMax = 80;
+            const def = 1 + (defMax - 1) * ((lvl - 1) / 99);
+            s.def += Math.floor(def);
+            s.fishing_fortune += Math.floor(def * 0.5);
+        }
+
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -679,6 +831,22 @@ const game = {
         s.farming_exp_bonus += 0.5 * (this.state.skills.farming.lvl - 1);
         s.foraging_exp_bonus += 0.5 * (this.state.skills.foraging.lvl - 1);
         s.fishing_exp_bonus += 0.5 * (this.state.skills.fishing.lvl - 1);
+
+        if (typeof this.getMayorBonuses === 'function') {
+            const mb = this.getMayorBonuses();
+            if (mb.mf_bonus) s.mf += mb.mf_bonus;
+            if (mb.gold_bonus) s.gold_bonus += mb.gold_bonus;
+            if (mb.dungeon_xp_bonus) s.dungeon_exp_bonus += mb.dungeon_xp_bonus;
+            if (mb.dungeon_dmg_bonus) s.dungeon_damage += mb.dungeon_dmg_bonus;
+            if (mb.craft_xp_bonus) s.xp_bonus += mb.craft_xp_bonus;
+        }
+
+        const mayorPet = this.state.pets?.find(p => p.mayorPet && p.equipped);
+        if (mayorPet) {
+            const rarityBonus = window.petRarityBonuses?.[mayorPet.rarity] || 0.1;
+            s.xp_bonus += 5 * rarityBonus * (mayorPet.lvl || 1) / 10;
+        }
+
         return s;
     },
 
@@ -786,6 +954,9 @@ const game = {
             `;
         }
         document.getElementById('stats-display').innerHTML += petHtml;
+        if (typeof this.updateMayorBuffDisplay === 'function') {
+            this.updateMayorBuffDisplay();
+        }
         this.renderMinions();
         if (typeof this.renderInvList === 'function') {
             this.renderInvList(this.lastFilter);
@@ -862,20 +1033,34 @@ const game = {
     },
 
     finishAction() {
-        // Delegate to new farming system if applicable
-                if (this.currentLoc === 'farm' && typeof this.processFarmingAction === 'function' && (this.state.currentCrop || this.state.stats?.currentCrop)) {
+        if (this.currentLoc === 'farm' && typeof this.processFarmingAction === 'function' && (this.state.currentCrop || this.state.stats?.currentCrop)) {
             if (!this.state.currentCrop) this.state.currentCrop = this.state.stats.currentCrop;
             this.processFarmingAction();
+            return;
+        }
+
+        if (this.currentLoc === 'mine' && typeof this.processMiningAction === 'function') {
+            this.processMiningAction();
+            return;
+        }
+
+        if (this.currentLoc === 'forage' && typeof this.processForagingAction === 'function' && this.currentForagingIsland) {
+            this.processForagingAction();
+            return;
+        }
+
+        if (this.currentLoc === 'fish' && typeof this.processFishingAction === 'function') {
+            this.processFishingAction();
             return;
         }
 
         const map = {mine:'mining',farm:'farming',fish:'fishing',forage:'foraging',combat:'combat'};
         const skillKey = map[this.currentLoc];
         const skill = this.state.skills[skillKey];
-        const gain = 15 * skill.lvl;
-        this.state.coins += gain;
-
         const s = this.calcStats(false);
+        const goldMul = 1 + (s.gold_bonus || 0) / 100;
+        const gain = Math.floor(15 * skill.lvl * goldMul);
+        this.state.coins += gain;
 
         const base_xp = 20;
         let exp_bonus = 0;
@@ -1054,7 +1239,6 @@ addPetXp(pet, amount) {
         
         const currentCat = this.lastMinionFilter || 'farming'; 
         
-        // Вкладки категорий
         const categories = [
             {id:'farming', label:'🌾 ФЕРМА'},
             {id:'mining', label:'⛏️ ШАХТА'},
@@ -1063,7 +1247,16 @@ addPetXp(pet, amount) {
             {id:'combat', label:'⚔️ БОЙ'}
         ];
 
-        let html = '<div class="inv-tabs">';
+        let html = '';
+        const mayorBonuses = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
+        if (mayorBonuses.auto_collect_minions) {
+            const mayor = typeof this.getCurrentMayor === 'function' ? this.getCurrentMayor() : null;
+            html += `<div class="card" style="border-color:${mayor?.color || 'var(--accent)'};text-align:center;padding:8px;">
+                <small style="color:var(--green);font-weight:bold;">${mayor?.icon || ''} АВТОСБОР АКТИВЕН (${mayor?.name || 'МЭР'})</small>
+            </div>`;
+        }
+
+        html += '<div class="inv-tabs">';
         categories.forEach(c => {
             const active = c.id === currentCat ? 'active' : '';
             html += `<div class="inv-tab ${active}" onclick="game.filterMinions('${c.id}')">${c.label}</div>`;
@@ -1164,7 +1357,29 @@ addPetXp(pet, amount) {
             return;
         }
 
-        // Инструменты: показываем только следующий тир
+        if (t.endsWith('_armor')) {
+            const mb = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
+            const discount = mb.shop_discount || 0;
+            items.forEach((i,x)=>{
+                const owned = this.state.inventory.some(inv => inv.name === i.name);
+                let price = i.cost;
+                if (discount) price = Math.floor(price * (1 - discount / 100));
+                const statsText = this.getItemDesc(i);
+                let html = `<div class="card" ${owned?'style="opacity:0.5;border-color:var(--green)"':''}><b>${i.name}</b>`;
+                if (i.desc) html += `<br><small style="color:var(--gray)">${i.desc}</small>`;
+                html += `<br><small style="color:var(--green)">${statsText}</small>`;
+                if (owned) {
+                    html += `<div style="text-align:center;color:var(--green);margin-top:6px;font-weight:bold;">УЖЕ КУПЛЕНО</div>`;
+                } else {
+                    const priceText = discount ? `<s>${i.cost.toLocaleString()}</s> ${price.toLocaleString()}` : price.toLocaleString();
+                    html += `<div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${priceText}💰)</button></div>`;
+                }
+                html += `</div>`;
+                l.innerHTML += html;
+            });
+            return;
+        }
+
         if (t.endsWith('_tool')) {
             let bestIdx = -1;
             items.forEach((item, idx) => {
@@ -1213,7 +1428,12 @@ addPetXp(pet, amount) {
             }
         }
 
-        if(this.state.coins < i.cost){this.msg('Не хватает монет!');return;}
+        let finalCost = i.cost;
+        if (typeof this.getMayorBonuses === 'function') {
+            const mb = this.getMayorBonuses();
+            if (mb.shop_discount) finalCost = Math.floor(finalCost * (1 - mb.shop_discount / 100));
+        }
+        if(this.state.coins < finalCost){this.msg('Не хватает монет!');return;}
 
         // Списание ресурсов
         if (i.resource_cost) {
@@ -1248,7 +1468,7 @@ addPetXp(pet, amount) {
             }
         }
 
-        this.state.coins -= i.cost;
+        this.state.coins -= finalCost;
         if (i.type === 'pet') {
             this.state.pets.push({...i, equipped:false});
             this.msg(`${i.name} куплен!`);
@@ -1356,6 +1576,61 @@ addPetXp(pet, amount) {
             });
             document.getElementById('talents-content').innerHTML = html;
         }
+        if (id === 'foragingTalentsModal') {
+            let html = '';
+            const talents = [
+                { id: 'fortune', name: '🌲 Фортуна', desc: 'прирост +3', valPrefix: '+', valSuffix: ' фортуны' },
+                { id: 'exp', name: '🌟 Бонус опыта', desc: 'прирост +0.5%', valPrefix: '+', valSuffix: '%' },
+                { id: 'double_drop', name: '🪓 Двойной дроп', desc: 'прирост +2%', reqText: 'Нужна Фортуна Ур. 3', valPrefix: '+', valSuffix: '%' },
+                { id: 'triple_drop', name: '🪓 Тройной дроп', desc: 'прирост +0.5%', reqText: 'Нужен Дв. дроп Ур. 5', valPrefix: '+', valSuffix: '%' },
+                { id: 'instant_chop', name: '⚡ Мгновенная рубка', desc: 'прирост +0.6%', reqText: 'Нужна Фортуна Ур. 5', valPrefix: '+', valSuffix: '%' }
+            ];
+            talents.forEach(t => {
+                const state = this.state.foragingTalents[t.id];
+                const costInfo = this.getForagingTalentCost(t.id, state.lvl);
+                let cost = costInfo.coins;
+                let resReq = '';
+                if (costInfo.count > 0) {
+                    resReq = `<br><small style="color:var(--accent)">+ ${costInfo.count.toLocaleString()} ${costInfo.res}</small>`;
+                }
+                let locked = false;
+                if (state.req) {
+                    const dep = this.state.foragingTalents[state.req.id];
+                    if (dep.lvl < state.req.lvl) locked = true;
+                }
+                const isMax = state.lvl >= state.max;
+                const getVal = (lvl) => {
+                    if (t.id === 'fortune') return lvl * 3;
+                    if (t.id === 'exp') return (lvl * 0.5).toFixed(1);
+                    if (t.id === 'double_drop') return lvl * 2;
+                    if (t.id === 'triple_drop') return (lvl * 0.5).toFixed(1);
+                    if (t.id === 'instant_chop') return (lvl * 0.6).toFixed(1);
+                    return 0;
+                };
+                const currentVal = getVal(state.lvl);
+                const nextVal = isMax ? null : getVal(state.lvl + 1);
+                const progressText = isMax 
+                    ? `<span style="color:var(--green)">${t.valPrefix}${currentVal}${t.valSuffix} (МАКС)</span>`
+                    : `<span>${t.valPrefix}${currentVal}${t.valSuffix} ➔ <b style="color:var(--accent)">${t.valPrefix}${nextVal}${t.valSuffix}</b></span>`;
+                html += `
+                    <div class="card" style="${locked ? 'opacity:0.5' : ''}">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5px;">
+                            <b>${t.name} (Ур. ${state.lvl}/${state.max})</b>
+                            <small style="color:var(--gray)">${t.desc}</small>
+                        </div>
+                        <div style="margin-bottom:8px;">${progressText}</div>
+                        ${resReq}
+                        ${locked ? `<small style="color:var(--red)">🔒 ${t.reqText}</small>` : ''}
+                        <div class="item-actions" style="margin-top:10px">
+                            <button class="act-btn" ${isMax || locked ? 'disabled' : ''} onclick="game.upgradeForagingTalent('${t.id}')">
+                                ${isMax ? 'МАКСИМУМ' : locked ? 'ЗАБЛОКИРОВАНО' : `УЛУЧШИТЬ (${cost.toLocaleString()}💰)`}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('foraging-talents-content').innerHTML = html;
+        }
         if (id === 'updatesModal') {
             if (typeof renderUpdates === 'function') {
                 renderUpdates();
@@ -1429,6 +1704,56 @@ addPetXp(pet, amount) {
         this.addXp('skyblock', 0.01); 
         this.msg('Талант улучшен!');
         this.showModal('talentsModal');
+        this.updateUI();
+    },
+
+    getForagingTalentCost(talentId, lvl) {
+        const baseCosts = {
+            fortune: { base: 10000, mult: 2.5, res: 'Дуб', resBase: 64, resMult: 2 },
+            exp: { base: 15000, mult: 2.2, res: 'Берёза', resBase: 32, resMult: 2 },
+            double_drop: { base: 100000, mult: 2.8, res: 'Тёмный Дуб', resBase: 128, resMult: 2 },
+            triple_drop: { base: 500000, mult: 3.0, res: 'Акация', resBase: 256, resMult: 2 },
+            instant_chop: { base: 750000, mult: 3.2, res: 'Древо Жизни', resBase: 128, resMult: 2 }
+        };
+        const cfg = baseCosts[talentId] || { base: 50000, mult: 2, res: 'Дуб', resBase: 64, resMult: 2 };
+        let coins = Math.floor(cfg.base * Math.pow(cfg.mult, lvl));
+        coins = Math.min(coins, 100000000);
+        const resCount = Math.floor(cfg.resBase * Math.pow(cfg.resMult, lvl));
+        return { coins, res: cfg.res, count: resCount };
+    },
+
+    upgradeForagingTalent(id) {
+        const t = this.state.foragingTalents[id];
+        if (!t || t.lvl >= t.max) return;
+        if (t.req) {
+            const dep = this.state.foragingTalents[t.req.id];
+            if (dep.lvl < t.req.lvl) {
+                this.msg('Сначала вкачайте ' + t.req.id + ' до ' + t.req.lvl + '!');
+                return;
+            }
+        }
+        const costInfo = this.getForagingTalentCost(id, t.lvl);
+        const cost = costInfo.coins;
+        if (this.state.coins < cost) {
+            this.msg('Не хватает монет!');
+            return;
+        }
+        if (costInfo.count > 0) {
+            const invItem = this.state.inventory.find(i => i.name === costInfo.res && i.type === 'material');
+            if (!invItem || invItem.count < costInfo.count) {
+                this.msg(`Нужно ${costInfo.count.toLocaleString()} ${costInfo.res}!`);
+                return;
+            }
+            invItem.count -= costInfo.count;
+            if (invItem.count <= 0) {
+                this.state.inventory = this.state.inventory.filter(i => i.id !== invItem.id);
+            }
+        }
+        this.state.coins -= cost;
+        t.lvl++;
+        this.addXp('skyblock', 0.01);
+        this.msg('Талант улучшен!');
+        this.showModal('foragingTalentsModal');
         this.updateUI();
     },
 
