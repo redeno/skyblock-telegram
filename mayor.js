@@ -81,10 +81,15 @@ Object.assign(game, {
         this.updateMayorBuffDisplay();
     },
 
-    // Синхронизация с Supabase
+    // ✅ ИСПРАВЛЕНО: supabaseClient вместо supabase
     async syncGlobalMayor() {
         try {
-            const { data, error } = await supabase
+            if (typeof supabaseClient === 'undefined') {
+                console.error('supabaseClient не найден!');
+                return;
+            }
+
+            const { data, error } = await supabaseClient
                 .from('global_events')
                 .select('*')
                 .eq('event_type', 'mayor')
@@ -99,6 +104,7 @@ Object.assign(game, {
                 this.globalMayor = data;
                 this.checkGlobalMayorRotation();
                 this.globalMayorLastSync = Date.now();
+                console.log('🌍 Глобальный мэр:', data.current_mayor);
             } else {
                 await this.createFirstGlobalMayor();
             }
@@ -108,18 +114,27 @@ Object.assign(game, {
         }
     },
 
+    // ✅ ИСПРАВЛЕНО: supabaseClient
     async createFirstGlobalMayor() {
-        const { error } = await supabase
-            .from('global_events')
-            .insert({
-                event_type: 'mayor',
-                current_mayor: 'dodoll',
-                rotation_order: ['dodoll', 'waifu625', 'necronchik']
-            });
-        if (!error) await this.syncGlobalMayor();
+        try {
+            const { error } = await supabaseClient
+                .from('global_events')
+                .insert([{
+                    event_type: 'mayor',
+                    current_mayor: 'dodoll',
+                    rotation_order: ['dodoll', 'waifu625', 'necronchik'],
+                    last_switch: new Date().toISOString()
+                }]);
+
+            if (!error) {
+                console.log('🌍 Создан первый глобальный мэр DoDoll');
+                await this.syncGlobalMayor();
+            }
+        } catch (error) {
+            console.error('createFirstGlobalMayor:', error);
+        }
     },
 
-    // Проверка ротации (только чтение, запись на сервере)
     async checkGlobalMayorRotation() {
         if (!this.globalMayor) return;
         const elapsed = Date.now() - new Date(this.globalMayor.last_switch).getTime();
@@ -128,36 +143,38 @@ Object.assign(game, {
         }
     },
 
-    // Ротация мэра
+    // ✅ ИСПРАВЛЕНО: supabaseClient
     async rotateGlobalMayor() {
-        const rotation = this.globalMayor.rotation_order;
+        if (!this.globalMayor) return;
+
+        const rotation = this.globalMayor.rotation_order || ['dodoll', 'waifu625', 'necronchik'];
         const currentIdx = rotation.indexOf(this.globalMayor.current_mayor);
         const newMayor = rotation[(currentIdx + 1) % rotation.length];
 
-        const { error } = await supabase
-            .from('global_events')
-            .update({
-                current_mayor: newMayor,
-                last_switch: new Date().toISOString()
-            })
-            .eq('event_type', 'mayor')
-            .eq('id', this.globalMayor.id);
+        try {
+            const { error } = await supabaseClient
+                .from('global_events')
+                .update({
+                    current_mayor: newMayor,
+                    last_switch: new Date().toISOString()
+                })
+                .eq('event_type', 'mayor')
+                .eq('id', this.globalMayor.id);
 
-        if (!error) {
-            this.msg(`🌍 Новый мэр: ${MAYORS[newMayor].name}!`);
-            await this.syncGlobalMayor();
+            if (!error) {
+                this.msg(`🌍 Новый мэр: ${MAYORS[newMayor].name}!`);
+                await this.syncGlobalMayor();
+            }
+        } catch (error) {
+            console.error('rotateGlobalMayor:', error);
         }
     },
 
-    // Таймеры
     startMayorTimers() {
         if (this.mayorSyncInterval) clearInterval(this.mayorSyncInterval);
         if (this.mayorAutoCollectInterval) clearInterval(this.mayorAutoCollectInterval);
 
-        // Синхронизация каждые 30 сек
         this.mayorSyncInterval = setInterval(() => this.syncGlobalMayor(), 30000);
-        
-        // Автосбор для DoDoll каждую минуту
         this.mayorAutoCollectInterval = setInterval(() => {
             const bonuses = this.getMayorBonuses();
             if (bonuses.auto_collect_minions) {
@@ -166,7 +183,6 @@ Object.assign(game, {
         }, 60000);
     },
 
-    // ГЛАВНЫЕ МЕТОДЫ (используются в игре)
     getMayorBonuses() {
         if (!this.globalMayor?.current_mayor) return {};
         return MAYORS[this.globalMayor.current_mayor]?.getBonuses?.() || {};
@@ -182,7 +198,6 @@ Object.assign(game, {
         return Math.max(0, MAYOR_ROTATION_MS - elapsed);
     },
 
-    // UI
     updateMayorBuffDisplay() {
         const buffContainer = document.getElementById('active-buffs');
         if (!buffContainer || !this.globalMayor) return;
@@ -200,8 +215,12 @@ Object.assign(game, {
         if (bonuses.mf_bonus) bonusText.push(`+${bonuses.mf_bonus} удача`);
         if (bonuses.shop_discount) bonusText.push(`-${bonuses.shop_discount}% магазин`);
 
+        // Удаляем старый буфф мэра
+        const oldMayorBuff = buffContainer.querySelector('.global-mayor-buff');
+        if (oldMayorBuff) oldMayorBuff.remove();
+
         const div = document.createElement('div');
-        div.className = 'buff-item mayor-buff';
+        div.className = 'buff-item global-mayor-buff';
         div.style.cssText = `display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;border:2px solid ${mayorData.color};background:rgba(0,0,0,0.4);cursor:pointer;`;
         div.innerHTML = `
             <span style="font-size:1.3rem;">🌍 ${mayorData.icon}</span>
@@ -212,7 +231,6 @@ Object.assign(game, {
             </div>
         `;
         div.onclick = () => this.openMayorMenu();
-        buffContainer.innerHTML = ''; // Очищаем старые
         buffContainer.appendChild(div);
     },
 
@@ -265,7 +283,6 @@ Object.assign(game, {
         if (!content || !this.globalMayor) return;
 
         const current = this.getCurrentMayor();
-        const rotation = this.globalMayor.rotation_order || [];
         const timeLeft = this.getMayorTimeLeft();
         const hours = Math.floor(timeLeft / 3600000);
         const mins = Math.floor((timeLeft % 3600000) / 60000);
