@@ -26,6 +26,7 @@
                 <h1 style="margin:0;color:var(--accent)">💰 <span id="coins-val">0</span></h1>
                 <small style="color:var(--gray)">ТВОИ МОНЕТЫ</small>
             </div>
+            <div id="active-buffs" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;"></div>
             <div class="card">
                 <div class="stat-grid" id="stats-display"></div>
             </div>
@@ -35,16 +36,17 @@
         <div id="portal" class="screen">
             <h3 style="text-align:center;margin-top:0">🌀 ПОРТАЛ</h3>
             <div class="portal-grid">
-                <div class="portal-node" onclick="game.goLoc('mine')">⛏️ ШАХТА</div>
+                <div class="portal-node" onclick="game.openMiningMenu()">⛏️ ШАХТА</div>
                 <div class="portal-node" onclick="game.openFarmingMenu()">🌾 ФЕРМА</div>
-                <div class="portal-node" onclick="game.goLoc('fish')">🎣 РЫБАЛКА</div>
-                <div class="portal-node" onclick="game.goLoc('forage')">🌲 ЛЕС</div>
+                <div class="portal-node" onclick="game.openFishingMenu()">🎣 РЫБАЛКА</div>
+                <div class="portal-node" onclick="game.openForagingMenu()">🌲 ЛЕС</div>
                 <div class="portal-node" onclick="game.switchTab('dungeons-menu')">💀 ДАНЖИ</div>
                 <div class="portal-node" onclick="game.msg('Скоро...')">👹 СЛЕЙЕРЫ</div>
                 <div class="portal-node" onclick="game.switchTab('shop')">🛒 МАГАЗИН</div>
                 <div class="portal-node" onclick="game.openExchange()">⚖️ ОБМЕН</div>
-                <div class="portal-node" onclick="game.msg('Скоро...')">📅 ИВЕНТ</div>
-                <div class="portal-node" onclick="game.msg('Скоро...')">🗳️ МЭР</div>
+                <div class="portal-node" onclick="game.openEventsMenu()">📅 ИВЕНТ</div>
+                <div class="portal-node" onclick="game.openMayorMenu()">🗳️ МЭР</div>
+                <div class="portal-node" onclick="game.openAdminPanel()" style="border-color:var(--red);">🔧 АДМИН</div>
             </div>
         </div>
 
@@ -66,6 +68,7 @@
                 </button>
             </div>
             <div id="loc-log" style="text-align:center;color:var(--green);min-height:20px;margin-top:10px;"></div>
+            <div id="mining-islands" style="display:none; margin-top:15px;"></div>
         </div>
 
         <!-- Данжи -->
@@ -129,10 +132,14 @@
             <div class="inv-tabs">
                 <div class="inv-tab active" onclick="game.shopFilter('weapon',this)">ОРУЖИЕ</div>
                 <div class="inv-tab" onclick="game.shopFilter('armor',this)">БРОНЯ</div>
-                <div class="inv-tab" onclick="game.shopFilter('mining_tool',this)">⛏️ ШАХТА</div>
-                <div class="inv-tab" onclick="game.shopFilter('farming_tool',this)">🌾 ФЕРМА</div>
-                <div class="inv-tab" onclick="game.shopFilter('foraging_tool',this)">🌲 ЛЕС</div>
-                <div class="inv-tab" onclick="game.shopFilter('fishing_tool',this)">🎣 РЫБАЛКА</div>
+                <div class="inv-tab" onclick="game.shopFilter('mining_tool',this)">⛏️ КИРКИ</div>
+                <div class="inv-tab" onclick="game.shopFilter('mining_armor',this)">⛏️ БРОНЯ</div>
+                <div class="inv-tab" onclick="game.shopFilter('farming_tool',this)">🌾 МОТЫГИ</div>
+                <div class="inv-tab" onclick="game.shopFilter('farming_armor',this)">🌾 БРОНЯ</div>
+                <div class="inv-tab" onclick="game.shopFilter('foraging_tool',this)">🌲 ТОПОРЫ</div>
+                <div class="inv-tab" onclick="game.shopFilter('foraging_armor',this)">🌲 БРОНЯ</div>
+                <div class="inv-tab" onclick="game.shopFilter('fishing_tool',this)">🎣 УДОЧКИ</div>
+                <div class="inv-tab" onclick="game.shopFilter('fishing_armor',this)">🎣 БРОНЯ</div>
                 <div class="inv-tab" onclick="game.shopFilter('accessory',this)">ТАЛИСМАНЫ</div>
                 <div class="inv-tab" onclick="game.shopFilter('buff',this)">БАФФЫ</div>
                 <div class="inv-tab" onclick="game.shopFilter('pet',this)">ПИТОМЦЫ</div>
@@ -208,6 +215,34 @@
     <div id="talents-content"></div>
 </div>
 
+<div id="adminModal" class="modal">
+    <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--red); max-width:500px; margin:50px auto; position:relative;">
+        <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('adminModal')">[ЗАКРЫТЬ]</span>
+        <div id="admin-content"></div>
+    </div>
+</div>
+
+<div id="foragingTalentsModal" class="modal">
+    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('foragingTalentsModal')">[ЗАКРЫТЬ]</span>
+    <h3>📜 ТАЛАНТЫ ЛЕСА</h3>
+    <div id="foraging-talents-content"></div>
+</div>
+
+<div id="eventsModal" class="modal">
+    <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--dark-gray); max-width:500px; margin:50px auto; position:relative;">
+        <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('eventsModal')">[ЗАКРЫТЬ]</span>
+        <h3 style="text-align:center;">📅 ИВЕНТЫ</h3>
+        <div id="events-content"></div>
+    </div>
+</div>
+
+<div id="mayorModal" class="modal">
+    <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--dark-gray); max-width:500px; margin:50px auto; position:relative;">
+        <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('mayorModal')">[ЗАКРЫТЬ]</span>
+        <div id="mayor-content"></div>
+    </div>
+</div>
+
     <!-- Нижняя навигация -->
     <nav id="nav">
         <button class="nav-item active" onclick="game.switchTab('home',this)"><span>🏠</span>ДОМ</button>
@@ -217,13 +252,50 @@
     </nav>
    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
    <script src="game.js"></script>
-    <script src="news.js"></script>
-    <script src="inventory.js"></script>
+   <script src="news.js"></script>
+   <script src="inventory.js"></script>
 <script src="top.js"></script>
 <script src="dungeon.js"></script>
 <script src="skills.js"></script>
 <script src="farming.js"></script>
 <script src="pets.js"></script>
+<script src="mining.js"></script>
+<script src="foraging.js"></script>
+<script src="fishing.js"></script>
 <script src="exchange.js"></script>
+<script src="events.js"></script>
+<script src="mayor.js"></script>
+<script src="admin.js"></script>
+<script>
+  // Список разрешённых ID (можно добавить ещё позже)
+  const ADMIN_IDS = [1546583402];
+
+  // Проверяем, админ ли текущий пользователь
+  const user = Telegram.WebApp.initDataUnsafe?.user;
+  const isAdmin = user && ADMIN_IDS.includes(user.id);
+
+  // Находим кнопку админа в портале
+  const adminNode = document.querySelector('.portal-node[onclick="game.openAdminPanel()"]');
+
+  if (adminNode) {
+    if (!isAdmin) {
+      adminNode.style.display = 'none';
+    } else {
+      // Опционально: выделяем для админа сильнее
+      adminNode.style.borderColor = 'var(--red)';
+      adminNode.style.background = 'rgba(255, 0, 0, 0.08)';
+    }
+  }
+
+  // Дополнительная защита: если кто-то всё же вызовет функцию — блокируем
+  const originalOpenAdmin = game.openAdminPanel;
+  game.openAdminPanel = function() {
+    if (!isAdmin) {
+      alert("Доступ запрещён");
+      return;
+    }
+    originalOpenAdmin?.call(game);
+  };
+</script>
 </body>
 </html>
