@@ -567,7 +567,7 @@ const game = {
                 pets: this.state.pets,
                 buffs: this.state.buffs,
                 farmingTalents: this.state.farmingTalents,
-                foragingTalents: this.state.foragingTalents,
+                //foragingTalents: this.state.foragingTalents,
                 //activeEvent: this.state.activeEvent,
                 //eventEndTime: this.state.eventEndTime,
                 farmingQuests: this.state.farmingQuests,
