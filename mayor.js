@@ -1,4 +1,4 @@
-// mayor.js — Система мэров с ротацией каждые 4 часа
+// mayor.js — ГЛОБАЛЬНАЯ система мэров через Supabase (4 часа ротация)
 
 const MAYORS = {
     dodoll: {
@@ -18,7 +18,7 @@ const MAYORS = {
         ],
         onActivate(game) {
             game.state.coins += 500000;
-            game.msg('Мэр DoDoll даёт +500,000 монет!');
+            game.msg('🌍 Мэр DoDoll даёт +500,000 монет!');
             const existingMayorPet = game.state.pets.find(p => p.mayorPet === true);
             if (!existingMayorPet) {
                 game.state.pets.push({
@@ -33,22 +33,14 @@ const MAYORS = {
                     equipped: true,
                     mayorPet: true
                 });
-                game.msg('Зайчик появился! (+5% опыта в ремёслах)');
+                game.msg('🌍 Зайчик появился! (+5% опыта в ремёслах)');
             }
-        },
-        onDeactivate(game) {
-            game.state.pets = game.state.pets.filter(p => !p.mayorPet);
-            game.msg('Зайчик ушёл вместе с DoDoll...');
         },
         getBonuses() {
             return {
                 craft_xp_bonus: 5,
                 auto_collect_minions: true,
-                pet_upgrade_discount: {
-                    rare: 100000,
-                    epic: 250000,
-                    legendary: 350000
-                }
+                pet_upgrade_discount: { rare: 100000, epic: 250000, legendary: 350000 }
             };
         }
     },
@@ -57,23 +49,9 @@ const MAYORS = {
         name: 'Waifu625',
         icon: '🎪',
         color: '#ff69b4',
-        desc: [
-            'Увеличение опыта с данжей на 25%',
-            'Увеличивает урон в данжах на 10%',
-            'Уменьшает ХП мобов в данжах на 5%'
-        ],
-        onActivate(game) {
-            game.msg('Мэр Waifu625 усиливает данжи!');
-        },
-        onDeactivate(game) {
-            game.msg('Waifu625 покидает пост мэра...');
-        },
+        desc: ['🌍 +25% опыта с данжей', '🌍 +10% урона в данжах', '🌍 -5% ХП мобов в данжах'],
         getBonuses() {
-            return {
-                dungeon_xp_bonus: 25,
-                dungeon_dmg_bonus: 10,
-                dungeon_mob_hp_reduction: 5
-            };
+            return { dungeon_xp_bonus: 25, dungeon_dmg_bonus: 10, dungeon_mob_hp_reduction: 5 };
         }
     },
     necronchik: {
@@ -81,308 +59,271 @@ const MAYORS = {
         name: 'Necronchik',
         icon: '💀',
         color: '#9b59b6',
-        desc: [
-            'Увеличивает удачу игроков на 30 единиц',
-            'Увеличивает доп. золото на 10%',
-            'Стоимость всех предметов в магазине дешевле на 10%'
-        ],
-        onActivate(game) {
-            game.msg('Мэр Necronchik даёт удачу и скидки!');
-        },
-        onDeactivate(game) {
-            game.msg('Necronchik покидает пост мэра...');
-        },
+        desc: ['🌍 +30 удачи', '🌍 +10% доп. золота', '🌍 -10% стоимость магазина'],
         getBonuses() {
-            return {
-                mf_bonus: 30,
-                gold_bonus: 10,
-                shop_discount: 10
-            };
+            return { mf_bonus: 30, gold_bonus: 10, shop_discount: 10 };
         }
     }
 };
 
-const MAYOR_ROTATION_MS = 4 * 60 * 60 * 1000;
+const MAYOR_ROTATION_MS = 4 * 60 * 60 * 1000; // 4 часа
 
 Object.assign(game, {
+    globalMayor: null,
+    globalMayorLastSync: 0,
+    mayorSyncInterval: null,
     mayorAutoCollectInterval: null,
 
-    initMayor() {
-        if (!this.state.mayor) {
-            this.state.mayor = { ...defaultState.mayor };
-        }
-        this.checkMayorRotation();
+    // 🔥 ГЛАВНАЯ ИНИЦИАЛИЗАЦИЯ ГЛОБАЛЬНЫХ МЭРОВ
+    async initMayor() {
+        await this.syncGlobalMayor();
         this.startMayorTimers();
         this.updateMayorBuffDisplay();
     },
 
+    // Синхронизация с Supabase
+    async syncGlobalMayor() {
+        try {
+            const { data, error } = await supabase
+                .from('global_events')
+                .select('*')
+                .eq('event_type', 'mayor')
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Ошибка глобального мэра:', error);
+                return;
+            }
+
+            if (data) {
+                this.globalMayor = data;
+                this.checkGlobalMayorRotation();
+                this.globalMayorLastSync = Date.now();
+            } else {
+                await this.createFirstGlobalMayor();
+            }
+            this.updateMayorBuffDisplay();
+        } catch (error) {
+            console.error('syncGlobalMayor:', error);
+        }
+    },
+
+    async createFirstGlobalMayor() {
+        const { error } = await supabase
+            .from('global_events')
+            .insert({
+                event_type: 'mayor',
+                current_mayor: 'dodoll',
+                rotation_order: ['dodoll', 'waifu625', 'necronchik']
+            });
+        if (!error) await this.syncGlobalMayor();
+    },
+
+    // Проверка ротации (только чтение, запись на сервере)
+    async checkGlobalMayorRotation() {
+        if (!this.globalMayor) return;
+        const elapsed = Date.now() - new Date(this.globalMayor.last_switch).getTime();
+        if (elapsed >= MAYOR_ROTATION_MS) {
+            await this.rotateGlobalMayor();
+        }
+    },
+
+    // Ротация мэра
+    async rotateGlobalMayor() {
+        const rotation = this.globalMayor.rotation_order;
+        const currentIdx = rotation.indexOf(this.globalMayor.current_mayor);
+        const newMayor = rotation[(currentIdx + 1) % rotation.length];
+
+        const { error } = await supabase
+            .from('global_events')
+            .update({
+                current_mayor: newMayor,
+                last_switch: new Date().toISOString()
+            })
+            .eq('event_type', 'mayor')
+            .eq('id', this.globalMayor.id);
+
+        if (!error) {
+            this.msg(`🌍 Новый мэр: ${MAYORS[newMayor].name}!`);
+            await this.syncGlobalMayor();
+        }
+    },
+
+    // Таймеры
     startMayorTimers() {
+        if (this.mayorSyncInterval) clearInterval(this.mayorSyncInterval);
         if (this.mayorAutoCollectInterval) clearInterval(this.mayorAutoCollectInterval);
+
+        // Синхронизация каждые 30 сек
+        this.mayorSyncInterval = setInterval(() => this.syncGlobalMayor(), 30000);
+        
+        // Автосбор для DoDoll каждую минуту
         this.mayorAutoCollectInterval = setInterval(() => {
-            this.checkMayorRotation();
             const bonuses = this.getMayorBonuses();
             if (bonuses.auto_collect_minions) {
                 this.autoCollectAllMinions();
             }
-        }, 60000); // Сбор каждую минуту
+        }, 60000);
     },
 
-    checkMayorRotation() {
-        if (!this.state.mayor) return;
-        const now = Date.now();
-        const elapsed = now - (this.state.mayor.lastSwitch || 0);
-
-        if (elapsed >= MAYOR_ROTATION_MS) {
-            const rotation = this.state.mayor.rotation || ['dodoll', 'waifu625', 'necronchik'];
-            const currentIdx = rotation.indexOf(this.state.mayor.current);
-            const oldMayor = this.state.mayor.current;
-            const nextIdx = (currentIdx + 1) % rotation.length;
-            const newMayor = rotation[nextIdx];
-
-            const oldMayorData = MAYORS[oldMayor];
-            if (oldMayorData && oldMayorData.onDeactivate) {
-                oldMayorData.onDeactivate(this);
-            }
-
-            this.state.mayor.current = newMayor;
-            this.state.mayor.lastSwitch = now;
-
-            const newMayorData = MAYORS[newMayor];
-            if (newMayorData && newMayorData.onActivate) {
-                newMayorData.onActivate(this);
-            }
-            
-            this.updateMayorBuffDisplay();
-        }
-    },
-
+    // ГЛАВНЫЕ МЕТОДЫ (используются в игре)
     getMayorBonuses() {
-        const mayorId = this.state.mayor?.current;
-        if (!mayorId || !MAYORS[mayorId]) return {};
-        return MAYORS[mayorId].getBonuses();
+        if (!this.globalMayor?.current_mayor) return {};
+        return MAYORS[this.globalMayor.current_mayor]?.getBonuses?.() || {};
     },
 
     getCurrentMayor() {
-        const id = this.state.mayor?.current;
-        if (!id) return MAYORS.dodoll;
-        return MAYORS[id] || MAYORS.dodoll;
-    },
-
-    updateMayorBuffDisplay() {
-        const buffContainer = document.getElementById('active-buffs');
-        if (!buffContainer) return;
-        
-        const mayorId = this.state.mayor?.current;
-        const mayorData = MAYORS[mayorId];
-        
-        buffContainer.innerHTML = '';
-        
-        if (mayorData) {
-            const bonuses = mayorData.getBonuses();
-            const timeLeft = this.getMayorTimeLeft();
-            const hours = Math.floor(timeLeft / 3600000);
-            const mins = Math.floor((timeLeft % 3600000) / 60000);
-            
-            let bonusText = [];
-            if (bonuses.craft_xp_bonus) bonusText.push(`+${bonuses.craft_xp_bonus}% ремесло`);
-            if (bonuses.auto_collect_minions) bonusText.push('авто-сбор');
-            if (bonuses.dungeon_xp_bonus) bonusText.push(`+${bonuses.dungeon_xp_bonus}% данж XP`);
-            if (bonuses.dungeon_dmg_bonus) bonusText.push(`+${bonuses.dungeon_dmg_bonus}% данж урон`);
-            if (bonuses.mf_bonus) bonusText.push(`+${bonuses.mf_bonus} удача`);
-            if (bonuses.shop_discount) bonusText.push(`-${bonuses.shop_discount}% магазин`);
-            if (bonuses.gold_bonus) bonusText.push(`+${bonuses.gold_bonus}% золото`);
-            
-            const div = document.createElement('div');
-            div.className = 'buff-item mayor-buff';
-            div.style.cssText = `display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1px solid ${mayorData.color};background:rgba(0,0,0,0.3);cursor:pointer;`;
-            div.onclick = () => game.openMayorMenu();
-            div.innerHTML = `
-                <span style="font-size:1.2rem;">${mayorData.icon}</span>
-                <div style="line-height:1.2;">
-                    <div style="font-size:0.75rem;font-weight:bold;color:${mayorData.color};">${mayorData.name}</div>
-                    <div style="font-size:0.6rem;color:var(--green);">${bonusText.join(' | ')}</div>
-                    <div style="font-size:0.55rem;color:var(--gray);">${hours}ч ${mins}м</div>
-                </div>
-            `;
-            buffContainer.appendChild(div);
-        }
+        return MAYORS[this.globalMayor?.current_mayor] || MAYORS.dodoll;
     },
 
     getMayorTimeLeft() {
-        if (!this.state.mayor) return 0;
-        const elapsed = Date.now() - (this.state.mayor.lastSwitch || 0);
+        if (!this.globalMayor?.last_switch) return 0;
+        const elapsed = Date.now() - new Date(this.globalMayor.last_switch).getTime();
         return Math.max(0, MAYOR_ROTATION_MS - elapsed);
     },
 
+    // UI
+    updateMayorBuffDisplay() {
+        const buffContainer = document.getElementById('active-buffs');
+        if (!buffContainer || !this.globalMayor) return;
+
+        const mayorData = this.getCurrentMayor();
+        const bonuses = mayorData.getBonuses();
+        const timeLeft = this.getMayorTimeLeft();
+        const hours = Math.floor(timeLeft / 3600000);
+        const mins = Math.floor((timeLeft % 3600000) / 60000);
+
+        let bonusText = [];
+        if (bonuses.craft_xp_bonus) bonusText.push(`+${bonuses.craft_xp_bonus}% ремесло`);
+        if (bonuses.auto_collect_minions) bonusText.push('авто-сбор');
+        if (bonuses.dungeon_xp_bonus) bonusText.push(`+${bonuses.dungeon_xp_bonus}% данж XP`);
+        if (bonuses.mf_bonus) bonusText.push(`+${bonuses.mf_bonus} удача`);
+        if (bonuses.shop_discount) bonusText.push(`-${bonuses.shop_discount}% магазин`);
+
+        const div = document.createElement('div');
+        div.className = 'buff-item mayor-buff';
+        div.style.cssText = `display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;border:2px solid ${mayorData.color};background:rgba(0,0,0,0.4);cursor:pointer;`;
+        div.innerHTML = `
+            <span style="font-size:1.3rem;">🌍 ${mayorData.icon}</span>
+            <div style="line-height:1.2; flex:1;">
+                <div style="font-size:0.8rem;font-weight:bold;color:${mayorData.color};">${mayorData.name}</div>
+                <div style="font-size:0.65rem;color:var(--green);">${bonusText.join(' | ')}</div>
+                <div style="font-size:0.55rem;color:var(--gray);">ГЛОБАЛЬНЫЙ (${hours}ч ${mins}м)</div>
+            </div>
+        `;
+        div.onclick = () => this.openMayorMenu();
+        buffContainer.innerHTML = ''; // Очищаем старые
+        buffContainer.appendChild(div);
+    },
+
     autoCollectAllMinions() {
-        let totalCollected = 0;
+        let total = 0;
         this.state.minions.forEach(m => {
             if (m.lvl > 0 && m.stored > 0) {
                 const count = Math.floor(m.stored);
                 if (count > 0) {
                     this.addMaterial(m.resource, 'material', count);
                     m.stored -= count;
-                    totalCollected += count;
+                    total += count;
                 }
             }
         });
-        if (totalCollected > 0) {
-            this.msg(`Автосбор DoDoll: собрано ${totalCollected} ресурсов!`);
-        }
+        if (total > 0) this.msg(`🌍 Автосбор: +${total} ресурсов!`);
     },
 
     upgradeMayorPet(targetRarity) {
         const pet = this.state.pets.find(p => p.mayorPet === true);
-        if (!pet) {
-            this.msg('Зайчик не найден!');
-            return;
-        }
-
-        const currentMayor = this.state.mayor?.current;
-        if (currentMayor !== 'dodoll') {
-            this.msg('Улучшение доступно только при мэре DoDoll!');
+        if (!pet || this.globalMayor?.current_mayor !== 'dodoll') {
+            this.msg('❌ Зайчик доступен только при DoDoll!');
             return;
         }
 
         const upgradePath = { common: 'rare', rare: 'epic', epic: 'legendary' };
-        const expectedTarget = upgradePath[pet.rarity];
-        if (!expectedTarget || expectedTarget !== targetRarity) {
-            this.msg('Невозможно улучшить!');
-            return;
-        }
+        if (upgradePath[pet.rarity] !== targetRarity) return;
 
         const costs = { rare: 100000, epic: 250000, legendary: 350000 };
         const cost = costs[targetRarity];
-        if (!cost) return;
-
         if (this.state.coins < cost) {
-            this.msg(`Не хватает монет! Нужно ${cost.toLocaleString()}`);
+            this.msg(`❌ Нужно ${cost.toLocaleString()} монет`);
             return;
         }
 
         this.state.coins -= cost;
         pet.rarity = targetRarity;
-        this.msg(`Зайчик улучшен до ${targetRarity.toUpperCase()}!`);
-        this.renderMayorContent();
+        this.msg(`🌍 Зайчик → ${targetRarity.toUpperCase()}!`);
         this.updateUI();
     },
 
     openMayorMenu() {
-        this.checkMayorRotation();
+        this.syncGlobalMayor();
         this.renderMayorContent();
         this.showModal('mayorModal');
     },
 
     renderMayorContent() {
         const content = document.getElementById('mayor-content');
-        if (!content) return;
+        if (!content || !this.globalMayor) return;
 
         const current = this.getCurrentMayor();
-        const rotation = this.state.mayor?.rotation || ['dodoll', 'waifu625', 'necronchik'];
-        const currentIdx = rotation.indexOf(current.id);
+        const rotation = this.globalMayor.rotation_order || [];
         const timeLeft = this.getMayorTimeLeft();
         const hours = Math.floor(timeLeft / 3600000);
         const mins = Math.floor((timeLeft % 3600000) / 60000);
 
-        const prevIdx = (currentIdx - 1 + rotation.length) % rotation.length;
-        const nextIdx = (currentIdx + 1) % rotation.length;
-        const prevMayor = MAYORS[rotation[prevIdx]];
-        const nextMayor = MAYORS[rotation[nextIdx]];
+        content.innerHTML = `
+            <h3 style="text-align:center;">🌍 ГЛОБАЛЬНЫЙ МЭР</h3>
+            <div style="text-align:center; margin-bottom:15px;">
+                <small>Смена через: <b style="color:var(--accent);">${hours}ч ${mins}м</b></small>
+            </div>
+            <div style="text-align:center; border:2px solid ${current.color}; border-radius:12px; padding:20px; background:rgba(255,255,255,0.05);">
+                <div style="font-size:3rem;">${current.icon}</div>
+                <b style="font-size:1.4rem; color:${current.color};">${current.name}</b>
+                <div style="color:var(--green);">✓ АКТИВЕН ДЛЯ ВСЕХ</div>
+            </div>
+            <div class="card" style="border-left:3px solid ${current.color}; margin-top:15px;">
+                <b style="color:${current.color};">Глобальные бонусы:</b>
+                <ul style="margin:8px 0 0 0; padding-left:20px; list-style:none;">
+                    ${current.desc.map(line => `<li style="margin-bottom:4px; color:var(--green); font-size:0.9rem;">${line}</li>`).join('')}
+                </ul>
+            </div>
+            ${current.id === 'dodoll' ? this.renderMayorPetUI() : ''}
+            <div style="margin-top:15px; padding:10px; background:rgba(0,255,0,0.1); border-radius:8px; text-align:center;">
+                <small style="color:var(--accent);">⏰ Синхронизация каждые 30 сек</small><br>
+                <small style="color:var(--gray);">🌍 ОДИНАКОВЫЙ ДЛЯ ВСЕХ ИГРОКОВ</small>
+            </div>
+        `;
+    },
+
+    renderMayorPetUI() {
+        const pet = this.state.pets.find(p => p.mayorPet);
+        if (!pet) return '';
+
+        const rarityNames = { common: 'Обычный', rare: 'Редкий', epic: 'Эпический', legendary: 'Легендарный' };
+        const upgradePath = { common: 'rare', rare: 'epic', epic: 'legendary' };
+        const nextRarity = upgradePath[pet.rarity];
+        const costs = { rare: 100000, epic: 250000, legendary: 350000 };
 
         let html = `
-            <h3 style="text-align:center; margin-top:0;">🗳️ МЭР ГОРОДА</h3>
-            <div style="text-align:center; margin-bottom:15px;">
-                <small style="color:var(--gray);">Смена мэра через: <b style="color:var(--accent);">${hours}ч ${mins}м</b></small>
-            </div>
-
-            <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:20px;">
-                <div style="text-align:center; opacity:0.4; flex:1;">
-                    <div style="font-size:1.5rem;">${prevMayor.icon}</div>
-                    <small style="color:var(--gray);">${prevMayor.name}</small>
+            <div class="card" style="margin-top:10px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <b>🐰 Зайчик</b>
+                    <span style="color:#fa0; font-weight:bold;">${rarityNames[pet.rarity]}</span>
                 </div>
-
-                <div style="text-align:center; flex:2; border:2px solid ${current.color}; border-radius:12px; padding:15px; background:rgba(255,255,255,0.03);">
-                    <div style="font-size:2.5rem; margin-bottom:5px;">${current.icon}</div>
-                    <b style="font-size:1.2rem; color:${current.color};">${current.name}</b>
-                    <div style="margin-top:3px;"><small style="color:var(--green);">АКТИВНЫЙ МЭР</small></div>
-                </div>
-
-                <div style="text-align:center; opacity:0.4; flex:1;">
-                    <div style="font-size:1.5rem;">${nextMayor.icon}</div>
-                    <small style="color:var(--gray);">${nextMayor.name}</small>
-                    <div><small style="color:var(--accent); font-size:0.6rem;">СЛЕДУЮЩИЙ</small></div>
-                </div>
-            </div>
-
-            <div class="card" style="border-left:3px solid ${current.color};">
-                <b style="color:${current.color};">Бонусы ${current.name}:</b>
-                <ul style="margin:8px 0 0 0; padding-left:20px; list-style:none;">
+                <small style="color:var(--green);">+5% опыта в ремёслах</small>
         `;
 
-        current.desc.forEach(line => {
-            html += `<li style="margin-bottom:4px; color:var(--green); font-size:0.85rem;">${line}</li>`;
-        });
-
-        html += `</ul></div>`;
-
-        if (current.id === 'dodoll') {
-            const mayorPet = this.state.pets.find(p => p.mayorPet === true);
-            if (mayorPet) {
-                const rarityColors = { common: '#aaa', rare: '#55f', epic: '#a0a', legendary: '#fa0' };
-                const rarityNames = { common: 'Обычный', rare: 'Редкий', epic: 'Эпический', legendary: 'Легендарный' };
-                const upgradePath = { common: 'rare', rare: 'epic', epic: 'legendary' };
-                const nextRarity = upgradePath[mayorPet.rarity];
-                const costs = { rare: 100000, epic: 250000, legendary: 350000 };
-
-                html += `
-                    <div class="card" style="margin-top:10px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <b>Зайчик</b>
-                            <span style="color:${rarityColors[mayorPet.rarity]}; font-weight:bold;">${rarityNames[mayorPet.rarity]}</span>
-                        </div>
-                        <small style="color:var(--green);">+5% опыта в ремёслах</small>
-                `;
-
-                if (nextRarity) {
-                    html += `
-                        <div class="item-actions" style="margin-top:10px;">
-                            <button class="act-btn" onclick="game.upgradeMayorPet('${nextRarity}')">
-                                УЛУЧШИТЬ до ${rarityNames[nextRarity]} (${costs[nextRarity].toLocaleString()} монет)
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    html += `<div style="margin-top:8px;"><small style="color:var(--accent);">МАКС УРОВЕНЬ</small></div>`;
-                }
-
-                html += `</div>`;
-            }
-        }
-
-        html += `
-            <div style="margin-top:15px;">
-                <h4 style="color:var(--gray); margin-bottom:10px;">Все мэры:</h4>
-        `;
-
-        for (const [key, mayor] of Object.entries(MAYORS)) {
-            const isActive = key === current.id;
+        if (nextRarity) {
             html += `
-                <div class="card" style="margin-bottom:8px; ${isActive ? 'border:1px solid ' + mayor.color : 'opacity:0.6'}">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
-                        <span style="font-size:1.3rem;">${mayor.icon}</span>
-                        <b style="color:${mayor.color};">${mayor.name}</b>
-                        ${isActive ? '<span style="color:var(--green); font-size:0.7rem; margin-left:auto;">АКТИВЕН</span>' : ''}
-                    </div>
-                    <ul style="margin:0; padding-left:18px; list-style:none;">
+                <div class="item-actions" style="margin-top:10px;">
+                    <button class="act-btn" onclick="game.upgradeMayorPet('${nextRarity}')">
+                        УЛУЧШИТЬ → ${rarityNames[nextRarity]} (${costs[nextRarity].toLocaleString()})
+                    </button>
+                </div>
             `;
-            mayor.desc.forEach(line => {
-                html += `<li style="font-size:0.75rem; color:var(--gray); margin-bottom:2px;">${line}</li>`;
-            });
-            html += `</ul></div>`;
+        } else {
+            html += `<div style="margin-top:8px;"><small style="color:var(--accent);">🏆 МАКС УРОВЕНЬ</small></div>`;
         }
-
         html += `</div>`;
-
-        content.innerHTML = html;
+        return html;
     }
 });
