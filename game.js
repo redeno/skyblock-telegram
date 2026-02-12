@@ -674,6 +674,7 @@ const game = {
             this.msg('Запуск вне Telegram — тестовый режим');
         }
         await this.loadFromSupabase();
+        await this.initMayor();
         if (typeof this.initGlobalMayor === 'function') await this.initGlobalMayor();
         if (typeof this.initMayor === 'function') this.initMayor();
         setInterval(() => this.minionTick(), 1000);
