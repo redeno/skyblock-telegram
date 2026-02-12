@@ -568,8 +568,8 @@ const game = {
                 buffs: this.state.buffs,
                 farmingTalents: this.state.farmingTalents,
                 foragingTalents: this.state.foragingTalents,
-                activeEvent: this.state.activeEvent,
-                eventEndTime: this.state.eventEndTime,
+                //activeEvent: this.state.activeEvent,
+                //eventEndTime: this.state.eventEndTime,
                 farmingQuests: this.state.farmingQuests,
                 mayor: this.state.mayor
             }, { onConflict: 'telegram_id' });
