@@ -154,22 +154,16 @@ Object.assign(game, {
         const skillLvl = this.state.skills.farming.lvl;
         const base_xp = 20 + (crop.level * 0.5); // Slightly scaling base XP
         const exp_bonus = s.farming_exp_bonus || 0;
-        // Pet XP Bonus check
-        let petXpBonus = 0;
         const pet = this.state.pets.find(p => p.equipped && p.skill === 'farming');
-        if (pet) {
-             if (pet.name === 'Pig' && pet.rarity === 'legendary') {
-                petXpBonus += 1 + (pet.lvl * 0.04); 
-             } else {
-                petXpBonus += (window.petRarityBonuses[pet.rarity] || 0) * pet.lvl;
-             }
-        }
-        const total_xp = base_xp * (1 + (exp_bonus + petXpBonus) / 100);
+        const total_xp = base_xp * (1 + exp_bonus / 100);
         // 2. Resource Drops
         let amount = 1;
         const guaranteed = Math.floor(fortune / 100);
         amount += guaranteed;
         if (Math.random() * 100 < (fortune % 100)) amount++;
+        
+        // Ensure at least 1 drops even with fortune 0 (though guaranteed handles it)
+        if (amount < 1) amount = 1;
         
         // Талант на двойной дроп
         const ddLvl = this.state.farmingTalents?.double_drop?.lvl || 0;
@@ -246,9 +240,9 @@ Object.assign(game, {
             });
         }
         // 5. Finalize
-        const coinsGain = 10 * skillLvl; // Simple coin gain per action
+        const goldMul = 1 + (s.gold_bonus || 0) / 100;
+        const coinsGain = Math.floor(10 * skillLvl * goldMul);
         
-        // Бонус от овердрайва
         const overdriveMult = this.state.overdriveActive ? 2 : 1;
         
         this.state.coins += coinsGain * overdriveMult;
