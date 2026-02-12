@@ -1,4 +1,4 @@
-// inventory.js — логика инвентаря (с stackable талисманами, показом статов, правильной продажей)
+// inventory.js — логика инвентаря
 
 Object.assign(game, {
     getItemDesc(i) {
@@ -13,34 +13,118 @@ Object.assign(game, {
         if (i.xp_bonus) d += `+${i.xp_bonus}% ОПЫТА `;
         if (i.farming_fortune) d += `+${i.farming_fortune} 🌾ФОРТУНЫ `;
         if (i.farming_exp_bonus) d += `+${i.farming_exp_bonus}% 🌾ОПЫТА `;
+        if (i.mining_fortune) d += `+${i.mining_fortune} ⛏️ФОРТУНЫ `;
+        if (i.mining_exp_bonus) d += `+${i.mining_exp_bonus}% ⛏️ОПЫТА `;
+        if (i.fishing_fortune) d += `+${i.fishing_fortune} 🎣ФОРТУНЫ `;
+        if (i.fishing_exp_bonus) d += `+${i.fishing_exp_bonus}% 🎣ОПЫТА `;
+        if (i.foraging_fortune) d += `+${i.foraging_fortune} 🌲ФОРТУНЫ `;
+        if (i.foraging_exp_bonus) d += `+${i.foraging_exp_bonus}% 🌲ОПЫТА `;
+        if (i.hp) d += `+${i.hp} ХП `;
+        if (i.gold_bonus) d += `+${i.gold_bonus}% ЗОЛОТО `;
         if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
         if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
         if (i.resource_cost) {
             const materialMap = {
                 wheat: 'Пшеница',
                 carrot: 'Морковь',
-                potato: 'Картофель'
+                potato: 'Картофель',
+                pumpkin: 'Тыква',
+                melon: 'Арбуз',
+                cane: 'Тростник'
             };
             const costs = Object.entries(i.resource_cost).map(([k, v]) => `${v} ${materialMap[k] || k}`).join(', ');
             d += `[Цена: ${costs}] `;
         }
         if (i.fast) d += 'БЫСТРАЯ ';
-        if (i.dynamic_str === 'midas') d += 'МИДАС ';
+        if (i.dynamic_str === 'midas') {
+            const midasStr = Math.floor(Math.min(game.state.coins || 0, 1000000000) / 1000000) * 0.5;
+            d += `МЕЧ МИДАСА | +${midasStr.toFixed(0)} СИЛЫ (от монет) | Сила зависит от кол-ва монет (макс 1млрд). Легендарный меч, дроп с 4 этажа данжей. `;
+        }
         if (i.magic) d += 'МАГИЧЕСКОЕ ';
-        if (i.type === 'pet') d += `+${(petRarityBonuses[i.rarity] * i.lvl).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
+        if (i.type === 'pet') {
+            if (window.calcPetBonus) {
+                const pb = window.calcPetBonus(i, game.state.skills);
+                d += `+${pb.xp_bonus.toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
+                if (pb.fortune > 0) d += `+${pb.fortune.toFixed(0)} Фортуна `;
+            } else {
+                d += `+${(petRarityBonuses[i.rarity] * i.lvl).toFixed(1)}% XP в ${i.skill.toUpperCase()} `;
+            }
+        }
         return d.trim() || 'Без бонусов';
     },
 
-    addMaterial(name, type = 'material') {
+    getMaterialSellPrice(name) {
+        const prices = {
+            'Пшеница': 2,
+            'Картофель': 3,
+            'Морковь': 4,
+            'Тыква': 5,
+            'Арбуз': 6,
+            'Тростник': 7,
+            'Грибы': 8,
+            'Адский нарост': 10,
+            'Уголь': 1,
+            'Рыба': 3,
+            'Дерево': 2,
+            'Гнилая плоть': 1,
+            'Кость': 1,
+            'Нить': 1,
+            'Булыжник': 1,
+            'Медь': 1,
+            'Железо': 2,
+            'Золото': 3,
+            'Лазурит': 2,
+            'Редстоун': 2,
+            'Мифрил': 2,
+            'Рубин': 5,
+            'Сапфир': 5,
+            'Алмаз': 10,
+            'Кварц': 5,
+            'Обсидиан': 6,
+            'Сера': 5,
+            'Кусочек Звезды Ада': 50000,
+            'Звезда Ада': 500000,
+            'Стог Пшена': 600,
+            'Стог Картошки': 900,
+            'Стог Моркови': 1200,
+            'Стог Тыквы': 1500,
+            'Стог Арбузов': 1800,
+            'Стог Тростника': 2100,
+            'Стог Грибов': 2400,
+            'Стог Адского нароста': 3000,
+            'Стог Угля': 300,
+            'Стог Меди': 300,
+            'Стог Железа': 600,
+            'Стог Золота': 900,
+            'Стог Лазурита': 600,
+            'Стог Редстоуна': 600,
+            'Стог Мифрила': 600,
+            'Стог Рубинов': 1500,
+            'Стог Сапфиров': 1500,
+            'Стог Алмазов': 3000,
+            'Стог Кварца': 1500,
+            'Стог Обсидиана': 1800,
+            'Стог Булыжника': 300,
+            'Сингулярность': 50000,
+            'Апгрейд питомца': 8000000,
+            'Фрагмент из Данжа': 1000,
+            'Изумруд': 5000,
+            'Стог Изумрудов': 1500,
+            'Hot Potato Book': 50000
+        };
+        return prices[name] || 2;
+    },
+
+    addMaterial(name, type = 'material', count = 1) {
         const existing = this.state.inventory.find(i => i.name === name && i.type === type);
         if (existing) {
-            existing.count = (existing.count || 1) + 1;
+            existing.count = (existing.count || 1) + count;
         } else {
             this.state.inventory.push({
                 id: this.state.nextItemId++,
                 name,
                 type,
-                count: 1,
+                count: count,
                 equipped: false
             });
         }
@@ -77,17 +161,30 @@ Object.assign(game, {
                     <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost / 2)}💰)</button>
                 `;
             } else if (i.type === 'material') {
-                const pricePer = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
-                a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${pricePer * (i.count || 1)}💰)</button>`;
+                const pricePer = this.getMaterialSellPrice(i.name);
+                const totalPrice = pricePer * (i.count || 1);
+                a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${totalPrice.toLocaleString()}💰 | ${pricePer}/шт)</button>`;
             } else if (i.type === 'accessory') {
+                const sellPrice = Math.floor((i.cost || 100) / 2);
                 a = `
                     <button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
-                    <button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (2💰)</button>
+                    <button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${sellPrice.toLocaleString()}💰)</button>
                 `;
             } else if (i.type === 'chest') {
                 a = `<button class="act-btn" onclick="game.openChest(${i.id})">ОТКРЫТЬ</button>`;
             } else if (['weapon','armor','tool'].includes(i.type)) {
-                a = `<button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>`;
+                let sellBtn = '';
+                if (i.dynamic_str === 'midas') {
+                    sellBtn = `<button class="act-btn" onclick="game.sellWeapon(${i.id}, 50000000)">ПРОДАТЬ (50,000,000💰)</button>`;
+                } else if (i.name === 'Меч Гиганта') {
+                    sellBtn = `<button class="act-btn" onclick="game.sellWeapon(${i.id}, 125000)">ПРОДАТЬ (125,000💰)</button>`;
+                } else if (i.name === 'Гиперион') {
+                    sellBtn = `<button class="act-btn" onclick="game.sellWeapon(${i.id}, 250000)">ПРОДАТЬ (250,000💰)</button>`;
+                }
+                a = `
+                    <button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
+                    ${sellBtn}
+                `;
             } else if (i.type === 'potion' && i.name === 'GodPotion') {
                 a = `<button class="act-btn" onclick="game.activateGodPotion(${i.id})">АКТИВИРОВАТЬ</button>`;
             } else if (i.type === 'potion' && i.name === 'Печенька') {
@@ -101,6 +198,19 @@ Object.assign(game, {
                     <div class="item-actions">${a}</div>
                 </div>`;
         });
+    },
+
+    sellWeapon(id, price) {
+        const i = this.state.inventory.find(x => x.id === id);
+        if (!i) return;
+        if (i.equipped) {
+            this.msg('Сначала снимите предмет!');
+            return;
+        }
+        this.state.coins += price;
+        this.state.inventory = this.state.inventory.filter(x => x.id !== id);
+        this.msg(`Продано ${i.name}! +${price.toLocaleString()} 💰`);
+        this.updateUI();
     },
 
     openAllChests() {
@@ -177,7 +287,6 @@ Object.assign(game, {
             this.msg('Уже активен!');
             return;
         }
-        // 4 hours = 4 * 60 * 60 * 1000 = 14400000 ms
         this.state.buffs.cookie.endTime = Date.now() + 14400000;
         this.state.inventory = this.state.inventory.filter(x => x.id !== id);
         this.msg('Печенька активирована на 4 часа!');
@@ -203,14 +312,20 @@ Object.assign(game, {
         const i = this.state.inventory.find(x => x.id === id);
         if (!i || (i.type !== 'material' && i.type !== 'accessory')) return;
 
-        const pricePer = (i.name === 'Апгрейд питомца') ? 8000000 : 2;
+        let pricePer;
+        if (i.type === 'material') {
+            pricePer = this.getMaterialSellPrice(i.name);
+        } else {
+            pricePer = Math.floor((i.cost || 100) / 2);
+        }
+        
         const amount = i.count || 1;
         const total = pricePer * amount;
 
         this.state.coins += total;
         this.state.inventory = this.state.inventory.filter(x => x.id !== id);
 
-        this.msg(`Продано ${amount} ${i.name}! +${total} 💰`);
+        this.msg(`Продано ${amount} ${i.name}! +${total.toLocaleString()} 💰`);
         this.updateUI();
     },
 
@@ -219,8 +334,6 @@ Object.assign(game, {
         if (!i || !['weapon','armor','tool','accessory'].includes(i.type)) return;
 
         if (i.type === 'accessory') {
-            // Разрешаем надевать несколько аксессуаров, если у них РАЗНЫЕ названия
-            // (защита от стакания одинаковых талисманов)
             if (!i.equipped) {
                 const sameName = this.state.inventory.find(x => x.type === 'accessory' && x.equipped && x.name === i.name);
                 if (sameName) {
