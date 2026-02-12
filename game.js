@@ -14,6 +14,7 @@ const defaultState = {
         lastSwitch: Date.now(),
         rotation: ['dodoll', 'waifu625', 'necronchik']
     },
+    globalMayor: null,
     skills: {
         mining: {lvl:1,xp:0,next:100,label:'ШАХТА'},
         farming: {lvl:1,xp:0,next:100,label:'ФЕРМА'},
@@ -673,6 +674,7 @@ const game = {
             this.msg('Запуск вне Telegram — тестовый режим');
         }
         await this.loadFromSupabase();
+        if (typeof this.initGlobalMayor === 'function') await this.initGlobalMayor();
         if (typeof this.initMayor === 'function') this.initMayor();
         setInterval(() => this.minionTick(), 1000);
         setInterval(() => this.saveToSupabase(), 10000);
@@ -833,12 +835,17 @@ const game = {
         s.fishing_exp_bonus += 0.5 * (this.state.skills.fishing.lvl - 1);
 
         if (typeof this.getMayorBonuses === 'function') {
-            const mb = this.getMayorBonuses();
-            if (mb.mf_bonus) s.mf += mb.mf_bonus;
-            if (mb.gold_bonus) s.gold_bonus += mb.gold_bonus;
-            if (mb.dungeon_xp_bonus) s.dungeon_exp_bonus += mb.dungeon_xp_bonus;
-            if (mb.dungeon_dmg_bonus) s.dungeon_damage += mb.dungeon_dmg_bonus;
-            if (mb.craft_xp_bonus) s.xp_bonus += mb.craft_xp_bonus;
+           const globalMb = typeof this.getGlobalMayorBonuses === 'function' ? this.getGlobalMayorBonuses() : {};
+            if (globalMb.mf_bonus) s.mf += globalMb.mf_bonus;
+            if (globalMb.gold_bonus) s.goldbonus += globalMb.gold_bonus;
+            if (globalMb.dungeon_xp_bonus) s.dungeonexpbonus += globalMb.dungeon_xp_bonus;
+            if (globalMb.dungeon_dmg_bonus) s.dungeondamage += globalMb.dungeon_dmg_bonus;
+            if (globalMb.craft_xp_bonus) s.xpbonus += globalMb.craft_xp_bonus;
+            
+            // Локальные бонусы мэра (если есть)
+            const localMb = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
+            if (localMb.mf_bonus) s.mf += localMb.mf_bonus;
+            if (localMb.gold_bonus) s.goldbonus += localMb.gold_bonus;
         }
 
         const mayorPet = this.state.pets?.find(p => p.mayorPet && p.equipped);
