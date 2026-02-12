@@ -961,9 +961,8 @@ const game = {
             `;
         }
         document.getElementById('stats-display').innerHTML += petHtml;
-        if (typeof this.updateMayorBuffDisplay === 'function') {
-            this.updateMayorBuffDisplay();
-        }
+        if (typeof this.updateGlobalMayorBuffDisplay === 'function') this.updateGlobalMayorBuffDisplay();
+        if (typeof this.updateMayorBuffDisplay === 'function') this.updateMayorBuffDisplay(); 
         this.renderMinions();
         if (typeof this.renderInvList === 'function') {
             this.renderInvList(this.lastFilter);
