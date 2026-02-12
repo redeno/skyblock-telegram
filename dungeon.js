@@ -17,7 +17,7 @@ const dungeonRewards = {
         {name:'Талисман удачи +1',type:'accessory',mf:1,cost:100}
     ]}]},
     3: {coins_min:1000, coins_max:2500, drops:[{chance:1,item:{name:'Талисман защиты +20',type:'accessory',def:20,cost:5000}}]},
-    4: {coins_min:5000, coins_max:25000, drops:[{chance:5,item:{name:'Меч Мидаса',type:'weapon',dynamic_str:'midas',cost:10000}}]},
+    4: {coins_min:5000, coins_max:25000, drops:[{chance:1,item:{name:'Меч Мидаса',type:'weapon',dynamic_str:'midas',cost:50000000}}]},
     5: {coins_min:10000, coins_max:40000, drops:[]},
     6: {coins_min:100000, coins_max:500000, drops:[{chance:3,item:{name:'Меч Гиганта',type:'weapon',str:100,cd:50,cost:250000}}]},
     7: {coins_min:200000, coins_max:1000000, drops:[{chance:0.5,item:{name:'Гиперион',type:'weapon',magic:true,cost:500000}}]}
@@ -30,14 +30,12 @@ Object.assign(game, {
     witherAttackCount: 0,
     tigerHitCount: 0,
 
-    // Бонус к XP от Бейби Иссушителя
     getBabyWitherXpBonus() {
         const pet = this.state.pets.find(p => p.equipped && p.name === 'Бейби Иссушитель');
         if (!pet) return { bonusMul:1, pet:null };
         return { bonusMul:1 + pet.lvl / 100, pet };
     },
 
-    // Добавление XP питомцу
     addPetXp(pet, xp) {
         pet.xp += xp;
         while(pet.xp >= pet.next){
@@ -62,16 +60,13 @@ Object.assign(game, {
     }
     if(Math.random()*100<s.cc){damage*=(1+s.cd/100); msgText+='КРИТИЧЕСКИЙ УДАР! ';}
 
-    // Tiger Legendary Perk
     const tiger = this.state.pets.find(p => p.equipped && p.name === 'Тигр');
     if (tiger && tiger.rarity === 'legendary') {
         const lvl = tiger.lvl || 1;
-        // 1% (lvl 1) -> 5% (lvl 100) per hit
         const perkBonus = 1 + (lvl - 1) * (4/99);
         const multiplier = 1 + (this.tigerHitCount * perkBonus / 100);
         damage *= multiplier;
         this.tigerHitCount++;
-        // msgText += `(TIGER x${multiplier.toFixed(2)}) `; 
     }
 
     this.dungeon.mobHp-=damage;
@@ -99,15 +94,15 @@ Object.assign(game, {
     this.dungeon.pHp-=actualDmg;
 
     if (this.dungeon.mobHp <= 0) {
-        // XP за моба с бонусом Бейби
         const baseXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
         const {bonusMul} = this.getBabyWitherXpBonus();
-        const finalXp = Math.floor(baseXp * bonusMul);
+        const dungeonStats = this.calcStats(true);
+        const dungeonExpBonus = 1 + (dungeonStats.dungeon_exp_bonus || 0) / 100;
+        const finalXp = Math.floor(baseXp * bonusMul * dungeonExpBonus);
         this.addXp('combat', finalXp);
         const equippedPet = this.state.pets.find(p => p.equipped);
         if (equippedPet) this.addPetXp(equippedPet, finalXp * 0.5);
 
-        // ХИЛ ОТ ХИЛЛЕРА — всегда после убийства моба
         let killMsg = 'МОБ УБИТ!';
         if (this.state.class === 'healer') {
             const maxHp = Number(this.dungeon.pMaxHp) || 100;
@@ -139,7 +134,12 @@ Object.assign(game, {
     initMobStats(){
         const config=dungeonConfig[this.dungeon.floor];
         const isBoss=this.dungeon.mobIdx===3;
-        const baseHp = isBoss && config.bossStats ? config.bossStats.hp||config.baseHp*(config.bossMultiplier||1) : config.baseHp;
+        let baseHp = isBoss && config.bossStats ? config.bossStats.hp||config.baseHp*(config.bossMultiplier||1) : config.baseHp;
+        
+        if (game.state.mayor?.current === 'waifu625') {
+            baseHp = Math.floor(baseHp * 0.95);
+        }
+        
         this.dungeon.mobHp = baseHp;
         this.dungeon.mobMaxHp = baseHp;
         this.mobDef = isBoss && config.bossStats ? config.bossStats.def||config.baseDef*(config.bossMultiplier||1) : config.baseDef;
@@ -163,17 +163,14 @@ Object.assign(game, {
         coins=Math.floor(coins*(1+(s.gold_bonus||0)/100));
         this.state.coins+=coins;
 
-        // XP за этаж с бонусом Бейби
-        const baseDungeonXp = this.dungeon.floor*200;
+        let baseDungeonXp = this.dungeon.floor*200;
+        const dungeonExpBonus = 1 + (s.dungeon_exp_bonus || 0) / 100;
         const {bonusMul} = this.getBabyWitherXpBonus();
-        const finalDungeonXp = Math.floor(baseDungeonXp*bonusMul);
+        const finalDungeonXp = Math.floor(baseDungeonXp*bonusMul*dungeonExpBonus);
         this.addXp('dungeons', finalDungeonXp);
         const equippedPet = this.state.pets.find(p => p.equipped);
         if (equippedPet) this.addPetXp(equippedPet, finalDungeonXp * 0.5);
 
-        // Фрагменты из данжа (Шансы 29% -> 25% -> 21% -> 17% -> 13% -> 9% -> 5%)
-        // Кол-во: Floor 1 (0-1), Floor 2 (0-2)... Floor 7 (0-7) ? Или как просил юзер "0-1, 0-2, 1-3..."
-        // Юзер: 1 эт (29% 0-1), 2 эт (25% 0-2), 3 эт (21% 1-3), 4 эт (17% 2-4), 5 эт (13% 3-5), 6 эт (9% 4-6), 7 эт (5% 5-7)
         let fragChance = 0;
         let minFrag = 0;
         let maxFrag = 0;
@@ -188,21 +185,17 @@ Object.assign(game, {
             case 7: fragChance = 5;  minFrag = 5; maxFrag = 7; break;
         }
 
+        let fragDropped = 0;
         if (fragChance > 0 && Math.random() * 100 < fragChance) {
-            const count = Math.floor(Math.random() * (maxFrag - minFrag + 1)) + minFrag;
-            if (count > 0) {
-                this.addMaterial('Фрагмент из Данжа', 'material', count);
-                // dropsText += ` | +${count} Фрагмент(ов)`; // Добавим в общий текст
-                // Лучше просто добавить в лог
+            fragDropped = Math.floor(Math.random() * (maxFrag - minFrag + 1)) + minFrag;
+            if (fragDropped > 0) {
+                this.addMaterial('Фрагмент из Данжа', 'material', fragDropped);
             }
         }
 
-        // Дропы
         let dropsText='';
-        // Добавим фрагменты в текст, если они выпали (нужно проверить инвентарь или просто вывести)
-        // Упростим: просто выведем в dropsText, если шанс сработал
-        if (fragChance > 0 && Math.random() * 100 < fragChance) { // Повторный ролл для текста? Нет, надо было сохранить результат.
-             // Исправим логику выше
+        if (fragDropped > 0) {
+            dropsText += ` | +${fragDropped} Фрагмент(ов)`;
         }
         r.drops?.forEach(drop=>{
             let effChance = drop.chance + ((s.mf||0)/100);
