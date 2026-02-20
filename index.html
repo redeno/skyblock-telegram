@@ -4,11 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SkyBlock Mobile RPG</title>
-    
-    <!-- Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js?ver=20260107"></script>
-    
-    <!-- Подключаем стили -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,7 +16,6 @@
     </div>
 
     <div id="viewport">
-        <!-- Главный экран -->
         <div id="home" class="screen active">
             <div class="card" style="text-align:center">
                 <h1 style="margin:0;color:var(--accent)">💰 <span id="coins-val">0</span></h1>
@@ -32,7 +27,6 @@
             </div>
         </div>
 
-        <!-- Портал -->
         <div id="portal" class="screen">
             <h3 style="text-align:center;margin-top:0">🌀 ПОРТАЛ</h3>
             <div class="portal-grid">
@@ -41,8 +35,9 @@
                 <div class="portal-node" onclick="game.openFishingMenu()">🎣 РЫБАЛКА</div>
                 <div class="portal-node" onclick="game.openForagingMenu()">🌲 ЛЕС</div>
                 <div class="portal-node" onclick="game.switchTab('dungeons-menu')">💀 ДАНЖИ</div>
-                <div class="portal-node" onclick="game.msg('Скоро...')">👹 СЛЕЙЕРЫ</div>
+                <div class="portal-node" onclick="game.openSlayerMenu()">👹 СЛЕЙЕРЫ</div>
                 <div class="portal-node" onclick="game.switchTab('shop')">🛒 МАГАЗИН</div>
+                <div class="portal-node" onclick="game.openEnchanting()">📖 ЗАЧАРОВАНИЕ</div>
                 <div class="portal-node" onclick="game.openExchange()">⚖️ ОБМЕН</div>
                 <div class="portal-node" onclick="game.openEventsMenu()">📅 ИВЕНТ</div>
                 <div class="portal-node" onclick="game.openMayorMenu()">🗳️ МЭР</div>
@@ -50,14 +45,12 @@
             </div>
         </div>
 
-        <!-- Farming Menu -->
         <div id="farming-menu" class="screen">
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
             <h3>🌾 ФЕРМА: ВЫБОР КУЛЬТУРЫ</h3>
             <div id="farming-list"></div>
         </div>
 
-        <!-- Работа на локации -->
         <div id="action-loc" class="screen">
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
             <h2 id="loc-title" style="text-align:center;text-transform:uppercase">ШАХТА</h2>
@@ -71,7 +64,6 @@
             <div id="mining-islands" style="display:none; margin-top:15px;"></div>
         </div>
 
-        <!-- Данжи -->
         <div id="dungeons-menu" class="screen">
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
             <h3>💀 КАТАКОМБЫ</h3>
@@ -83,7 +75,23 @@
             <div class="card"><p>ЭТАЖ VI</p><button class="cooldown-btn" onclick="game.startDungeon(6)">ВОЙТИ</button></div>
         </div>
 
-        <!-- Бой -->
+        <div id="slayer-menu" class="screen"></div>
+
+        <div id="slayer-battle-screen" class="screen">
+            <button class="top-btn" onclick="game.cancelSlayer()">← ОТМЕНА</button>
+            <h2 style="text-align:center;color:var(--red)">👹 СЛЕЙЕР БОЙ</h2>
+            <div class="card" style="text-align:center;">
+                <p id="slayer-kills-txt" style="color:var(--accent); font-weight:bold; margin:0 0 10px 0;">Прогресс: 0/10</p>
+                <h3 id="slayer-mob-name" style="color:var(--red); margin:5px 0;">МОНСТР</h3>
+                <div style="display:flex;justify-content:space-between"><span>ХП ВРАГА</span><span id="slayer-m-hp-txt">50/50</span></div>
+                <div class="hp-bar"><div id="slayer-m-hp-fill" class="hp-fill" style="width:100%"></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:10px;"><span>ТВОЁ ХП</span><span id="slayer-p-hp-txt">100/100</span></div>
+                <div class="hp-bar"><div id="slayer-p-hp-fill" class="hp-fill" style="width:100%;background:var(--blue)"></div></div>
+                <button class="cooldown-btn" style="height:70px;margin-top:15px;" onclick="game.slayerAttack()">💥 УДАРИТЬ</button>
+                <div id="slayer-xp-bar"></div>
+            </div>
+        </div>
+
         <div id="battle-screen" class="screen">
             <h2 id="mob-name" style="text-align:center;color:var(--red)">МОНСТР</h2>
             <div class="card">
@@ -97,35 +105,24 @@
             <button class="cooldown-btn" style="height:80px" onclick="game.dungeonAttack()">💥 УДАРИТЬ</button>
         </div>
 
-        <!-- Лут после данжа -->
-<div id="loot-screen" class="screen">
-    <h2 style="text-align:center;color:var(--accent)">ПОБЕДА!</h2>
-
-    <!-- ЛОГ НАГРАД ДАНЖА -->
-    <div id="dungeon-log"
-         style="color:#0f0; font-size:18px; text-align:center;
-                margin:15px; padding:12px;
-                background:rgba(0,0,0,0.5);
-                border-radius:10px;">
-    </div>
-
-    <p style="text-align:center;font-size:1.2rem">🎁 Сундук добавлен в инвентарь!</p>
-
-    <div id="extra-chests" style="display:none;">
-        <h3 style="text-align:center">Купить доп. сундук?</h3>
-        <div class="item-actions">
-            <button class="act-btn" onclick="game.buyExtraChest(1)">Обычный (3м)</button>
-            <button class="act-btn" onclick="game.buyExtraChest(2)">Эпический (5м)</button>
-            <button class="act-btn" onclick="game.buyExtraChest(3)">Элитный (10м)</button>
+        <div id="loot-screen" class="screen">
+            <h2 style="text-align:center;color:var(--accent)">ПОБЕДА!</h2>
+            <div id="dungeon-log" style="color:#0f0; font-size:18px; text-align:center; margin:15px; padding:12px; background:rgba(0,0,0,0.5); border-radius:10px;"></div>
+            <p style="text-align:center;font-size:1.2rem">🎁 Сундук добавлен в инвентарь!</p>
+            <div id="extra-chests" style="display:none;">
+                <h3 style="text-align:center">Купить доп. сундук?</h3>
+                <div class="item-actions">
+                    <button class="act-btn" onclick="game.buyExtraChest(1)">Обычный (3м)</button>
+                    <button class="act-btn" onclick="game.buyExtraChest(2)">Эпический (5м)</button>
+                    <button class="act-btn" onclick="game.buyExtraChest(3)">Элитный (10м)</button>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
+                <button class="cooldown-btn" onclick="game.switchTab('portal')">ВЕРНУТЬСЯ НА ПОРТАЛ</button>
+                <button class="cooldown-btn" style="background:var(--green)" onclick="game.repeatDungeon()">ПОВТОРИТЬ ДАНЖ</button>
+            </div>
         </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
-        <button class="cooldown-btn" onclick="game.switchTab('portal')">ВЕРНУТЬСЯ НА ПОРТАЛ</button>
-        <button class="cooldown-btn" style="background:var(--green)" onclick="game.repeatDungeon()">ПОВТОРИТЬ ДАНЖ</button>
-    </div>
-</div>
 
-        <!-- Магазин -->
         <div id="shop" class="screen">
             <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
             <h3>🛒 МАГАЗИН</h3>
@@ -147,7 +144,6 @@
             <div id="shop-list"></div>
         </div>
 
-        <!-- Миньоны -->
         <div id="minions" class="screen">
             <div class="card" style="border-color:var(--accent);text-align:center">
                 КОШЕЛЕК: <span id="m-coins-val" style="color:var(--accent)">0</span> 💰
@@ -155,7 +151,6 @@
             <div id="minions-list"></div>
         </div>
 
-        <!-- Инвентарь -->
         <div id="inventory" class="screen">
             <div class="inv-tabs">
                 <div class="inv-tab active" onclick="game.filterInv('weapon',this)">ОРУЖИЕ</div>
@@ -165,14 +160,13 @@
                 <div class="inv-tab" onclick="game.filterInv('material',this)">МАТЕРИАЛ</div>
                 <div class="inv-tab" onclick="game.filterInv('chest',this)">СУНДУКИ</div>
                 <div class="inv-tab" onclick="game.filterInv('potion',this)">БАФФЫ</div>
+                <div class="inv-tab" onclick="game.filterInv('book',this)">📖 КНИГИ</div>
                 <div class="inv-tab" onclick="game.filterInv('pet',this)">ПИТОМЦЫ</div>
             </div>
             <div id="inv-list"></div>
         </div>
-
     </div>
 
-    <!-- Модальные окна -->
     <div id="skillsModal" class="modal">
         <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('skillsModal')">[ЗАКРЫТЬ]</span>
         <h3>📊 ТВОИ НАВЫКИ</h3>
@@ -188,116 +182,109 @@
         </select>
     </div>
 
-<div id="updatesModal" class="modal"></div>    
-<div id="leadModal" class="modal">
-    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
-    <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
-    
-    <!-- Вкладки топа -->
-    <div class="inv-tabs">
-        <div class="inv-tab active" onclick="game.loadTop('rich')">💰 БОГАТЫЕ</div>
-        <div class="inv-tab" onclick="game.loadTop('dungeons')">💀 ДАНЖИ</div>
-        <div class="inv-tab" onclick="game.loadTop('level')">🌟 УРОВЕНЬ</div>
+    <div id="updatesModal" class="modal"></div>
+    <div id="leadModal" class="modal">
+        <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('leadModal')">[ЗАКРЫТЬ]</span>
+        <h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>
+        <div class="inv-tabs">
+            <div class="inv-tab active" onclick="game.loadTop('rich')">💰 БОГАТЫЕ</div>
+            <div class="inv-tab" onclick="game.loadTop('dungeons')">💀 ДАНЖИ</div>
+            <div class="inv-tab" onclick="game.loadTop('level')">🌟 УРОВЕНЬ</div>
+        </div>
+        <div id="lead-list"></div>
     </div>
-    
-    <div id="lead-list"></div>
-</div>
 
-<div id="exchangeModal" class="modal">
-    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('exchangeModal')">[ЗАКРЫТЬ]</span>
-    <h3>⚖️ ОБМЕН</h3>
-    <div id="exchange-content"></div>
-</div>
-
-<div id="talentsModal" class="modal">
-    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('talentsModal')">[ЗАКРЫТЬ]</span>
-    <h3>📜 ТАЛАНТЫ ФЕРМЕРСТВА</h3>
-    <div id="talents-content"></div>
-</div>
-
-<div id="adminModal" class="modal">
-    <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--red); max-width:500px; margin:50px auto; position:relative;">
-        <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('adminModal')">[ЗАКРЫТЬ]</span>
-        <div id="admin-content"></div>
+    <div id="exchangeModal" class="modal">
+        <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('exchangeModal')">[ЗАКРЫТЬ]</span>
+        <h3>⚖️ ОБМЕН</h3>
+        <div id="exchange-content"></div>
     </div>
-</div>
 
-<div id="foragingTalentsModal" class="modal">
-    <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('foragingTalentsModal')">[ЗАКРЫТЬ]</span>
-    <h3>📜 ТАЛАНТЫ ЛЕСА</h3>
-    <div id="foraging-talents-content"></div>
-</div>
-
-<div id="eventsModal" class="modal">
-    <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--dark-gray); max-width:500px; margin:50px auto; position:relative;">
-        <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('eventsModal')">[ЗАКРЫТЬ]</span>
-        <h3 style="text-align:center;">📅 ИВЕНТЫ</h3>
-        <div id="events-content"></div>
+    <div id="talentsModal" class="modal">
+        <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('talentsModal')">[ЗАКРЫТЬ]</span>
+        <h3>📜 ТАЛАНТЫ ФЕРМЕРСТВА</h3>
+        <div id="talents-content"></div>
     </div>
-</div>
 
-<div id="mayorModal" class="modal">
-    <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--dark-gray); max-width:500px; margin:50px auto; position:relative;">
-        <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('mayorModal')">[ЗАКРЫТЬ]</span>
-        <div id="mayor-content"></div>
+    <div id="adminModal" class="modal">
+        <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--red); max-width:500px; margin:50px auto; position:relative;">
+            <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('adminModal')">[ЗАКРЫТЬ]</span>
+            <div id="admin-content"></div>
+        </div>
     </div>
-</div>
 
-    <!-- Нижняя навигация -->
+    <div id="enchantModal" class="modal">
+        <div class="modal-content" style="background:var(--card); padding:15px; border-radius:10px; border:2px solid var(--accent); max-width:500px; margin:30px auto; position:relative; max-height:80vh; overflow-y:auto;">
+            <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('enchantModal')">[ЗАКРЫТЬ]</span>
+            <h3 style="text-align:center;">📖 ЗАЧАРОВАНИЕ</h3>
+            <div id="enchant-content"></div>
+        </div>
+    </div>
+
+    <div id="foragingTalentsModal" class="modal">
+        <span style="float:right;font-weight:bold;cursor:pointer" onclick="game.closeModal('foragingTalentsModal')">[ЗАКРЫТЬ]</span>
+        <h3>📜 ТАЛАНТЫ ЛЕСА</h3>
+        <div id="foraging-talents-content"></div>
+    </div>
+
+    <div id="eventsModal" class="modal">
+        <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--dark-gray); max-width:500px; margin:50px auto; position:relative;">
+            <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('eventsModal')">[ЗАКРЫТЬ]</span>
+            <h3 style="text-align:center;">📅 ИВЕНТЫ</h3>
+            <div id="events-content"></div>
+        </div>
+    </div>
+
+    <div id="mayorModal" class="modal">
+        <div class="modal-content" style="background:var(--card); padding:20px; border-radius:10px; border:2px solid var(--dark-gray); max-width:500px; margin:50px auto; position:relative;">
+            <span style="position:absolute; right:15px; top:10px; font-weight:bold; cursor:pointer; color:var(--gray)" onclick="game.closeModal('mayorModal')">[ЗАКРЫТЬ]</span>
+            <div id="mayor-content"></div>
+        </div>
+    </div>
+
     <nav id="nav">
         <button class="nav-item active" onclick="game.switchTab('home',this)"><span>🏠</span>ДОМ</button>
         <button class="nav-item" onclick="game.switchTab('portal',this)"><span>🌀</span>ПОРТАЛ</button>
         <button class="nav-item" onclick="game.switchTab('minions',this)"><span>👷</span>МИНЬОНЫ</button>
         <button class="nav-item" onclick="game.switchTab('inventory',this)"><span>🎒</span>ИНВЕНТАРЬ</button>
     </nav>
-   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   <script src="game.js"></script>
-   <script src="news.js"></script>
-   <script src="inventory.js"></script>
-<script src="top.js"></script>
-<script src="dungeon.js"></script>
-<script src="skills.js"></script>
-<script src="farming.js"></script>
-<script src="pets.js"></script>
-<script src="mining.js"></script>
-<script src="foraging.js"></script>
-<script src="fishing.js"></script>
-<script src="exchange.js"></script>
-<script src="events.js"></script>
-<script src="mayor.js"></script>
-<script src="admin.js"></script>
-<script src="slayer.js"></script>
-<script>
-  // Список разрешённых ID (можно добавить ещё позже)
-  const ADMIN_IDS = [1546583402];
 
-  // Проверяем, админ ли текущий пользователь
-  const user = Telegram.WebApp.initDataUnsafe?.user;
-  const isAdmin = user && ADMIN_IDS.includes(user.id);
-
-  // Находим кнопку админа в портале
-  const adminNode = document.querySelector('.portal-node[onclick="game.openAdminPanel()"]');
-
-  if (adminNode) {
-    if (!isAdmin) {
-      adminNode.style.display = 'none';
-    } else {
-      // Опционально: выделяем для админа сильнее
-      adminNode.style.borderColor = 'var(--red)';
-      adminNode.style.background = 'rgba(255, 0, 0, 0.08)';
-    }
-  }
-
-  // Дополнительная защита: если кто-то всё же вызовет функцию — блокируем
-  const originalOpenAdmin = game.openAdminPanel;
-  game.openAdminPanel = function() {
-    if (!isAdmin) {
-      alert("Доступ запрещён");
-      return;
-    }
-    originalOpenAdmin?.call(game);
-  };
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="game.js"></script>
+    <script src="news.js"></script>
+    <script src="inventory.js"></script>
+    <script src="top.js"></script>
+    <script src="dungeon.js"></script>
+    <script src="skills.js"></script>
+    <script src="farming.js"></script>
+    <script src="pets.js"></script>
+    <script src="mining.js"></script>
+    <script src="foraging.js"></script>
+    <script src="fishing.js"></script>
+    <script src="exchange.js"></script>
+    <script src="events.js"></script>
+    <script src="mayor.js"></script>
+    <script src="admin.js"></script>
+    <script src="slayer.js"></script>
+    <script src="enchanting.js"></script>
+    <script>
+      const ADMIN_IDS = [1546583402];
+      const user = Telegram.WebApp.initDataUnsafe?.user;
+      const isAdmin = user && ADMIN_IDS.includes(user.id);
+      const adminNode = document.querySelector('.portal-node[onclick="game.openAdminPanel()"]');
+      if (adminNode) {
+        if (!isAdmin) {
+          adminNode.style.display = 'none';
+        } else {
+          adminNode.style.borderColor = 'var(--red)';
+          adminNode.style.background = 'rgba(255, 0, 0, 0.08)';
+        }
+      }
+      const originalOpenAdmin = game.openAdminPanel;
+      game.openAdminPanel = function() {
+        if (!isAdmin) { alert("Доступ запрещён"); return; }
+        originalOpenAdmin?.call(game);
+      };
+    </script>
 </body>
 </html>
-
