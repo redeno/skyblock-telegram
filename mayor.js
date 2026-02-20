@@ -1,4 +1,4 @@
-// mayor.js — система мэров (локальная версия, ротация по таймеру)
+// mayor.js — ГЛОБАЛЬНАЯ система мэров через Supabase (4 часа ротация)
 
 const MAYORS = {
     dodoll: {
@@ -66,7 +66,7 @@ const MAYORS = {
     }
 };
 
-const MAYOR_ROTATION_MS = 4 * 60 * 60 * 1000;
+const MAYOR_ROTATION_MS = 4 * 60 * 60 * 1000; // 4 часа
 
 Object.assign(game, {
     globalMayor: null,
@@ -74,50 +74,64 @@ Object.assign(game, {
     mayorSyncInterval: null,
     mayorAutoCollectInterval: null,
 
+    // 🔥 ГЛАВНАЯ ИНИЦИАЛИЗАЦИЯ ГЛОБАЛЬНЫХ МЭРОВ
     async initMayor() {
         await this.syncGlobalMayor();
         this.startMayorTimers();
         this.updateMayorBuffDisplay();
     },
 
+    // ✅ ИСПРАВЛЕНО: supabaseClient вместо supabase
     async syncGlobalMayor() {
         try {
-            const rotation = ['dodoll', 'waifu625', 'necronchik'];
-            if (supabaseClient && isTelegramEnv) {
-                const { data, error } = await supabaseClient
-                    .from('global_events')
-                    .select('*')
-                    .eq('event_type', 'mayor')
-                    .single();
-                
-                if (data) {
-                    this.globalMayor = data;
-                    this.checkGlobalMayorRotation();
-                    this.globalMayorLastSync = Date.now();
-                    this.updateMayorBuffDisplay();
-                    return;
-                }
+            if (typeof supabaseClient === 'undefined') {
+                console.error('supabaseClient не найден!');
+                return;
             }
 
-            // Fallback to localStorage
-            const saved = localStorage.getItem('skyblock_mayor');
-            if (saved) {
-                this.globalMayor = JSON.parse(saved);
-                this.checkGlobalMayorRotation();
-            } else {
-                this.globalMayor = {
-                    event_type: 'mayor',
-                    current_mayor: 'dodoll',
-                    rotation_order: rotation,
-                    last_switch: new Date().toISOString()
-                };
-                localStorage.setItem('skyblock_mayor', JSON.stringify(this.globalMayor));
+            const { data, error } = await supabaseClient
+                .from('global_events')
+                .select('*')
+                .eq('event_type', 'mayor')
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Ошибка глобального мэра:', error);
+                return;
             }
-            
-            this.globalMayorLastSync = Date.now();
+
+            if (data) {
+                this.globalMayor = data;
+                this.checkGlobalMayorRotation();
+                this.globalMayorLastSync = Date.now();
+                console.log('🌍 Глобальный мэр:', data.current_mayor);
+            } else {
+                await this.createFirstGlobalMayor();
+            }
             this.updateMayorBuffDisplay();
         } catch (error) {
             console.error('syncGlobalMayor:', error);
+        }
+    },
+
+    // ✅ ИСПРАВЛЕНО: supabaseClient
+    async createFirstGlobalMayor() {
+        try {
+            const { error } = await supabaseClient
+                .from('global_events')
+                .insert([{
+                    event_type: 'mayor',
+                    current_mayor: 'dodoll',
+                    rotation_order: ['dodoll', 'waifu625', 'necronchik'],
+                    last_switch: new Date().toISOString()
+                }]);
+
+            if (!error) {
+                console.log('🌍 Создан первый глобальный мэр DoDoll');
+                await this.syncGlobalMayor();
+            }
+        } catch (error) {
+            console.error('createFirstGlobalMayor:', error);
         }
     },
 
@@ -129,6 +143,7 @@ Object.assign(game, {
         }
     },
 
+    // ✅ ИСПРАВЛЕНО: supabaseClient
     async rotateGlobalMayor() {
         if (!this.globalMayor) return;
 
@@ -136,32 +151,23 @@ Object.assign(game, {
         const currentIdx = rotation.indexOf(this.globalMayor.current_mayor);
         const newMayor = rotation[(currentIdx + 1) % rotation.length];
 
-        const nextSwitch = new Date().toISOString();
-
-        if (supabaseClient && isTelegramEnv) {
-            try {
-                await supabaseClient.from('global_events').upsert({
-                    event_type: 'mayor',
+        try {
+            const { error } = await supabaseClient
+                .from('global_events')
+                .update({
                     current_mayor: newMayor,
-                    last_switch: nextSwitch,
-                    rotation_order: rotation
-                }, { onConflict: 'event_type' });
-            } catch (e) {
-                console.error('Supabase rotate error:', e);
-            }
-        }
+                    last_switch: new Date().toISOString()
+                })
+                .eq('event_type', 'mayor')
+                .eq('id', this.globalMayor.id);
 
-        this.globalMayor.current_mayor = newMayor;
-        this.globalMayor.last_switch = nextSwitch;
-        localStorage.setItem('skyblock_mayor', JSON.stringify(this.globalMayor));
-        
-        this.msg(`🌍 Новый мэр: ${MAYORS[newMayor].name}!`);
-        
-        if (MAYORS[newMayor].onActivate) {
-            MAYORS[newMayor].onActivate(this);
+            if (!error) {
+                this.msg(`🌍 Новый мэр: ${MAYORS[newMayor].name}!`);
+                await this.syncGlobalMayor();
+            }
+        } catch (error) {
+            console.error('rotateGlobalMayor:', error);
         }
-        
-        this.updateMayorBuffDisplay();
     },
 
     startMayorTimers() {
@@ -209,6 +215,7 @@ Object.assign(game, {
         if (bonuses.mf_bonus) bonusText.push(`+${bonuses.mf_bonus} удача`);
         if (bonuses.shop_discount) bonusText.push(`-${bonuses.shop_discount}% магазин`);
 
+        // Удаляем старый буфф мэра
         const oldMayorBuff = buffContainer.querySelector('.global-mayor-buff');
         if (oldMayorBuff) oldMayorBuff.remove();
 
@@ -220,7 +227,7 @@ Object.assign(game, {
             <div style="line-height:1.2; flex:1;">
                 <div style="font-size:0.8rem;font-weight:bold;color:${mayorData.color};">${mayorData.name}</div>
                 <div style="font-size:0.65rem;color:var(--green);">${bonusText.join(' | ')}</div>
-                <div style="font-size:0.55rem;color:var(--gray);">МЭР (${hours}ч ${mins}м)</div>
+                <div style="font-size:0.55rem;color:var(--gray);">ГЛОБАЛЬНЫЙ (${hours}ч ${mins}м)</div>
             </div>
         `;
         div.onclick = () => this.openMayorMenu();
@@ -245,7 +252,7 @@ Object.assign(game, {
     upgradeMayorPet(targetRarity) {
         const pet = this.state.pets.find(p => p.mayorPet === true);
         if (!pet || this.globalMayor?.current_mayor !== 'dodoll') {
-            this.msg('Зайчик доступен только при DoDoll!');
+            this.msg('❌ Зайчик доступен только при DoDoll!');
             return;
         }
 
@@ -255,7 +262,7 @@ Object.assign(game, {
         const costs = { rare: 100000, epic: 250000, legendary: 350000 };
         const cost = costs[targetRarity];
         if (this.state.coins < cost) {
-            this.msg(`Нужно ${cost.toLocaleString()} монет`);
+            this.msg(`❌ Нужно ${cost.toLocaleString()} монет`);
             return;
         }
 
@@ -281,22 +288,26 @@ Object.assign(game, {
         const mins = Math.floor((timeLeft % 3600000) / 60000);
 
         content.innerHTML = `
-            <h3 style="text-align:center;">🌍 МЭР</h3>
+            <h3 style="text-align:center;">🌍 ГЛОБАЛЬНЫЙ МЭР</h3>
             <div style="text-align:center; margin-bottom:15px;">
                 <small>Смена через: <b style="color:var(--accent);">${hours}ч ${mins}м</b></small>
             </div>
             <div style="text-align:center; border:2px solid ${current.color}; border-radius:12px; padding:20px; background:rgba(255,255,255,0.05);">
                 <div style="font-size:3rem;">${current.icon}</div>
                 <b style="font-size:1.4rem; color:${current.color};">${current.name}</b>
-                <div style="color:var(--green);">✓ АКТИВЕН</div>
+                <div style="color:var(--green);">✓ АКТИВЕН ДЛЯ ВСЕХ</div>
             </div>
             <div class="card" style="border-left:3px solid ${current.color}; margin-top:15px;">
-                <b style="color:${current.color};">Бонусы:</b>
+                <b style="color:${current.color};">Глобальные бонусы:</b>
                 <ul style="margin:8px 0 0 0; padding-left:20px; list-style:none;">
                     ${current.desc.map(line => `<li style="margin-bottom:4px; color:var(--green); font-size:0.9rem;">${line}</li>`).join('')}
                 </ul>
             </div>
             ${current.id === 'dodoll' ? this.renderMayorPetUI() : ''}
+            <div style="margin-top:15px; padding:10px; background:rgba(0,255,0,0.1); border-radius:8px; text-align:center;">
+                <small style="color:var(--accent);">⏰ Синхронизация каждые 30 сек</small><br>
+                <small style="color:var(--gray);">🌍 ОДИНАКОВЫЙ ДЛЯ ВСЕХ ИГРОКОВ</small>
+            </div>
         `;
     },
 
