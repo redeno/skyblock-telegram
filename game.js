@@ -1,10 +1,10 @@
-const tg = window.Telegram?.WebApp || {};
+const tg = window.Telegram?.WebApp || {
+    initDataUnsafe: { user: { id: 'local_player', username: 'Игрок' } },
+    showAlert: function(msg) { },
+    expand: function() {}
+};
 
-const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_t63MwjVo6ILOZYH64SWORg_S_KlENDS';
-
-const { createClient } = supabase;
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const STORAGE_KEY = 'skyblock_rpg_save';
 
 const defaultState = {
     coins: 500000000,
@@ -378,188 +378,93 @@ const game = {
     messageQueue: [],
     playerTelegramId: null,
 
-    loadFromSupabase: async function() {
-    if (!this.playerTelegramId) {
-        this.msg('Не удалось получить Telegram ID — тестовый режим');
-        this.state = JSON.parse(JSON.stringify(defaultState));
-        // Restore currentCrop if it was in state (from local storage simulation or just init)
-        this.state.currentCrop = null; 
-        this.updateUI();
-        return;
-    }
-
-    let { data, error } = await supabaseClient
-        .from('players')
-        .select('*')
-        .eq('telegram_id', this.playerTelegramId)
-        .maybeSingle();
-
-    if (error && error.code !== 'PGRST116') {
-        console.error('Ошибка Supabase:', error);
-        this.msg('Ошибка связи с сервером — загружаем локально');
-        this.state = JSON.parse(JSON.stringify(defaultState));
-        this.updateUI();
-        return;
-    }
-
-    if (data) {
-        // Безопасное присваивание всех полей с дефолтами
-        this.state.coins = data.coins ?? 0;
-        this.state.nextItemId = data.next_item_id ?? 10;
-        this.state.class = data.class ?? '';
-        // Restore currentCrop from loaded data if we start saving it in JSON columns or separate field
-        // Since we are using this.state to save, and supabase saves specific fields, we might lose it if not in schema.
-        // However, we are saving 'stats', 'skills', 'inventory' etc separately in upsert.
-        // We need to add 'currentCrop' to the upsert and schema OR put it in 'stats' or another JSON field?
-        // 'stats' is a JSONB column usually. 'skills' is JSONB.
-        // Let's put currentCrop in this.state directly, but we need to ensure it's saved.
-        // Inspect saveToSupabase: it saves explicit fields.
-        // So we should add currentCrop to 'stats' or 'skills' temporarily or update saveToSupabase.
-        // Updating saveToSupabase requires DB schema change if it's a column.
-        // If 'stats' is JSONB, we can add it there.
-        
-        // Let's use this.state.stats.currentCrop for persistence without schema change!
-        this.state.stats.currentCrop = data.stats?.currentCrop || null;
-        this.state.currentCrop = this.state.stats.currentCrop; // Sync to root state for easier access
-
-        // Навыки — с защитой от null/undefined
-        this.state.skills = data.skills 
-            ? { ...defaultState.skills, ...data.skills } 
-            : defaultState.skills;
-
-        // Статы — с защитой
-        this.state.stats = data.stats 
-            ? { ...defaultState.stats, ...data.stats } 
-            : defaultState.stats;
-
-        // Инвентарь
-        this.state.inventory = Array.isArray(data.inventory) 
-            ? data.inventory 
-            : defaultState.inventory;
-
-        // Миньоны — с миграцией
-        const savedMinions = Array.isArray(data.minions) ? data.minions : [];
-        this.state.minions = defaultState.minions.map(defM => {
-            const saved = savedMinions.find(s => s.id === defM.id);
+    loadFromLocalStorage: async function() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
-                // Сохраняем прогресс (уровень и накопленное)
-                return { ...defM, lvl: saved.lvl, stored: saved.stored };
+                const data = JSON.parse(saved);
+                this.state.coins = data.coins ?? 0;
+                this.state.nextItemId = data.nextItemId ?? 10;
+                this.state.class = data.class ?? '';
+                this.state.currentCrop = data.currentCrop || null;
+
+                this.state.skills = data.skills 
+                    ? { ...defaultState.skills, ...data.skills } 
+                    : defaultState.skills;
+
+                this.state.stats = data.stats 
+                    ? { ...defaultState.stats, ...data.stats } 
+                    : defaultState.stats;
+
+                this.state.inventory = Array.isArray(data.inventory) 
+                    ? data.inventory 
+                    : defaultState.inventory;
+
+                const savedMinions = Array.isArray(data.minions) ? data.minions : [];
+                this.state.minions = defaultState.minions.map(defM => {
+                    const saved = savedMinions.find(s => s.id === defM.id);
+                    if (saved) {
+                        return { ...defM, lvl: saved.lvl, stored: saved.stored };
+                    }
+                    return defM;
+                });
+
+                this.state.pets = Array.isArray(data.pets) ? data.pets : [];
+
+                this.state.buffs = data.buffs && typeof data.buffs === 'object'
+                    ? {
+                        godpotion: { endTime: data.buffs.godpotion?.endTime ?? 0 },
+                        cookie: { endTime: data.buffs.cookie?.endTime ?? 0 },
+                        ...data.buffs
+                      }
+                    : { godpotion: { endTime: 0 }, cookie: { endTime: 0 } };
+
+                this.state.farmingTalents = data.farmingTalents || defaultState.farmingTalents;
+                this.state.foragingTalents = data.foragingTalents || defaultState.foragingTalents;
+                this.state.activeEvent = data.activeEvent || null;
+                this.state.eventEndTime = data.eventEndTime || 0;
+                this.state.farmingQuests = data.farmingQuests || { lastReset: 0, active: [] };
+                this.state.mayor = data.mayor || defaultState.mayor;
+                this.state.slayer = data.slayer || this.state.slayer;
+                this.checkDailyQuests();
+                console.log('Сохранение загружено из localStorage');
+            } else {
+                this.state = JSON.parse(JSON.stringify(defaultState));
+                console.log('Новая игра — начинаем с начала');
             }
-            return defM;
+        } catch(e) {
+            console.error('Ошибка загрузки:', e);
+            this.state = JSON.parse(JSON.stringify(defaultState));
+        }
+
+        if (!this.state.buffs) {
+            this.state.buffs = { godpotion: { endTime: 0 }, cookie: { endTime: 0 } };
+        }
+
+        this.initSkills();
+
+        Object.assign(this.state.stats, {
+            mining_fortune: this.state.stats.mining_fortune ?? 0,
+            mining_exp_bonus: this.state.stats.mining_exp_bonus ?? 0,
+            foraging_fortune: this.state.stats.foraging_fortune ?? 0,
+            foraging_exp_bonus: this.state.stats.foraging_exp_bonus ?? 0,
+            farming_fortune: this.state.stats.farming_fortune ?? 0,
+            farming_exp_bonus: this.state.stats.farming_exp_bonus ?? 0,
+            fishing_fortune: this.state.stats.fishing_fortune ?? 0,
+            fishing_exp_bonus: this.state.stats.fishing_exp_bonus ?? 0,
+            magic_res: this.state.stats.magic_res ?? 0
         });
 
-        // Питомцы
-        this.state.pets = Array.isArray(data.pets) 
-            ? data.pets 
-            : [];
+        this.updateUI();
+    },
 
-        // Баффы — САМОЕ ВАЖНОЕ МЕСТО, где раньше падало
-        this.state.buffs = data.buffs && typeof data.buffs === 'object'
-            ? {
-                godpotion: { endTime: data.buffs.godpotion?.endTime ?? 0 },
-                cookie: { endTime: data.buffs.cookie?.endTime ?? 0 },
-                ...data.buffs  // если появятся новые баффы — сохраним
-              }
-            : { 
-                godpotion: { endTime: 0 }, 
-                cookie: { endTime: 0 } 
-              };
-
-        this.state.farmingTalents = data.farmingTalents || {
-            fortune: { lvl: 0, max: 25 },
-            exp: { lvl: 0, max: 10 },
-            double_drop: { lvl: 0, max: 10, req: { id: 'fortune', lvl: 3 } },
-            triple_drop: { lvl: 0, max: 10, req: { id: 'double_drop', lvl: 5 } },
-            overdrive: { lvl: 0, max: 1, req: { id: 'fortune', lvl: 5 } },
-            overdrive_duration: { lvl: 0, max: 10, req: { id: 'overdrive', lvl: 1 } }
-        };
-
-        this.state.foragingTalents = data.foragingTalents || {
-            fortune: { lvl: 0, max: 25 },
-            exp: { lvl: 0, max: 10 },
-            double_drop: { lvl: 0, max: 10, req: { id: 'fortune', lvl: 3 } },
-            triple_drop: { lvl: 0, max: 10, req: { id: 'double_drop', lvl: 5 } },
-            instant_chop: { lvl: 0, max: 5, req: { id: 'fortune', lvl: 5 } }
-        };
-
-        this.state.activeEvent = data.activeEvent || null;
-        this.state.eventEndTime = data.eventEndTime || 0;
-
-        this.state.farmingQuests = data.farmingQuests || { lastReset: 0, active: [] };
-        this.state.mayor = data.mayor || defaultState.mayor;
-        this.checkDailyQuests();
-
-        this.msg('Сохранение успешно загружено!');
-    } else {
-        // Новый игрок — создаём с дефолтными значениями
-        const tgUser = tg.initDataUnsafe?.user;
-        const username = tgUser?.username || null;
-
-        const newPlayer = {
-            telegram_id: this.playerTelegramId,
-            username: username,
-            coins: 0,
-            next_item_id: 10,
-            class: '',
-            skills: defaultState.skills,
-            stats: defaultState.stats,
-            inventory: defaultState.inventory,
-            minions: defaultState.minions,
-            pets: [],
-            buffs: { 
-                godpotion: { endTime: 0 }, 
-                cookie: { endTime: 0 } 
-            }
-        };
-
-        const { error: insertError } = await supabaseClient
-            .from('players')
-            .insert(newPlayer);
-
-        if (insertError) {
-            console.error('Ошибка создания профиля:', insertError);
-            this.msg('Ошибка создания нового профиля');
-            this.state = JSON.parse(JSON.stringify(defaultState));
-        } else {
-            this.state = JSON.parse(JSON.stringify(defaultState));
-            this.msg('Создан новый профиль!');
-        }
-    }
-
-    // Финальная защита — на всякий случай
-    if (!this.state.buffs) {
-        this.state.buffs = { 
-            godpotion: { endTime: 0 }, 
-            cookie: { endTime: 0 } 
-        };
-    }
-
-    this.initSkills();
-
-    // Защита статов (как было у тебя)
-    Object.assign(this.state.stats, {
-        mining_fortune: this.state.stats.mining_fortune ?? 0,
-        mining_exp_bonus: this.state.stats.mining_exp_bonus ?? 0,
-        foraging_fortune: this.state.stats.foraging_fortune ?? 0,
-        foraging_exp_bonus: this.state.stats.foraging_exp_bonus ?? 0,
-        farming_fortune: this.state.stats.farming_fortune ?? 0,
-        farming_exp_bonus: this.state.stats.farming_exp_bonus ?? 0,
-        fishing_fortune: this.state.stats.fishing_fortune ?? 0,
-        fishing_exp_bonus: this.state.stats.fishing_exp_bonus ?? 0,
-        magic_res: this.state.stats.magic_res ?? 0
-    });
-
-    this.updateUI();
-},
-    saveToSupabase: async function() {
-        if (!this.playerTelegramId) return;
-        const { error } = await supabaseClient
-            .from('players')
-            .upsert({
-                telegram_id: this.playerTelegramId,
+    saveToLocalStorage: function() {
+        try {
+            const saveData = {
                 coins: this.state.coins,
-                next_item_id: this.state.nextItemId,
+                nextItemId: this.state.nextItemId,
                 class: this.state.class,
+                currentCrop: this.state.currentCrop,
                 skills: this.state.skills,
                 stats: this.state.stats,
                 inventory: this.state.inventory,
@@ -567,13 +472,17 @@ const game = {
                 pets: this.state.pets,
                 buffs: this.state.buffs,
                 farmingTalents: this.state.farmingTalents,
-                //foragingTalents: this.state.foragingTalents,
-                //activeEvent: this.state.activeEvent,
-                //eventEndTime: this.state.eventEndTime,
+                foragingTalents: this.state.foragingTalents,
+                activeEvent: this.state.activeEvent,
+                eventEndTime: this.state.eventEndTime,
                 farmingQuests: this.state.farmingQuests,
-                mayor: this.state.mayor
-            }, { onConflict: 'telegram_id' });
-        if (error) console.error('Ошибка сохранения:', error);
+                mayor: this.state.mayor,
+                slayer: this.state.slayer
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+        } catch(e) {
+            console.error('Ошибка сохранения:', e);
+        }
     },
 
     checkDailyQuests() {
@@ -669,16 +578,12 @@ const game = {
         `;
     },
     async init() {
-        this.playerTelegramId = tg.initDataUnsafe?.user?.id;
-        if (!this.playerTelegramId) {
-            this.msg('Запуск вне Telegram — тестовый режим');
-        }
-        await this.loadFromSupabase();
-        await this.initMayor();
+        this.playerTelegramId = tg.initDataUnsafe?.user?.id || 'local_player';
+        await this.loadFromLocalStorage();
         if (typeof this.initGlobalMayor === 'function') await this.initGlobalMayor();
-        if (typeof this.initMayor === 'function') this.initMayor();
+        if (typeof this.initMayor === 'function') await this.initMayor();
         setInterval(() => this.minionTick(), 1000);
-        setInterval(() => this.saveToSupabase(), 10000);
+        setInterval(() => this.saveToLocalStorage(), 5000);
         tg.expand?.();
     },
 
@@ -835,6 +740,16 @@ const game = {
         s.foraging_exp_bonus += 0.5 * (this.state.skills.foraging.lvl - 1);
         s.fishing_exp_bonus += 0.5 * (this.state.skills.fishing.lvl - 1);
 
+        if (this.state.slayer && this.state.slayer.zombie) {
+            const zlvl = this.state.slayer.zombie.lvl;
+            const zombieSlayerHpBonus = [0, 0, 5, 5, 10, 10, 10, 10, 15, 15, 20];
+            let slayerHp = 0;
+            for(let i=1; i<=zlvl; i++) {
+                slayerHp += zombieSlayerHpBonus[Math.min(i, 10)] || 0;
+            }
+            s.hp += slayerHp;
+        }
+
         if (typeof this.getMayorBonuses === 'function') {
            const globalMb = typeof this.getGlobalMayorBonuses === 'function' ? this.getGlobalMayorBonuses() : {};
             if (globalMb.mf_bonus) s.mf += globalMb.mf_bonus;
@@ -976,7 +891,7 @@ const game = {
         }
         if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
         document.getElementById('class-select').value = this.state.class;
-        this.saveToSupabase();
+        this.saveToLocalStorage();
     },
 
 
@@ -1230,6 +1145,9 @@ addPetXp(pet, amount) {
         this.state.coins -= config.cost;
         m.lvl = nextLvl;
         if (m.lvl === 1 && m.stored === undefined) m.stored = 0; 
+        
+        // Даём Скайблок уровень за апгрейд миньона
+        this.addXp('skyblock', 1);
         
         this.msg(`Миньон ${m.name} улучшен до ${nextLvl} уровня!`);
         this.updateUI();
@@ -1517,6 +1435,15 @@ addPetXp(pet, amount) {
                 const progress = Math.min(100, (sk.xp / sk.next * 100)).toFixed(1);
                 html += `<div class="card"><b>${sk.label} LVL ${sk.lvl}</b><br><small>${sk.xp.toFixed(2)} / ${sk.next.toFixed(2)} XP</small><div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${progress}%;background:var(--green)"></div></div></div>`;
             });
+            if (this.state.slayer && this.state.slayer.zombie) {
+                const zomb = this.state.slayer.zombie;
+                let nextReq = 5000000;
+                if (typeof slayerConfig !== 'undefined' && zomb.lvl < 10) {
+                    nextReq = slayerConfig.zombie.levels[zomb.lvl].req;
+                }
+                const progress = Math.min(100, (zomb.xp / nextReq * 100)).toFixed(1);
+                html += `<div class="card"><b>ZOMBIE SLAYER LVL ${zomb.lvl}</b><br><small>${zomb.xp} / ${nextReq} XP</small><div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${progress}%;background:var(--red)"></div></div></div>`;
+            }
             document.getElementById('skills-content').innerHTML = html;
         }
         if (id === 'talentsModal') {
