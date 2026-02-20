@@ -22,6 +22,7 @@ const defaultState = {
         combat: {lvl:1,xp:0,next:100,label:'БОЙ'},
         foraging: {lvl:1,xp:0,next:100,label:'ЛЕС'},
         dungeons: {lvl:1,xp:0,next:200,label:'ДАНЖИ'},
+        enchanting: {lvl:1,xp:0,next:100,label:'ЗАЧАРОВАНИЕ'},
         skyblock: {lvl:1,xp:0,next:1,label:'SKYBLOCK'}
     },
     stats: {
@@ -40,8 +41,9 @@ const defaultState = {
         foraging_exp_bonus:0,
         farming_fortune:0,
         farming_exp_bonus:0,
-        fishing_fortune:0,        // ← фортуна для рыбалки
-        fishing_exp_bonus:0       // ← бонус опыта для рыбалки (если нужен отдельно)
+        fishing_fortune:0,
+        fishing_exp_bonus:0,
+        vitality:0
     },
     class: '',
     buffs: {godpotion:{endTime:0}, cookie:{endTime:0}},
@@ -117,7 +119,7 @@ const defaultState = {
         {id:'starseq', name:'ЗВЁЗДНОСЕКВОЙНЫЙ', category:'foraging', resource:'Звёздная Секвойя', lvl:0, stored:0},
         {id:'moonash', name:'ЛУННОЯСЕНЕВЫЙ', category:'foraging', resource:'Лунный Ясень', lvl:0, stored:0},
         // Combat
-        {id:'zombie', name:'ЗОМБИ', category:'combat', resource:'Гнилая плоть', lvl:0, stored:0},
+        {id:'zombie', name:'ЗОМБИ', category:'combat', resource:'Плоть зомби', lvl:0, stored:0},
         {id:'skeleton', name:'СКЕЛЕТ', category:'combat', resource:'Кость', lvl:0, stored:0},
         {id:'spider', name:'ПАУК', category:'combat', resource:'Нить', lvl:0, stored:0}
     ],
@@ -132,6 +134,16 @@ const shopItems = {
         {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000},
         {name:'Незеритовый Меч',type:'weapon',str:50,cost:10000000},
                 {name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000}
+    ],
+    zombie_weapon: [
+        {name:'Zombie Sword',type:'weapon',str:20,zombie_bonus:25,cost:0,flesh_cost:32,rarity:'uncommon',slayer_req:0},
+        {name:'Reaper Falchion',type:'weapon',str:30,zombie_bonus:50,cost:0,flesh_cost:512,rarity:'epic',slayer_req:5},
+        {name:'Shredder Sword',type:'weapon',str:50,zombie_bonus:100,cost:0,living_flesh_cost:8,rarity:'legendary',slayer_req:7}
+    ],
+    zombie_armor: [
+        {name:'🧟 Зомби броня',type:'armor',def:10,vitality:5,cost:0,flesh_cost:64,rarity:'uncommon',slayer_req:0},
+        {name:'🧟 Ревенант броня',type:'armor',def:20,vitality:7.5,cost:0,flesh_cost:256,rarity:'epic',slayer_req:5},
+        {name:'🧟 Рипер броня',type:'armor',def:30,vitality:10,zombie_bonus:10,cost:0,flesh_cost:512,living_flesh_cost:4,rarity:'legendary',slayer_req:7}
     ],
     armor: [
         {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
@@ -219,8 +231,8 @@ const shopItems = {
                 {name:'🍀 Treasure Artifact',type:'accessory',gold_bonus:5,str:10,cost:300000000}                
     ],
     buff: [
-        {name:'GodPotion',type:'potion',cost:1000000},
-        {name:'Печенька',type:'potion',cost:10000000}
+        {name:'GodPotion',type:'potion',cost:1500000},
+        {name:'Печенька',type:'potion',cost:15000000}
     ],
     pet: [
         {name:'Чешуйница',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'mining',base_bonus:0.1,cost:5000},
@@ -285,6 +297,16 @@ const shopItems = {
         xp: 0,
         next: 100,
         cost: 100000
+        },
+        {
+        name: 'Зомби',
+        type: 'pet',
+        skill: 'combat',
+        rarity: 'common',
+        lvl: 1,
+        xp: 0,
+        next: 100,
+        cost: 500000
         }
     ]
 };
@@ -487,6 +509,7 @@ const game = {
 
         this.state.farmingQuests = data.farmingQuests || { lastReset: 0, active: [] };
         this.state.mayor = data.mayor || defaultState.mayor;
+        this.state.slayer = data.slayer || { zombie: { lvl: 1, xp: 0 } };
         this.checkDailyQuests();
 
         this.msg('Сохранение успешно загружено!');
@@ -571,7 +594,8 @@ const game = {
                 //activeEvent: this.state.activeEvent,
                 //eventEndTime: this.state.eventEndTime,
                 farmingQuests: this.state.farmingQuests,
-                mayor: this.state.mayor
+                mayor: this.state.mayor,
+                slayer: this.state.slayer
             }, { onConflict: 'telegram_id' });
         if (error) console.error('Ошибка сохранения:', error);
     },
@@ -696,15 +720,25 @@ const game = {
     },
 
     calcStats(inDungeon = false) {
-        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0};
+        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0, vitality: this.state.stats.vitality || 0};
         this.state.inventory.forEach(i => {
             if (i.equipped) {
                 ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
                  'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
-                 'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus', 'hp', 'dungeon_exp_bonus'].forEach(st => {
+                 'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus', 'hp', 'dungeon_exp_bonus', 'vitality'].forEach(st => {
                     if (i[st]) s[st] += i[st];
                 });
                 if (i.dynamic_str === 'midas') s.str += Math.floor(Math.min(this.state.coins, 1000000000) / 1000000) * 0.5;
+                if (i.enchantments) {
+                    Object.entries(i.enchantments).forEach(([ench, tier]) => {
+                        const enchData = window.enchantmentConfig?.[ench];
+                        if (enchData && enchData.stats[tier - 1]) {
+                            Object.entries(enchData.stats[tier - 1]).forEach(([stat, val]) => {
+                                if (s[stat] !== undefined) s[stat] += val;
+                            });
+                        }
+                    });
+                }
             }
         });
         const buffs = this.state.buffs || {};
@@ -714,13 +748,13 @@ const game = {
     if (Date.now() < godEnd) {
         s.str += 5; s.cc += 5; s.cd += 5; s.mf += 10; s.def += 5; s.int += 5; s.mag_amp += 5;
         s.mining_fortune += 5; s.farming_fortune += 5; s.foraging_fortune += 5; s.fishing_fortune += 5;
-        s.xp_bonus += 1; s.magic_res += 5;
+        s.xp_bonus += 1; s.magic_res += 5; s.vitality += 1;
     }
 
     if (Date.now() < cookieEnd) {
         s.str += 50; s.cc += 10; s.cd += 25; s.mf += 25; s.def += 50; s.int += 50; s.mag_amp += 5;
         s.mining_fortune += 25; s.farming_fortune += 25; s.foraging_fortune += 25; s.fishing_fortune += 25;
-        s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25;
+        s.xp_bonus += 3; s.magic_res += 5; s.gold_bonus += 25; s.vitality += 2;
     }
 
         // Tiger Stats
@@ -817,6 +851,35 @@ const game = {
             s.fishing_fortune += Math.floor(def * 0.5);
         }
 
+        const ghoul = this.state.pets.find(p => p.equipped && p.name === 'Гуль');
+        if (ghoul) {
+            const lvl = ghoul.lvl || 1;
+            let vitMin = 0.01, vitMax = 2;
+            if (ghoul.rarity === 'rare') { vitMin = 0.02; vitMax = 4; }
+            if (ghoul.rarity === 'epic') { vitMin = 0.03; vitMax = 6; }
+            if (ghoul.rarity === 'legendary') { vitMin = 0.04; vitMax = 8; }
+            const vit = vitMin + (vitMax - vitMin) * ((lvl - 1) / 99);
+            s.vitality += parseFloat(vit.toFixed(2));
+            if (ghoul.rarity === 'legendary') {
+                const zDmgMin = 1, zDmgMax = 40;
+                const zDmg = zDmgMin + (zDmgMax - zDmgMin) * ((lvl - 1) / 99);
+                s.str += Math.floor(zDmg);
+            }
+        }
+
+        const zombiePet = this.state.pets.find(p => p.equipped && p.name === 'Зомби');
+        if (zombiePet) {
+            const lvl = zombiePet.lvl || 1;
+            let strMax = 5, defMax = 5;
+            if (zombiePet.rarity === 'rare') { strMax = 10; defMax = 10; }
+            if (zombiePet.rarity === 'epic') { strMax = 20; defMax = 20; }
+            if (zombiePet.rarity === 'legendary') { strMax = 35; defMax = 30; }
+            const strB = 1 + (strMax - 1) * ((lvl - 1) / 99);
+            const defB = 1 + (defMax - 1) * ((lvl - 1) / 99);
+            s.str += Math.floor(strB);
+            s.def += Math.floor(defB);
+        }
+
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
         s.str += 2 * (this.state.skills.foraging.lvl - 1);
@@ -824,6 +887,13 @@ const game = {
         s.int += 1 * (this.state.skills.fishing.lvl - 1);
         s.str += 2 * (this.state.skills.combat.lvl - 1);
         s.cd += 2 * (this.state.skills.combat.lvl - 1);
+        s.int += 2 * ((this.state.skills.enchanting?.lvl || 1) - 1);
+
+        const slayerZomb = this.state.slayer?.zombie;
+        if (slayerZomb && slayerZomb.lvl > 1) {
+            s.mf += (slayerZomb.lvl - 1) * 1.5;
+            s.vitality += (slayerZomb.lvl - 1) * 0.5;
+        }
 
         // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ ОТ УРОВНЯ (возвращаем как было)
         s.mining_fortune += 3 * (this.state.skills.mining.lvl - 1);
@@ -906,7 +976,7 @@ const game = {
                 <span class="stat-label">🛡️ МАГ ЗАЩИТА</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">🛡️ ОСОБАЯ ЗАЩИТА (Заглушка)</span> <span class="stat-val">${Math.floor(s.magic_res || 0)}%</span>
+                <span class="stat-label">💚 ВОССТАНОВЛЕНИЕ</span> <span class="stat-val">${(s.vitality || 0).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
@@ -966,7 +1036,7 @@ const game = {
         if (typeof this.updateMayorBuffDisplay === 'function') this.updateMayorBuffDisplay(); 
         this.renderMinions();
         if (typeof this.renderInvList === 'function') {
-            this.renderInvList(this.lastFilter);
+            this.renderInvList(this.lastFilter || 'weapon');
         }
         if (document.getElementById('shop')?.classList.contains('active') && typeof this.renderShopList === 'function') {
             this.renderShopList(this.lastShopFilter);
@@ -1002,8 +1072,13 @@ const game = {
         const pet = this.state.pets[idx];
         const nextRarity = {common:'rare', rare:'epic', epic:'legendary'}[pet.rarity];
         if (!nextRarity) { this.msg('Уже максимальная редкость!'); return; }
-        const cost = petUpgradeCosts[nextRarity];
-        const resourceName = petResourceMap[pet.skill];
+        const petOverrides = {
+            'Гуль': { rare: {coins:0, resources:64, resName:'Плоть зомби'}, epic: {coins:500000, resources:256, resName:'Плоть зомби'}, legendary: {coins:10000000, resources:4, resName:'Живая плоть', upgradeItem:1} },
+            'Зомби': { rare: {coins:0, resources:64, resName:'Плоть зомби'}, epic: {coins:250000, resources:128, resName:'Плоть зомби'}, legendary: {coins:5000000, resources:2, resName:'Живая плоть', upgradeItem:1} }
+        };
+        const override = petOverrides[pet.name]?.[nextRarity];
+        const cost = override || petUpgradeCosts[nextRarity];
+        const resourceName = override?.resName || petResourceMap[pet.skill];
         const resourceItem = this.state.inventory.find(i => i.name === resourceName && i.type === 'material');
         const resourceCount = resourceItem ? resourceItem.count || 0 : 0;
         const upgradeItem = this.state.inventory.find(i => i.name === 'Апгрейд питомца' && i.type === 'material');
@@ -1031,11 +1106,20 @@ const game = {
         this.updateUI();
     },
 
+    getPetSellPrice(pet) {
+        const specialPrices = {
+            'Гуль': { common: 50000, rare: 200000, epic: 1000000, legendary: 15000000 }
+        };
+        if (specialPrices[pet.name]) return specialPrices[pet.name][pet.rarity] || Math.floor(pet.cost / 2);
+        return Math.floor(pet.cost / 2);
+    },
+
     sellPet(idx) {
         const pet = this.state.pets[idx];
-        this.state.coins += Math.floor(pet.cost / 2);
+        const price = this.getPetSellPrice(pet);
+        this.state.coins += price;
         this.state.pets.splice(idx, 1);
-        this.msg(`${pet.name} продан!`);
+        this.msg(`${pet.name} продан! +${price.toLocaleString()} 💰`);
         this.updateUI();
     },
 
@@ -1231,7 +1315,8 @@ addPetXp(pet, amount) {
         m.lvl = nextLvl;
         if (m.lvl === 1 && m.stored === undefined) m.stored = 0; 
         
-        this.msg(`Миньон ${m.name} улучшен до ${nextLvl} уровня!`);
+        this.addXp('skyblock', 0.1);
+        this.msg(`Миньон ${m.name} улучшен до ${nextLvl} уровня! (+0.1 SB LVL)`);
         this.updateUI();
     },
 
@@ -1334,6 +1419,47 @@ addPetXp(pet, amount) {
         this.renderShopList(t);
     },
 
+    _renderZombieItems(zombieType, l) {
+        const zItems = shopItems[zombieType] || [];
+        if (!zItems.length) return;
+        const rarityColors = { uncommon: '#55ff55', rare: '#5555ff', epic: '#aa00aa', legendary: '#ffaa00' };
+        const rarityNames = { uncommon: 'Необычное', rare: 'Редкое', epic: 'Эпик', legendary: 'Легендарное' };
+        const slayerLvl = this.state.slayer?.zombie?.lvl || 1;
+        const progression = zItems.map(z => z.name);
+        const currentItem = this.state.inventory.find(inv => progression.includes(inv.name));
+        let currentIdx = currentItem ? progression.indexOf(currentItem.name) : -1;
+        let nextIdx = currentIdx + 1;
+        l.innerHTML += `<div style="margin:12px 0 6px;padding:6px 10px;background:rgba(255,50,50,0.1);border-radius:6px;border-left:3px solid var(--red);"><b style="color:var(--red);">🧟 ЗОМБИ СЛЕЙЕР</b></div>`;
+        if (nextIdx >= zItems.length) {
+            const maxItem = zItems[zItems.length - 1];
+            const color = rarityColors[maxItem.rarity] || '#fff';
+            l.innerHTML += `<div class="card" style="border-left:4px solid ${color};opacity:0.6;border-color:var(--green);"><div style="display:flex;justify-content:space-between;align-items:center;"><b style="color:${color};">${maxItem.name}</b><span style="font-size:0.65rem;padding:2px 6px;border-radius:4px;background:${color}22;color:${color};border:1px solid ${color}44;">${rarityNames[maxItem.rarity]}</span></div><small style="color:#0f0;font-weight:bold">${this.getItemDesc(maxItem)}</small><div style="text-align:center;color:var(--green);margin-top:6px;font-weight:bold;">МАКСИМАЛЬНЫЙ УРОВЕНЬ</div></div>`;
+            return;
+        }
+        const i = zItems[nextIdx];
+        const color = rarityColors[i.rarity] || '#fff';
+        const locked = i.slayer_req > 0 && slayerLvl < i.slayer_req;
+        let costParts = [];
+        if (i.flesh_cost) costParts.push(`${i.flesh_cost} Плоти зомби`);
+        if (i.living_flesh_cost) costParts.push(`${i.living_flesh_cost} Живой плоти`);
+        if (i.cost > 0) costParts.push(`${i.cost.toLocaleString()}💰`);
+        const costText = costParts.join(' + ') || 'Бесплатно';
+        const action = currentIdx >= 0 ? 'УЛУЧШИТЬ' : 'КУПИТЬ';
+        let html = `<div class="card" style="border-left:4px solid ${color}; ${locked ? 'opacity:0.5;' : ''}">`;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;">`;
+        html += `<b style="color:${color};">${i.name}</b>`;
+        html += `<span style="font-size:0.65rem;padding:2px 6px;border-radius:4px;background:${color}22;color:${color};border:1px solid ${color}44;">${rarityNames[i.rarity]}</span>`;
+        html += `</div>`;
+        html += `<small style="color:#0f0; font-weight:bold">${this.getItemDesc(i)}</small>`;
+        if (locked) {
+            html += `<div style="text-align:center;color:var(--red);margin-top:6px;font-weight:bold;">🔒 Требуется Zombie Slayer ${i.slayer_req} LVL</div>`;
+        } else {
+            html += `<div class="item-actions"><button class="act-btn" onclick="game.buyZombieItem('${zombieType}',${nextIdx})">${action} (${costText})</button></div>`;
+        }
+        html += `</div>`;
+        l.innerHTML += html;
+    },
+
     renderShopList(t) {
         const l = document.getElementById('shop-list');
         l.innerHTML = '';
@@ -1355,16 +1481,16 @@ addPetXp(pet, amount) {
                     l.innerHTML += `<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.upgradeSwordInShop()">УЛУЧШИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
                 }
             } else if (nextIdx === 0) {
-                // Если меча нет совсем, предлагаем купить первый (Каменный)
                 const i = shopItems.weapon[0];
                 l.innerHTML += `<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('weapon', 0)">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
             } else {
                 l.innerHTML = '<div class="card" style="text-align:center;color:#666">Максимальный уровень меча!</div>';
             }
+            this._renderZombieItems('zombie_weapon', l);
             return;
         }
 
-        if (t.endsWith('_armor')) {
+        if (t === 'armor' || t.endsWith('_armor')) {
             const mb = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
             const discount = mb.shop_discount || 0;
             items.forEach((i,x)=>{
@@ -1384,6 +1510,7 @@ addPetXp(pet, amount) {
                 html += `</div>`;
                 l.innerHTML += html;
             });
+            if (t === 'armor') this._renderZombieItems('zombie_armor', l);
             return;
         }
 
@@ -1495,6 +1622,79 @@ addPetXp(pet, amount) {
         this.updateUI();
     },
 
+    buyZombieItem(t, x) {
+        const i = shopItems[t][x];
+        if (!i) return;
+        
+        const slayerLvl = this.state.slayer?.zombie?.lvl || 1;
+        if (i.slayer_req > 0 && slayerLvl < i.slayer_req) {
+            this.msg(`Требуется Zombie Slayer ${i.slayer_req} уровня!`);
+            return;
+        }
+        
+        if (i.flesh_cost) {
+            const flesh = this.state.inventory.find(inv => inv.name === 'Плоть зомби' && inv.type === 'material');
+            const fleshCount = flesh ? (flesh.count || 0) : 0;
+            if (fleshCount < i.flesh_cost) {
+                this.msg(`Недостаточно Плоти зомби! Нужно ${i.flesh_cost}, у вас ${fleshCount}`);
+                return;
+            }
+        }
+        if (i.living_flesh_cost) {
+            const lf = this.state.inventory.find(inv => inv.name === 'Живая плоть' && inv.type === 'material');
+            const lfCount = lf ? (lf.count || 0) : 0;
+            if (lfCount < i.living_flesh_cost) {
+                this.msg(`Недостаточно Живой плоти! Нужно ${i.living_flesh_cost}, у вас ${lfCount}`);
+                return;
+            }
+        }
+        if (i.cost > 0 && this.state.coins < i.cost) {
+            this.msg('Не хватает монет!');
+            return;
+        }
+        
+        if (i.flesh_cost) {
+            const flesh = this.state.inventory.find(inv => inv.name === 'Плоть зомби' && inv.type === 'material');
+            flesh.count -= i.flesh_cost;
+            if (flesh.count <= 0) this.state.inventory = this.state.inventory.filter(inv => inv.id !== flesh.id);
+        }
+        if (i.living_flesh_cost) {
+            const lf = this.state.inventory.find(inv => inv.name === 'Живая плоть' && inv.type === 'material');
+            lf.count -= i.living_flesh_cost;
+            if (lf.count <= 0) this.state.inventory = this.state.inventory.filter(inv => inv.id !== lf.id);
+        }
+        if (i.cost > 0) this.state.coins -= i.cost;
+        
+        const progression = (shopItems[t] || []).map(z => z.name);
+        const prevItem = this.state.inventory.find(inv => progression.includes(inv.name));
+        if (prevItem) {
+            const wasEquipped = prevItem.equipped;
+            prevItem.name = i.name;
+            prevItem.str = i.str || 0;
+            prevItem.def = i.def || 0;
+            prevItem.vitality = i.vitality || 0;
+            prevItem.zombie_bonus = i.zombie_bonus || 0;
+            prevItem.cost = i.flesh_cost ? i.flesh_cost * 100 : 10000;
+            prevItem.equipped = wasEquipped;
+            this.msg(`Улучшено до: ${i.name}!`);
+        } else {
+            const newItem = {
+                id: this.state.nextItemId++,
+                name: i.name,
+                type: i.type,
+                equipped: false,
+                str: i.str || 0,
+                def: i.def || 0,
+                vitality: i.vitality || 0,
+                zombie_bonus: i.zombie_bonus || 0,
+                cost: i.flesh_cost ? i.flesh_cost * 100 : 10000
+            };
+            this.state.inventory.push(newItem);
+            this.msg(`${i.name} куплен!`);
+        }
+        this.updateUI();
+    },
+
     switchTab(id, el) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
@@ -1503,9 +1703,16 @@ addPetXp(pet, amount) {
             el.classList.add('active');
         }
         if (id === 'shop') {
-             // Open first tab by default
              const firstTab = document.querySelector('#shop .inv-tab');
              if (firstTab) game.shopFilter('weapon', firstTab);
+        }
+        if (id === 'inventory') {
+             const filter = this.lastFilter || 'weapon';
+             this.renderInvList(filter);
+             document.querySelectorAll('#inventory .inv-tab').forEach(tab => {
+                 tab.classList.remove('active');
+                 if (tab.textContent === {weapon:'ОРУЖИЕ',armor:'БРОНЯ',tool:'ИНСТРУМЕНТЫ',accessory:'ТАЛИСМАНЫ',material:'МАТЕРИАЛ',chest:'СУНДУКИ',potion:'БАФФЫ',book:'📖 КНИГИ',pet:'ПИТОМЦЫ'}[filter]) tab.classList.add('active');
+             });
         }
     },
 
@@ -1517,6 +1724,21 @@ addPetXp(pet, amount) {
                 const progress = Math.min(100, (sk.xp / sk.next * 100)).toFixed(1);
                 html += `<div class="card"><b>${sk.label} LVL ${sk.lvl}</b><br><small>${sk.xp.toFixed(2)} / ${sk.next.toFixed(2)} XP</small><div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${progress}%;background:var(--green)"></div></div></div>`;
             });
+            if (this.state.slayer) {
+                html += '<h3 style="color:var(--red); text-align:center; margin-top:15px;">👹 СЛЕЙЕРЫ</h3>';
+                const zomb = this.state.slayer.zombie || { lvl: 1, xp: 0 };
+                const zombCfg = typeof slayerConfig !== 'undefined' ? slayerConfig.zombie : null;
+                let nextReq = 0;
+                if (zombCfg && zomb.lvl < 10) {
+                    nextReq = zombCfg.levels[zomb.lvl]?.req || 0;
+                }
+                const slayerProg = nextReq > 0 ? Math.min(100, (zomb.xp / nextReq * 100)).toFixed(1) : 100;
+                html += `<div class="card" style="border-left:4px solid var(--red);">
+                    <b>🧟 Zombie Slayer LVL ${zomb.lvl}</b><br>
+                    <small>${zomb.xp.toLocaleString()} / ${nextReq > 0 ? nextReq.toLocaleString() : 'MAX'} XP</small>
+                    <div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${slayerProg}%;background:var(--red)"></div></div>
+                </div>`;
+            }
             document.getElementById('skills-content').innerHTML = html;
         }
         if (id === 'talentsModal') {
