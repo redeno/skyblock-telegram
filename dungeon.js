@@ -93,6 +93,14 @@ Object.assign(game, {
     let actualDmg=Math.max(1,mobDmg-s.def-this.mobDef);
     this.dungeon.pHp-=actualDmg;
 
+    if (s.vitality > 0 && this.dungeon.pHp > 0) {
+        const healAmt = Math.floor(this.dungeon.pMaxHp * s.vitality / 100);
+        if (healAmt > 0) {
+            this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + healAmt);
+            this.dungeonHealFlash = healAmt;
+        }
+    }
+
     if (this.dungeon.mobHp <= 0) {
         const baseXp = isBoss ? this.dungeon.floor * 50 : this.dungeon.floor * 20;
         const {bonusMul} = this.getBabyWitherXpBonus();
@@ -152,7 +160,12 @@ Object.assign(game, {
         document.getElementById('mob-name').innerText=this.dungeon.mobs[this.dungeon.mobIdx];
         document.getElementById('m-hp-txt').innerText=`${Math.max(0,Math.floor(this.dungeon.mobHp))}/${this.dungeon.mobMaxHp}`;
         document.getElementById('m-hp-fill').style.width=`${Math.max(0,this.dungeon.mobHp/this.dungeon.mobMaxHp*100)}%`;
-        document.getElementById('p-hp-txt').innerText=`${Math.max(0,Math.floor(this.dungeon.pHp))}/${Math.floor(this.dungeon.pMaxHp)}`;
+        let pHpText = `${Math.max(0,Math.floor(this.dungeon.pHp))}/${Math.floor(this.dungeon.pMaxHp)}`;
+        if (this.dungeonHealFlash > 0) {
+            pHpText += ` (+${this.dungeonHealFlash})`;
+            this.dungeonHealFlash = 0;
+        }
+        document.getElementById('p-hp-txt').innerText=pHpText;
         document.getElementById('p-hp-fill').style.width=`${Math.max(0,this.dungeon.pHp/this.dungeon.pMaxHp*100)}%`;
     },
 
