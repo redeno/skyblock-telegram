@@ -1,52 +1,45 @@
-// top.js — топ игроков по разделам
-
+// top.js — топ игроков
 const TOP_LIMIT = 50;
 
-// Добавляем функцию прямо в game
 game.loadTop = async function(type = 'rich') {
     const listEl = document.getElementById('lead-list');
-    listEl.innerHTML = '<div style="text-align:center;color:#666">Загрузка топа...</div>';
-
+    
     let data = [];
-    let error = null;
+    const username = tg.initDataUnsafe?.user?.username || 'Игрок';
+    const userId = tg.initDataUnsafe?.user?.id;
+    
+    // Try Supabase first if in Telegram
+    if (supabaseClient && isTelegramEnv) {
+        try {
+            let query = supabaseClient.from('profiles').select('username, coins, level, dungeons_lvl');
+            
+            if (type === 'rich') query = query.order('coins', { ascending: false });
+            else if (type === 'level') query = query.order('level', { ascending: false });
+            else if (type === 'dungeons') query = query.order('dungeons_lvl', { ascending: false });
 
-    if (type === 'level') {
-        const { data: rawData, error: rawError } = await supabaseClient.from('players').select('skills, username');
-        error = rawError;
-        if (!error && rawData) {
-            data = rawData.map(row => ({
-                username: row.username || 'Аноним',
-                value: (() => {
-                    let total = 0;
-                    if (row.skills) Object.values(row.skills).forEach(sk => total += sk.lvl || 1);
-                    return ((total - 6) / 10).toFixed(2);
-                })()
-            })).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)).slice(0, TOP_LIMIT);
-        }
-    } else if (type === 'rich') {
-        const { data: rawData, error: rawError } = await supabaseClient.from('players').select('coins, username').order('coins', { ascending: false }).limit(TOP_LIMIT);
-        error = rawError;
-        if (!error && rawData) {
-            data = rawData.map(row => ({
-                username: row.username || 'Аноним',
-                value: row.coins || 0
-            }));
-        }
-    } else if (type === 'dungeons') {
-        const { data: rawData, error: rawError } = await supabaseClient.from('players').select('skills, username');
-        error = rawError;
-        if (!error && rawData) {
-            data = rawData.map(row => ({
-                username: row.username || 'Аноним',
-                value: row.skills?.dungeons?.lvl || 1
-            })).sort((a, b) => b.value - a.value).slice(0, TOP_LIMIT);
+            const { data: dbData, error } = await query.limit(TOP_LIMIT);
+            if (dbData) {
+                data = dbData.map(p => ({
+                    username: p.username,
+                    value: type === 'rich' ? p.coins : (type === 'level' ? p.level : p.dungeons_lvl)
+                }));
+            }
+        } catch (e) {
+            console.error('Supabase loadTop error:', e);
         }
     }
 
-    if (error) {
-        console.error('Ошибка топа:', error);
-        listEl.innerHTML = '<div style="text-align:center;color:var(--red)">Ошибка загрузки топа</div>';
-        return;
+    // Fallback if no data from Supabase
+    if (data.length === 0) {
+        if (type === 'level') {
+            let total = 0;
+            if (game.state.skills) Object.values(game.state.skills).forEach(sk => total += sk.lvl || 1);
+            data = [{ username: username, value: ((total - 6) / 10).toFixed(2) }];
+        } else if (type === 'rich') {
+            data = [{ username: username, value: game.state.coins || 0 }];
+        } else if (type === 'dungeons') {
+            data = [{ username: username, value: game.state.skills?.dungeons?.lvl || 1 }];
+        }
     }
 
     if (data.length === 0) {
@@ -72,29 +65,18 @@ game.loadTop = async function(type = 'rich') {
     listEl.innerHTML = html;
 };
 
-// Подсветка вкладок
-function setActiveTab(tabElement) {
+game.switchTop = function(type, tabElement) {
     document.querySelectorAll('#leadModal .inv-tab').forEach(t => t.classList.remove('active'));
     tabElement.classList.add('active');
-}
+    game.loadTop(type);
+};
 
-// Открытие модалки топа
 const originalShowModal = game.showModal || function() {};
 game.showModal = function(id) {
     originalShowModal.call(game, id);
     if (id === 'leadModal') {
-        setActiveTab(document.querySelector('#leadModal .inv-tab'));
+        const firstTab = document.querySelector('#leadModal .inv-tab');
+        if (firstTab) firstTab.classList.add('active');
         game.loadTop('rich');
     }
 };
-
-// Клик по вкладкам
-document.querySelectorAll('#leadModal .inv-tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-        setActiveTab(this);
-        const text = this.textContent.trim();
-        if (text.includes('БОГАТЫЕ')) game.loadTop('rich');
-        else if (text.includes('ДАНЖИ')) game.loadTop('dungeons');
-        else if (text.includes('УРОВЕНЬ')) game.loadTop('level');
-    });
-});
