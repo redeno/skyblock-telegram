@@ -237,29 +237,9 @@ Object.assign(game, {
     },
 
     async refreshP2P() {
-        this.msg('Загрузка предложений...');
-        try {
-            const { data, error } = await supabaseClient
-                .from('offers')
-                .select('*')
-                .limit(10);
-                
-            if (error) {
-                console.error(error);
-                this.msg('Ошибка загрузки предложений');
-                return;
-            }
-            
-            const list = document.getElementById('p2p-list');
-            if (list) {
-                if (!data || data.length === 0) {
-                    list.innerHTML = '<div style="text-align:center; color:#666;">Нет активных предложений</div>';
-                } else {
-                    list.innerHTML = data.map(o => `<div>${o.item_name} за ${o.price}💰</div>`).join('');
-                }
-            }
-        } catch (e) {
-            this.msg('Ошибка соединения');
+        const list = document.getElementById('p2p-list');
+        if (list) {
+            list.innerHTML = '<div style="text-align:center; color:#666;">P2P обмен недоступен в локальном режиме</div>';
         }
     }
 });
