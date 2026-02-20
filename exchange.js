@@ -1,333 +1,251 @@
-const enchantmentConfig = {
-    fire_aspect: {
-        name: 'Поджигание Огня',
-        icon: '🔥',
-        tiers: 2,
-        targets: ['weapon'],
-        stats: [
-            { str: 5 },
-            { str: 10 }
-        ],
-        conflict: null
-    },
-    poison_blade: {
-        name: 'Отравленный клинок',
-        icon: '☠️',
-        tiers: 3,
-        targets: ['weapon'],
-        stats: [
-            { str: 1 },
-            { str: 2 },
-            { str: 3 }
-        ],
-        conflict: null
-    },
-    smite: {
-        name: 'Небесная Кара',
-        icon: '⚡',
-        tiers: 5,
-        targets: ['weapon'],
-        stats: [
-            { str: 5 },
-            { str: 10 },
-            { str: 15 },
-            { str: 20 },
-            { str: 25 }
-        ],
-        conflict: 'damage_type',
-        desc: 'Против нежити'
-    },
-    bane: {
-        name: 'Бич членистоногих',
-        icon: '🕷️',
-        tiers: 5,
-        targets: ['weapon'],
-        stats: [
-            { str: 5 },
-            { str: 10 },
-            { str: 15 },
-            { str: 20 },
-            { str: 25 }
-        ],
-        conflict: 'damage_type',
-        desc: 'Против пауков'
-    },
-    sharpness: {
-        name: 'Острота',
-        icon: '🗡️',
-        tiers: 5,
-        targets: ['weapon'],
-        stats: [
-            { str: 5 },
-            { str: 10 },
-            { str: 15 },
-            { str: 20 },
-            { str: 25 }
-        ],
-        conflict: 'damage_type',
-        desc: 'Против живых'
-    },
-    looting: {
-        name: 'Добыча',
-        icon: '💎',
-        tiers: 5,
-        targets: ['weapon'],
-        stats: [
-            { mf: 5 },
-            { mf: 10 },
-            { mf: 15 },
-            { mf: 20 },
-            { mf: 25 }
-        ],
-        conflict: null
-    },
-    critical: {
-        name: 'Критикал',
-        icon: '💥',
-        tiers: 5,
-        targets: ['weapon'],
-        stats: [
-            { cd: 10 },
-            { cd: 20 },
-            { cd: 30 },
-            { cd: 40 },
-            { cd: 50 }
-        ],
-        conflict: null
-    },
-    protection: {
-        name: 'Защита',
-        icon: '🛡️',
-        tiers: 5,
-        targets: ['armor'],
-        stats: [
-            { def: 4 },
-            { def: 8 },
-            { def: 12 },
-            { def: 16 },
-            { def: 20 }
-        ],
-        conflict: null
-    },
-    health: {
-        name: 'Здоровье',
-        icon: '❤️',
-        tiers: 5,
-        targets: ['armor'],
-        stats: [
-            { hp: 5 },
-            { hp: 10 },
-            { hp: 15 },
-            { hp: 20 },
-            { hp: 25 }
-        ],
-        conflict: null
-    },
-    rejuvenate: {
-        name: 'Режевинейт',
-        icon: '💚',
-        tiers: 5,
-        targets: ['armor'],
-        stats: [
-            { vitality: 0.2 },
-            { vitality: 0.4 },
-            { vitality: 0.6 },
-            { vitality: 0.8 },
-            { vitality: 1 }
-        ],
-        conflict: null
-    },
-    fortune_ench: {
-        name: 'Фортуна',
-        icon: '🍀',
-        tiers: 5,
-        targets: ['tool'],
-        stats: [
-            { mining_fortune: 10, farming_fortune: 10, foraging_fortune: 10, fishing_fortune: 10 },
-            { mining_fortune: 20, farming_fortune: 20, foraging_fortune: 20, fishing_fortune: 20 },
-            { mining_fortune: 30, farming_fortune: 30, foraging_fortune: 30, fishing_fortune: 30 },
-            { mining_fortune: 40, farming_fortune: 40, foraging_fortune: 40, fishing_fortune: 40 },
-            { mining_fortune: 50, farming_fortune: 50, foraging_fortune: 50, fishing_fortune: 50 }
-        ],
-        conflict: null
-    }
-};
-
-window.enchantmentConfig = enchantmentConfig;
-
-const enchantCosts = [10000, 50000, 250000, 1000000, 15000000];
-const enchantXpMultipliers = [10, 15, 20, 25, 30];
-const tierRoman = ['I', 'II', 'III', 'IV', 'V'];
-const tierColors = ['#55ff55', '#5555ff', '#aa00aa', '#ffaa00', '#ff5555'];
+// exchange.js — Система обмена и крафта ресурсов с отделами
 
 Object.assign(game, {
-    enchantSelectedItem: null,
-
-    openEnchanting() {
-        this.enchantSelectedItem = null;
-        this.renderEnchanting();
-        this.showModal('enchantModal');
+    exchangeCategories: {
+        farming: {
+            label: '🌾 ФЕРМА',
+            recipes: [
+                { from: 'Пшеница', to: 'Стог Пшена', rate: 256 },
+                { from: 'Картофель', to: 'Стог Картошки', rate: 256 },
+                { from: 'Морковь', to: 'Стог Моркови', rate: 256 },
+                { from: 'Тыква', to: 'Стог Тыквы', rate: 256 },
+                { from: 'Арбуз', to: 'Стог Арбузов', rate: 256 },
+                { from: 'Тростник', to: 'Стог Тростника', rate: 256 },
+                { from: 'Грибы', to: 'Стог Грибов', rate: 256 },
+                { from: 'Адский нарост', to: 'Стог Адского нароста', rate: 256 },
+            ]
+        },
+        singularity: {
+            label: '✨ СИНГУЛЯРНОСТЬ',
+            recipes: [
+                { from: 'Стог Пшена', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Картошки', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Моркови', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Тыквы', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Арбузов', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Тростника', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Грибов', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Адского нароста', to: 'Сингулярность', rate: 16 },
+            ]
+        },
+        mining: {
+            label: '⛏️ МАЙНИНГ',
+            recipes: [
+                { from: 'Булыжник', to: 'Сингулярность', rate: 25000 },
+                { from: 'Уголь', to: 'Стог Угля', rate: 256 },
+                { from: 'Стог Угля', to: 'Сингулярность', rate: 16 },
+                { from: 'Медь', to: 'Стог Меди', rate: 256 },
+                { from: 'Стог Меди', to: 'Сингулярность', rate: 16 },
+                { from: 'Железо', to: 'Стог Железа', rate: 256 },
+                { from: 'Стог Железа', to: 'Сингулярность', rate: 16 },
+                { from: 'Золото', to: 'Стог Золота', rate: 256 },
+                { from: 'Стог Золота', to: 'Сингулярность', rate: 16 },
+                { from: 'Лазурит', to: 'Стог Лазурита', rate: 256 },
+                { from: 'Стог Лазурита', to: 'Сингулярность', rate: 16 },
+                { from: 'Редстоун', to: 'Стог Редстоуна', rate: 256 },
+                { from: 'Стог Редстоуна', to: 'Сингулярность', rate: 16 },
+                { from: 'Мифрил', to: 'Стог Мифрила', rate: 256 },
+                { from: 'Стог Мифрила', to: 'Сингулярность', rate: 16 },
+                { from: 'Рубин', to: 'Стог Рубинов', rate: 256 },
+                { from: 'Стог Рубинов', to: 'Сингулярность', rate: 16 },
+                { from: 'Сапфир', to: 'Стог Сапфиров', rate: 256 },
+                { from: 'Стог Сапфиров', to: 'Сингулярность', rate: 16 },
+                { from: 'Изумруд', to: 'Стог Изумрудов', rate: 256 },
+                { from: 'Стог Изумрудов', to: 'Сингулярность', rate: 16 },
+                { from: 'Алмаз', to: 'Стог Алмазов', rate: 256 },
+                { from: 'Стог Алмазов', to: 'Сингулярность', rate: 16 },
+                { from: 'Кварц', to: 'Стог Кварца', rate: 256 },
+                { from: 'Стог Кварца', to: 'Сингулярность', rate: 16 },
+                { from: 'Обсидиан', to: 'Стог Обсидиана', rate: 256 },
+                { from: 'Стог Обсидиана', to: 'Сингулярность', rate: 16 },
+                { from: 'Кусочек Звезды Ада', to: 'Звезда Ада', rate: 9 },
+            ]
+        },
+        foraging: {
+            label: '🌲 ФОРЕСТ',
+            recipes: [
+                { from: 'Дуб', to: 'Стог Дуба', rate: 256 },
+                { from: 'Берёза', to: 'Стог Берёзы', rate: 256 },
+                { from: 'Осина', to: 'Стог Осины', rate: 256 },
+                { from: 'Ель', to: 'Стог Ели', rate: 256 },
+                { from: 'Тёмный Дуб', to: 'Стог Тёмного Дуба', rate: 256 },
+                { from: 'Акация', to: 'Стог Акации', rate: 256 },
+                { from: 'Вяз Тьмы', to: 'Стог Вяза Тьмы', rate: 256 },
+                { from: 'Чёрная Ива', to: 'Стог Чёрной Ивы', rate: 256 },
+                { from: 'Древо Жизни', to: 'Стог Древа Жизни', rate: 256 },
+                { from: 'Кристальный Кедр', to: 'Стог Кристального Кедра', rate: 256 },
+                { from: 'Звёздная Секвойя', to: 'Стог Звёздной Секвойи', rate: 256 },
+                { from: 'Лунный Ясень', to: 'Стог Лунного Ясеня', rate: 256 },
+                { from: 'Стог Дуба', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Берёзы', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Осины', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Ели', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Тёмного Дуба', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Акации', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Вяза Тьмы', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Чёрной Ивы', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Древа Жизни', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Кристального Кедра', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Звёздной Секвойи', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Лунного Ясеня', to: 'Сингулярность', rate: 16 }
+            ]
+        },
+        slayer: {
+            label: '🧟 СЛЕЙЕР',
+            recipes: [
+                { from: 'Плоть зомби', to: 'Живая плоть', rate: 512 }
+            ]
+        },
+        fishing: {
+            label: '🎣 РЫБАЛКА',
+            recipes: [
+                { from: 'Карась', to: 'Стог Карасей', rate: 256 },
+                { from: 'Окунь', to: 'Стог Окуней', rate: 256 },
+                { from: 'Щука', to: 'Стог Щук', rate: 256 },
+                { from: 'Раки', to: 'Стог Раков', rate: 256 },
+                { from: 'Треска', to: 'Стог Трески', rate: 256 },
+                { from: 'Лосось', to: 'Стог Лосося', rate: 256 },
+                { from: 'Тунец', to: 'Стог Тунца', rate: 256 },
+                { from: 'Морской Ёж', to: 'Стог Морских Ежей', rate: 256 },
+                { from: 'Пещерная Рыба', to: 'Стог Пещерной Рыбы', rate: 256 },
+                { from: 'Слепой Сом', to: 'Стог Слепых Сомов', rate: 256 },
+                { from: 'Кристальный Краб', to: 'Стог Кристальных Крабов', rate: 256 },
+                { from: 'Светящаяся Медуза', to: 'Стог Медуз', rate: 256 },
+                { from: 'Магмовая Рыба', to: 'Стог Магмовой Рыбы', rate: 256 },
+                { from: 'Адский Угорь', to: 'Стог Адских Угрей', rate: 256 },
+                { from: 'Огненный Скат', to: 'Стог Огненных Скатов', rate: 256 },
+                { from: 'Лавовый Левиафан', to: 'Стог Левиафанов', rate: 256 },
+                { from: 'Стог Карасей', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Окуней', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Щук', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Раков', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Трески', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Лосося', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Тунца', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Морских Ежей', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Пещерной Рыбы', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Слепых Сомов', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Кристальных Крабов', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Медуз', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Магмовой Рыбы', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Адских Угрей', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Огненных Скатов', to: 'Сингулярность', rate: 16 },
+                { from: 'Стог Левиафанов', to: 'Сингулярность', rate: 16 }
+            ]
+        }
     },
 
-    renderEnchanting() {
-        const el = document.getElementById('enchant-content');
-        if (!el) return;
+    currentExchangeCategory: 'farming',
 
-        const item = this.enchantSelectedItem;
-        let html = '';
+    openExchange() {
+        this.currentExchangeCategory = 'farming';
+        this.renderExchange();
+        this.showModal('exchangeModal');
+    },
 
-        if (!item) {
-            html += `<div style="text-align:center;margin:15px 0;"><b style="color:var(--accent);">Выберите предмет для зачарования</b></div>`;
-            html += `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;">`;
-            html += `<button class="act-btn" onclick="game.showEnchantPicker('weapon')" style="flex:1;min-width:80px;">⚔️ ОРУЖИЕ</button>`;
-            html += `<button class="act-btn" onclick="game.showEnchantPicker('armor')" style="flex:1;min-width:80px;">🛡️ БРОНЯ</button>`;
-            html += `<button class="act-btn" onclick="game.showEnchantPicker('tool')" style="flex:1;min-width:80px;">🔧 ИНСТРУМЕНТЫ</button>`;
-            html += `</div>`;
-            html += `<div id="enchant-picker"></div>`;
+    switchExchangeCategory(category) {
+        this.currentExchangeCategory = category;
+        this.renderExchange();
+    },
+
+    renderExchange() {
+        const content = document.getElementById('exchange-content');
+        if (!content) return;
+
+        let tabsHtml = '<div class="inv-tabs" style="margin-bottom:15px;">';
+        for (const [key, cat] of Object.entries(this.exchangeCategories)) {
+            const active = key === this.currentExchangeCategory ? 'active' : '';
+            tabsHtml += `<div class="inv-tab ${active}" onclick="game.switchExchangeCategory('${key}')">${cat.label}</div>`;
+        }
+        tabsHtml += '</div>';
+
+        const category = this.exchangeCategories[this.currentExchangeCategory];
+        let recipesHtml = '<div class="card"><h3>🔄 Крафт ресурсов</h3>';
+
+        if (!category.recipes || category.recipes.length === 0) {
+            recipesHtml += '<div style="text-align:center;color:#666;padding:20px;">Пока нет рецептов в этом отделе</div>';
         } else {
-            html += this._renderEnchantWorkbench(item);
-        }
+            for (const recipe of category.recipes) {
+                const fromItem = this.state.inventory.find(i => i.name === recipe.from && i.type === 'material');
+                const fromCount = fromItem ? fromItem.count || 0 : 0;
+                
+                const toItem = this.state.inventory.find(i => i.name === recipe.to && i.type === 'material');
+                const toCount = toItem ? toItem.count || 0 : 0;
 
-        el.innerHTML = html;
-    },
+                const canCraft = Math.floor(fromCount / recipe.rate);
 
-    showEnchantPicker(type) {
-        const picker = document.getElementById('enchant-picker');
-        if (!picker) return;
-        const items = this.state.inventory.filter(i => i.type === type);
-        if (!items.length) {
-            picker.innerHTML = '<div class="card" style="text-align:center;color:#666;">Нет подходящих предметов</div>';
-            return;
-        }
-        let html = '';
-        items.forEach(i => {
-            const enchCount = i.enchantments ? Object.keys(i.enchantments).length : 0;
-            const enchText = enchCount > 0 ? ` [${enchCount} зач.]` : '';
-            html += `<div class="card" style="cursor:pointer;${i.equipped ? 'border-color:var(--green);' : ''}" onclick="game.selectEnchantItem(${i.id})">
-                <b>${i.name}${enchText}</b>${i.equipped ? ' <span style="color:var(--green);font-size:0.7rem;">НАДЕТО</span>' : ''}
-                <br><small style="color:#0f0;">${this.getItemDesc(i)}</small>
-            </div>`;
-        });
-        picker.innerHTML = html;
-    },
-
-    selectEnchantItem(itemId) {
-        const item = this.state.inventory.find(i => i.id === itemId);
-        if (!item) return;
-        this.enchantSelectedItem = item;
-        this.renderEnchanting();
-    },
-
-    _renderEnchantWorkbench(item) {
-        const enchants = item.enchantments || {};
-        const itemType = item.type;
-        const available = Object.entries(enchantmentConfig).filter(([, e]) => e.targets.includes(itemType));
-
-        let html = `<div style="text-align:center;margin-bottom:10px;">`;
-        html += `<div class="card" style="border-color:var(--accent);display:inline-block;padding:8px 20px;">`;
-        html += `<b style="color:var(--accent);">${item.name}</b>`;
-        if (item.equipped) html += ` <span style="color:var(--green);font-size:0.7rem;">НАДЕТО</span>`;
-        html += `<br><small style="color:#0f0;">${this.getItemDesc(item)}</small>`;
-        html += `</div>`;
-        html += `<div style="margin-top:8px;"><button class="act-btn" onclick="game.enchantSelectedItem=null;game.renderEnchanting();">ОТМЕНИТЬ ВЫБОР</button></div>`;
-        html += `</div>`;
-
-        html += `<div style="display:flex;gap:8px;flex-wrap:wrap;">`;
-
-        html += `<div style="flex:1;min-width:140px;">`;
-        html += `<h4 style="color:var(--accent);margin:0 0 6px;font-size:0.8rem;">📖 ДОСТУПНЫЕ</h4>`;
-        available.forEach(([key, ench]) => {
-            const currentTier = enchants[key] || 0;
-            const maxTier = ench.tiers;
-            const hasConflict = ench.conflict && Object.entries(enchants).some(([ek]) => {
-                const other = enchantmentConfig[ek];
-                return other && other.conflict === ench.conflict && ek !== key;
-            });
-
-            for (let t = 1; t <= maxTier; t++) {
-                if (t <= currentTier) continue;
-                const cost = enchantCosts[t - 1];
-                const color = tierColors[t - 1];
-                const conflictNote = hasConflict ? ' <span style="color:var(--red);font-size:0.6rem;">⚠️ КОНФЛИКТ</span>' : '';
-                const statDesc = Object.entries(ench.stats[t - 1]).map(([st, v]) => {
-                    const statNames = {str:'СИЛА',def:'БРОНЯ',cd:'КРИТ УРОН',cc:'КРИТ ШАНС',mf:'УДАЧА',hp:'ХП',vitality:'ВОССТ',
-                        mining_fortune:'⛏️ФОРТ',farming_fortune:'🌾ФОРТ',foraging_fortune:'🌲ФОРТ',fishing_fortune:'🎣ФОРТ'};
-                    return `+${v} ${statNames[st] || st}`;
-                }).join(', ');
-                html += `<div class="card" style="padding:6px 8px;margin-bottom:4px;border-left:3px solid ${color};cursor:pointer;" onclick="game.applyEnchant(${item.id},'${key}',${t})">`;
-                html += `<div style="display:flex;justify-content:space-between;align-items:center;">`;
-                html += `<span style="color:${color};font-size:0.75rem;font-weight:bold;">${ench.icon} ${ench.name} ${tierRoman[t - 1]}</span>`;
-                html += `</div>`;
-                html += `<small style="color:#0f0;">${statDesc}</small>`;
-                if (ench.desc) html += ` <small style="color:var(--gray);font-size:0.6rem;">(${ench.desc})</small>`;
-                html += conflictNote;
-                html += `<div style="text-align:right;"><small style="color:var(--accent);">${cost.toLocaleString()}💰</small></div>`;
-                html += `</div>`;
+                recipesHtml += `
+                    <div style="margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <b>${recipe.from}</b>
+                                <span style="color:var(--accent);">(${fromCount})</span>
+                            </div>
+                            <span style="color:var(--gray);">➔</span>
+                            <div>
+                                <b>${recipe.to}</b>
+                                <span style="color:var(--green);">(${toCount})</span>
+                            </div>
+                        </div>
+                        <div style="text-align:center; margin-top:8px;">
+                            <small style="color:var(--gray);">${recipe.rate} ${recipe.from} = 1 ${recipe.to}</small>
+                        </div>
+                        <div class="item-actions" style="margin-top:10px;">
+                            <button class="act-btn" onclick="game.craftResource('${recipe.from}', '${recipe.to}', ${recipe.rate}, 1)" ${canCraft < 1 ? 'disabled' : ''}>
+                                Создать
+                            </button>
+                            <button class="act-btn" onclick="game.craftResource('${recipe.from}', '${recipe.to}', ${recipe.rate}, ${canCraft})" ${canCraft < 1 ? 'disabled' : ''}>
+                                Создать всё (${canCraft})
+                            </button>
+                        </div>
+                    </div>
+                `;
             }
-        });
-        html += `</div>`;
-
-        html += `<div style="flex:1;min-width:140px;">`;
-        html += `<h4 style="color:var(--green);margin:0 0 6px;font-size:0.8rem;">✅ НАЛОЖЕННЫЕ</h4>`;
-        if (Object.keys(enchants).length === 0) {
-            html += `<div style="color:#666;font-size:0.75rem;text-align:center;padding:10px;">Нет зачарований</div>`;
-        } else {
-            Object.entries(enchants).forEach(([key, tier]) => {
-                const ench = enchantmentConfig[key];
-                if (!ench) return;
-                const color = tierColors[tier - 1];
-                const statDesc = Object.entries(ench.stats[tier - 1]).map(([st, v]) => {
-                    const statNames = {str:'СИЛА',def:'БРОНЯ',cd:'КРИТ УРОН',cc:'КРИТ ШАНС',mf:'УДАЧА',hp:'ХП',vitality:'ВОССТ',
-                        mining_fortune:'⛏️ФОРТ',farming_fortune:'🌾ФОРТ',foraging_fortune:'🌲ФОРТ',fishing_fortune:'🎣ФОРТ'};
-                    return `+${v} ${statNames[st] || st}`;
-                }).join(', ');
-                html += `<div class="card" style="padding:6px 8px;margin-bottom:4px;border-left:3px solid ${color};">`;
-                html += `<span style="color:${color};font-weight:bold;font-size:0.75rem;">${ench.icon} ${ench.name} ${tierRoman[tier - 1]}</span>`;
-                html += `<br><small style="color:#0f0;">${statDesc}</small>`;
-                html += `</div>`;
-            });
         }
-        html += `</div>`;
+        recipesHtml += '</div>';
 
-        html += `</div>`;
-        return html;
+        const p2pHtml = `
+            <div class="card" style="margin-top:15px;">
+                <h3>🤝 Обмен между игроками</h3>
+                <p style="color:var(--gray); font-size:0.8rem;">
+                    Здесь можно будет обмениваться ресурсами с другими игроками через облако.
+                    <br>Статус: <b>В разработке</b>
+                </p>
+                <div id="p2p-list"></div>
+                <button class="cooldown-btn" onclick="game.refreshP2P()">Обновить предложения</button>
+            </div>
+        `;
+
+        content.innerHTML = tabsHtml + recipesHtml + p2pHtml;
     },
 
-    applyEnchant(itemId, enchKey, tier) {
-        const item = this.state.inventory.find(i => i.id === itemId);
-        if (!item) return;
-        const ench = enchantmentConfig[enchKey];
-        if (!ench) return;
-        const cost = enchantCosts[tier - 1];
-        if (this.state.coins < cost) {
-            this.msg(`Не хватает монет! Нужно ${cost.toLocaleString()} 💰`);
+    craftResource(fromName, toName, rate, amount) {
+        if (amount <= 0) return;
+        
+        const cost = amount * rate;
+        const fromItem = this.state.inventory.find(i => i.name === fromName && i.type === 'material');
+        
+        if (!fromItem || (fromItem.count || 0) < cost) {
+            this.msg(`Недостаточно ${fromName}! Нужно ${cost}`);
             return;
         }
 
-        if (!item.enchantments) item.enchantments = {};
-
-        if (ench.conflict) {
-            Object.keys(item.enchantments).forEach(ek => {
-                const other = enchantmentConfig[ek];
-                if (other && other.conflict === ench.conflict && ek !== enchKey) {
-                    delete item.enchantments[ek];
-                    this.msg(`${other.name} заменено на ${ench.name}!`);
-                }
-            });
+        fromItem.count -= cost;
+        if (fromItem.count <= 0) {
+            this.state.inventory = this.state.inventory.filter(i => i.id !== fromItem.id);
         }
 
-        this.state.coins -= cost;
-        item.enchantments[enchKey] = tier;
-
-        const enchLvl = this.state.skills.enchanting?.lvl || 1;
-        const xpGain = enchantXpMultipliers[tier - 1] * enchLvl;
-        if (typeof this.addXp === 'function') {
-            this.addXp('enchanting', xpGain);
-        }
-
-        this.msg(`${ench.name} ${tierRoman[tier - 1]} наложено! +${xpGain} XP Зачарования`);
-        this.enchantSelectedItem = item;
-        this.renderEnchanting();
+        this.addMaterial(toName, 'material', amount);
+        
+        this.msg(`Создано: ${amount} ${toName}`);
+        this.renderExchange();
         this.updateUI();
+    },
+
+    async refreshP2P() {
+        const list = document.getElementById('p2p-list');
+        if (list) {
+            list.innerHTML = '<div style="text-align:center; color:#666;">P2P обмен недоступен в локальном режиме</div>';
+        }
     }
 });
