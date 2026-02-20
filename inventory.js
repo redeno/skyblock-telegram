@@ -20,6 +20,8 @@ Object.assign(game, {
         if (i.foraging_fortune) d += `+${i.foraging_fortune} 🌲ФОРТУНЫ `;
         if (i.foraging_exp_bonus) d += `+${i.foraging_exp_bonus}% 🌲ОПЫТА `;
         if (i.hp) d += `+${i.hp} ХП `;
+        if (i.vitality) d += `+${i.vitality}% ВОССТАНОВЛЕНИЕ `;
+        if (i.zombie_bonus) d += `+${i.zombie_bonus}% УРОН ПО ЗОМБИ `;
         if (i.gold_bonus) d += `+${i.gold_bonus}% ЗОЛОТО `;
         if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
         if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
@@ -41,6 +43,14 @@ Object.assign(game, {
             d += `МЕЧ МИДАСА | +${midasStr.toFixed(0)} СИЛЫ (от монет) | Сила зависит от кол-ва монет (макс 1млрд). Легендарный меч, дроп с 4 этажа данжей. `;
         }
         if (i.magic) d += 'МАГИЧЕСКОЕ ';
+        if (i.enchantments && Object.keys(i.enchantments).length > 0) {
+            const enchNames = Object.entries(i.enchantments).map(([key, tier]) => {
+                const e = window.enchantmentConfig?.[key];
+                const roman = ['I','II','III','IV','V'];
+                return e ? `${e.icon}${e.name} ${roman[tier-1]}` : key;
+            }).join(', ');
+            d += `[${enchNames}] `;
+        }
         if (i.type === 'pet') {
             if (window.calcPetBonus) {
                 const pb = window.calcPetBonus(i, game.state.skills);
@@ -110,7 +120,9 @@ Object.assign(game, {
             'Фрагмент из Данжа': 1000,
             'Изумруд': 5000,
             'Стог Изумрудов': 1500,
-            'Hot Potato Book': 50000
+            'Hot Potato Book': 50000,
+            'Плоть зомби': 10,
+            'Живая плоть': 10000
         };
         return prices[name] || 2;
     },
@@ -131,8 +143,8 @@ Object.assign(game, {
     },
 
     filterInv(t, e) {
-        document.querySelectorAll('.inv-tab').forEach(x => x.classList.remove('active'));
-        e.classList.add('active');
+        document.querySelectorAll('#inventory .inv-tab').forEach(x => x.classList.remove('active'));
+        if (e) e.classList.add('active');
         this.lastFilter = t;
         this.renderInvList(t);
     },
@@ -155,10 +167,11 @@ Object.assign(game, {
             let a = '';
 
             if (t === 'pet') {
+                const sellPrice = typeof game.getPetSellPrice === 'function' ? game.getPetSellPrice(i) : Math.floor(i.cost / 2);
                 a = `
                     <button class="act-btn" onclick="game.toggleEquipPet(${idx})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
                     <button class="act-btn" onclick="game.upgradePet(${idx})">УЛУЧШИТЬ</button>
-                    <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${Math.floor(i.cost / 2)}💰)</button>
+                    <button class="act-btn" onclick="game.sellPet(${idx})">ПРОДАТЬ (${sellPrice.toLocaleString()}💰)</button>
                 `;
             } else if (i.type === 'material') {
                 const pricePer = this.getMaterialSellPrice(i.name);
@@ -166,8 +179,13 @@ Object.assign(game, {
                 a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${totalPrice.toLocaleString()}💰 | ${pricePer}/шт)</button>`;
             } else if (i.type === 'accessory') {
                 const sellPrice = Math.floor((i.cost || 100) / 2);
+                let upgradeBtn = '';
+                if (i.name === 'Zombie Ring' && !i.upgraded) {
+                    upgradeBtn = `<button class="act-btn" onclick="game.upgradeZombieRing(${i.id})">УЛУЧШИТЬ (256 Плоть зомби)</button>`;
+                }
                 a = `
                     <button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
+                    ${upgradeBtn}
                     <button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${sellPrice.toLocaleString()}💰)</button>
                 `;
             } else if (i.type === 'chest') {
@@ -326,6 +344,33 @@ Object.assign(game, {
         this.state.inventory = this.state.inventory.filter(x => x.id !== id);
 
         this.msg(`Продано ${amount} ${i.name}! +${total.toLocaleString()} 💰`);
+        this.updateUI();
+    },
+
+    upgradeZombieRing(id) {
+        const ring = this.state.inventory.find(x => x.id === id && x.name === 'Zombie Ring');
+        if (!ring) return;
+        if (ring.upgraded) {
+            this.msg('Zombie Ring уже улучшен!');
+            return;
+        }
+        const flesh = this.state.inventory.find(i => i.name === 'Плоть зомби' && i.type === 'material');
+        const fleshCount = flesh ? (flesh.count || 0) : 0;
+        if (fleshCount < 256) {
+            this.msg(`Недостаточно Плоти зомби! Нужно 256, у вас ${fleshCount}`);
+            return;
+        }
+        flesh.count -= 256;
+        if (flesh.count <= 0) {
+            this.state.inventory = this.state.inventory.filter(i => i.id !== flesh.id);
+        }
+        ring.upgraded = true;
+        ring.name = 'Zombie Ring ★';
+        ring.mf = (ring.mf || 0) + 5;
+        ring.str = (ring.str || 0) + 10;
+        ring.vitality = (ring.vitality || 0) + 1;
+        ring.cost = 100000;
+        this.msg('Zombie Ring улучшен! +5 MF, +10 STR, +1% Восстановление');
         this.updateUI();
     },
 
