@@ -6,7 +6,8 @@ const skillConfig = {
     fishing: { baseNext: 100, multiplier: 1.4 },
     combat: { baseNext: 100, multiplier: 1.4 },
     foraging: { baseNext: 100, multiplier: 1.4 },
-    dungeons: { baseNext: 200, multiplier: 1.4 }, // 1.4 как просил
+    dungeons: { baseNext: 200, multiplier: 1.4 },
+    enchanting: { baseNext: 100, multiplier: 1.1 },
     skyblock: { baseNext: 1, multiplier: 1.0 },
 };
 
@@ -17,7 +18,7 @@ function initSkills() {
                 lvl: 1,
                 xp: 0,
                 next: skillConfig[key].baseNext,
-                label: key === "dungeons" ? "ДАНЖИ" : key.toUpperCase(),
+                label: key === "dungeons" ? "ДАНЖИ" : key === "enchanting" ? "ЗАЧАРОВАНИЕ" : key.toUpperCase(),
             };
         } else {
             if (game.state.skills[key].next === undefined) {
@@ -41,9 +42,11 @@ game.addXp = function (skillKey, amount) {
     while (sk.xp >= sk.next - epsilon) {
         sk.lvl++;
         sk.xp -= sk.next;
-        // For SkyBlock skill, we want next to stay 1.0 (0.1 increments)
         if (skillKey !== "skyblock") {
             sk.next = Math.floor(sk.next * skillConfig[skillKey].multiplier);
+            if (['mining','farming','fishing','foraging','combat','dungeons','enchanting'].includes(skillKey)) {
+                game.addXp('skyblock', 0.1);
+            }
         } else {
             sk.next = 1.0;
         }
