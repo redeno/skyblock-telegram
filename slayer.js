@@ -29,10 +29,10 @@ const slayerConfig = {
             },
             {
                 tier: 2,
-                hp: 150,
-                dmg: 30,
-                def: 20,
-                magicRes: 15,
+                hp: 250,
+                dmg: 60,
+                def: 40,
+                magicRes: 25,
                 reqKills: 10,
                 cost: 2500,
                 xp: 25,
@@ -40,10 +40,10 @@ const slayerConfig = {
             },
             {
                 tier: 3,
-                hp: 200,
-                dmg: 50,
-                def: 30,
-                magicRes: 20,
+                hp: 750,
+                dmg: 120,
+                def: 60,
+                magicRes: 40,
                 reqKills: 15,
                 cost: 10000,
                 xp: 100,
@@ -52,16 +52,16 @@ const slayerConfig = {
             },
             {
                 tier: 4,
-                hp: 300,
-                dmg: 50,
-                def: 30,
+                hp: 2500,
+                dmg: 200,
+                def: 100,
                 magicRes: 70,
                 reqKills: 20,
                 cost: 500000,
                 xp: 500,
                 fleshDropMin: 4,
                 fleshDropMax: 5,
-                enrage: { hpThreshold: 0.4, dmg: 100, def: 65 }
+                enrage: { hpThreshold: 0.4, dmg: 350, def: 150 }
             }
         ],
         tierMobs: {
@@ -70,18 +70,18 @@ const slayerConfig = {
                 { name: 'Крепкий Зомби', hp: 75, dmg: 5, def: 30, exp: 2, chance: 10 }
             ],
             2: [
-                { name: 'Обычный Зомби', hp: 70, dmg: 8, def: 20, exp: 1, chance: 85 },
-                { name: 'Крепкий Зомби', hp: 100, dmg: 12, def: 40, exp: 2, chance: 15 }
+                { name: 'Обычный Зомби', hp: 200, dmg: 25, def: 30, exp: 1, chance: 85 },
+                { name: 'Крепкий Зомби', hp: 350, dmg: 35, def: 50, exp: 2, chance: 15 }
             ],
             3: [
-                { name: 'Обычный Зомби', hp: 80, dmg: 10, def: 25, exp: 1, chance: 80 },
-                { name: 'Крепкий Зомби', hp: 120, dmg: 15, def: 45, exp: 2, chance: 15 },
-                { name: 'Агрессивный Зомби', hp: 120, dmg: 20, def: 45, exp: 3, chance: 5 }
+                { name: 'Обычный Зомби', hp: 400, dmg: 40, def: 40, exp: 1, chance: 80 },
+                { name: 'Крепкий Зомби', hp: 600, dmg: 55, def: 60, exp: 2, chance: 15 },
+                { name: 'Агрессивный Зомби', hp: 600, dmg: 75, def: 60, exp: 3, chance: 5 }
             ],
             4: [
-                { name: 'Обычный Зомби', hp: 100, dmg: 15, def: 30, exp: 1, chance: 70 },
-                { name: 'Крепкий Зомби', hp: 150, dmg: 20, def: 50, exp: 2, chance: 20 },
-                { name: 'Агрессивный Зомби', hp: 150, dmg: 30, def: 55, exp: 3, chance: 10 }
+                { name: 'Обычный Зомби', hp: 800, dmg: 80, def: 60, exp: 1, chance: 70 },
+                { name: 'Крепкий Зомби', hp: 1200, dmg: 100, def: 80, exp: 2, chance: 20 },
+                { name: 'Агрессивный Зомби', hp: 1200, dmg: 140, def: 90, exp: 3, chance: 10 }
             ]
         },
         mobs: [
@@ -155,9 +155,9 @@ Object.assign(game, {
 
         const tierInfo = [
             { tier: 1, label: 'TIER I', hp: 100, cost: 500, mobs: 5, xp: 5, flesh: '1' },
-            { tier: 2, label: 'TIER II', hp: 150, cost: 2500, mobs: 10, xp: 25, flesh: '2' },
-            { tier: 3, label: 'TIER III', hp: 200, cost: 10000, mobs: 15, xp: 100, flesh: '2-4' },
-            { tier: 4, label: 'TIER IV', hp: 300, cost: 500000, mobs: 20, xp: 500, flesh: '4-5' }
+            { tier: 2, label: 'TIER II', hp: 500, cost: 2500, mobs: 10, xp: 25, flesh: '2' },
+            { tier: 3, label: 'TIER III', hp: 1500, cost: 10000, mobs: 15, xp: 100, flesh: '2-4' },
+            { tier: 4, label: 'TIER IV', hp: 5000, cost: 500000, mobs: 20, xp: 500, flesh: '4-5' }
         ];
 
         let tiersHtml = '';
