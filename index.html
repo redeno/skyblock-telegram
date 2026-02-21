@@ -41,6 +41,7 @@
                 <div class="portal-node" onclick="game.openExchange()">⚖️ ОБМЕН</div>
                 <div class="portal-node" onclick="game.openEventsMenu()">📅 ИВЕНТ</div>
                 <div class="portal-node" onclick="game.openMayorMenu()">🗳️ МЭР</div>
+                <div class="portal-node" onclick="game.showBlacksmith()">🔨 КУЗНЕЦ</div>
                 <div class="portal-node" onclick="game.openAdminPanel()" style="border-color:var(--red);">🔧 АДМИН</div>
             </div>
         </div>
@@ -267,6 +268,7 @@
     <script src="admin.js"></script>
     <script src="slayer.js"></script>
     <script src="enchanting.js"></script>
+    <script src="blacksmith.js"></script>
     <script>
       const ADMIN_IDS = [1546583402];
       const user = Telegram.WebApp.initDataUnsafe?.user;
