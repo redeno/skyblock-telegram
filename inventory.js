@@ -209,10 +209,13 @@ Object.assign(game, {
                 a = `<button class="act-btn" onclick="game.activateCookie(${i.id})">АКТИВИРОВАТЬ</button>`;
             }
 
+            const rc = i.rarity ? (rarityColors[i.rarity] || '#aaa') : '#aaa';
+            const rt = typeof getRarityTag === 'function' ? getRarityTag(i.rarity) : '';
             l.innerHTML += `
-                <div class="card">
-                    <b>${i.name}${c}</b><br>
+                <div class="card" style="border-left:3px solid ${rc}">
+                    <b>${i.name}${c}</b> ${rt}<br>
                     <small style="color:#0f0; font-weight:bold">${this.getItemDesc(i)}</small>
+                    ${i.reforge ? `<br><small style="color:#ff0;">РЕФОРЖ: ${i.reforge.name} (${Object.entries(i.reforge.bonuses).map(([k,v])=>`+${v} ${k}`).join(', ')})</small>` : ''}
                     <div class="item-actions">${a}</div>
                 </div>`;
         });
