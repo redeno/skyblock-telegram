@@ -7,7 +7,7 @@ const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const defaultState = {
-    coins: 500000000,
+    coins: 0,
     nextItemId: 10,
     mayor: {
         current: 'dodoll',
@@ -126,14 +126,49 @@ const defaultState = {
     pets: []
 };
 
+function autoRarity(cost) {
+    if (cost >= 100000000) return 'legendary';
+    if (cost >= 5000000) return 'epic';
+    if (cost >= 500000) return 'rare';
+    if (cost >= 50000) return 'uncommon';
+    return 'common';
+}
+
+const rarityColors = {
+    common: '#aaa',
+    uncommon: '#55ff55',
+    rare: '#5555ff',
+    epic: '#aa00aa',
+    legendary: '#ffaa00',
+    mythic: '#ff55ff',
+    divine: '#55ffff',
+    special: '#ff5555'
+};
+const rarityLabels = {
+    common: 'ОБЫЧНЫЙ',
+    uncommon: 'НЕОБЫЧНЫЙ',
+    rare: 'РЕДКИЙ',
+    epic: 'ЭПИЧЕСКИЙ',
+    legendary: 'ЛЕГЕНДАРНЫЙ',
+    mythic: 'МИФИЧЕСКИЙ',
+    divine: 'БОЖЕСТВЕННЫЙ',
+    special: 'ОСОБЫЙ'
+};
+function getRarityTag(rarity) {
+    if (!rarity) return '';
+    const c = rarityColors[rarity] || '#aaa';
+    const l = rarityLabels[rarity] || rarity.toUpperCase();
+    return `<span style="color:${c};font-weight:bold;font-size:0.7rem;">${l}</span>`;
+}
+
 const shopItems = {
     weapon: [
-                {name:'Старый меч',type:'weapon',str:10,cost:1000},
-        {name:'Каменный меч',type:'weapon',str:20,cost:25000},
-        {name:'Железный Меч',type:'weapon',str:30,cost:500000},
-        {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000},
-        {name:'Незеритовый Меч',type:'weapon',str:50,cost:10000000},
-                {name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000}
+                {name:'Старый меч',type:'weapon',str:10,cost:1000,rarity:'common'},
+        {name:'Каменный меч',type:'weapon',str:20,cost:25000,rarity:'common'},
+        {name:'Железный Меч',type:'weapon',str:30,cost:500000,rarity:'rare'},
+        {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000,rarity:'rare'},
+        {name:'Незеритовый Меч',type:'weapon',str:50,cost:10000000,rarity:'epic'},
+                {name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000,rarity:'legendary'}
     ],
     zombie_weapon: [
         {name:'Zombie Sword',type:'weapon',str:20,zombie_bonus:25,cost:0,flesh_cost:32,rarity:'uncommon',slayer_req:0},
@@ -146,75 +181,75 @@ const shopItems = {
         {name:'🧟 Рипер броня',type:'armor',def:30,vitality:10,zombie_bonus:10,cost:0,flesh_cost:512,living_flesh_cost:4,rarity:'legendary',slayer_req:7}
     ],
     armor: [
-        {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000},
-        {name:'🛡️ Алмазная броня',type:'armor',def:20,cost:50000},
-        {name:'⚔️ Shaddow Assasins броня',type:'armor',def:25,str:25,cc:5,cd:10,cost:1000000},
-        {name:'🧠 ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000},
-        {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000}
+        {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000,rarity:'common'},
+        {name:'🛡️ Алмазная броня',type:'armor',def:20,cost:50000,rarity:'uncommon'},
+        {name:'⚔️ Shaddow Assasins броня',type:'armor',def:25,str:25,cc:5,cd:10,cost:1000000,rarity:'rare'},
+        {name:'🧠 ДемонЛорд Броня',type:'armor',str:50,def:30,cc:10,cd:25,mag_amp:5,mf:25,cost:10000000,rarity:'epic'},
+        {name:'🍀 Накидка первопроходца',type:'armor',hp:50,str:25,int:25,def:15,cc:15,cd:25,farming_exp_bonus:3,mining_exp_bonus:3,foraging_exp_bonus:3,fishing_exp_bonus:3,dungeon_exp_bonus:3,farming_fortune:20,mining_fortune:20,foraging_fortune:20,fishing_fortune:20,cost:50000000,rarity:'legendary'}
     ],
     mining_armor: [
-        {name:'⛏️ Шахтёрская броня',type:'armor',mining_fortune:50,mining_exp_bonus:5,def:5,cost:50000,desc:'Базовая броня шахтёра. +50 фортуны, +5% опыта шахты, +5 защиты.'},
-        {name:'⛏️ Рудокопная броня',type:'armor',mining_fortune:125,mining_exp_bonus:7,def:10,cost:500000,desc:'Улучшенная шахтёрская экипировка. +125 фортуны, +7% опыта шахты, +10 защиты.'},
-        {name:'⛏️ Мифриловая броня',type:'armor',mining_fortune:200,mining_exp_bonus:10,def:20,mf:10,cost:5000000,desc:'Редкая мифриловая броня. +200 фортуны, +10% опыта шахты, +20 защиты, +10 удачи.'},
-        {name:'⛏️ Кристальная броня',type:'armor',mining_fortune:300,mining_exp_bonus:15,def:30,mf:20,cost:50000000,desc:'Легендарная кристальная броня. +300 фортуны, +15% опыта шахты, +30 защиты, +20 удачи.'}
+        {name:'⛏️ Шахтёрская броня',type:'armor',mining_fortune:50,mining_exp_bonus:5,def:5,cost:50000,rarity:'uncommon',desc:'Базовая броня шахтёра. +50 фортуны, +5% опыта шахты, +5 защиты.'},
+        {name:'⛏️ Рудокопная броня',type:'armor',mining_fortune:125,mining_exp_bonus:7,def:10,cost:500000,rarity:'rare',desc:'Улучшенная шахтёрская экипировка. +125 фортуны, +7% опыта шахты, +10 защиты.'},
+        {name:'⛏️ Мифриловая броня',type:'armor',mining_fortune:200,mining_exp_bonus:10,def:20,mf:10,cost:5000000,rarity:'epic',desc:'Редкая мифриловая броня. +200 фортуны, +10% опыта шахты, +20 защиты, +10 удачи.'},
+        {name:'⛏️ Кристальная броня',type:'armor',mining_fortune:300,mining_exp_bonus:15,def:30,mf:20,cost:50000000,rarity:'legendary',desc:'Легендарная кристальная броня. +300 фортуны, +15% опыта шахты, +30 защиты, +20 удачи.'}
     ],
     farming_armor: [
-        {name:'🌾 Фермерская броня',type:'armor',farming_fortune:50,farming_exp_bonus:5,cost:50000,desc:'Базовая фермерская броня. +50 фортуны, +5% опыта фермы.'},
-        {name:'🌾 Арбузная броня',type:'armor',farming_fortune:125,farming_exp_bonus:7,cost:500000,desc:'Улучшенная фермерская экипировка. +125 фортуны, +7% опыта фермы.'},
-        {name:'🌾 Ферменто броня',type:'armor',farming_fortune:200,farming_exp_bonus:10,cost:5000000,desc:'Редкая ферментированная броня. +200 фортуны, +10% опыта фермы.'},
-        {name:'🌾 Гелиантус броня',type:'armor',farming_fortune:300,farming_exp_bonus:15,cost:50000000,desc:'Легендарная солнечная броня. +300 фортуны, +15% опыта фермы.'}
+        {name:'🌾 Фермерская броня',type:'armor',farming_fortune:50,farming_exp_bonus:5,cost:50000,rarity:'uncommon',desc:'Базовая фермерская броня. +50 фортуны, +5% опыта фермы.'},
+        {name:'🌾 Арбузная броня',type:'armor',farming_fortune:125,farming_exp_bonus:7,cost:500000,rarity:'rare',desc:'Улучшенная фермерская экипировка. +125 фортуны, +7% опыта фермы.'},
+        {name:'🌾 Ферменто броня',type:'armor',farming_fortune:200,farming_exp_bonus:10,cost:5000000,rarity:'epic',desc:'Редкая ферментированная броня. +200 фортуны, +10% опыта фермы.'},
+        {name:'🌾 Гелиантус броня',type:'armor',farming_fortune:300,farming_exp_bonus:15,cost:50000000,rarity:'legendary',desc:'Легендарная солнечная броня. +300 фортуны, +15% опыта фермы.'}
     ],
     fishing_armor: [
-        {name:'🎣 Рыбацкая броня',type:'armor',fishing_fortune:50,fishing_exp_bonus:5,cost:50000,desc:'Базовая рыбацкая экипировка. +50 фортуны, +5% опыта рыбалки.'},
-        {name:'🎣 Морская броня',type:'armor',fishing_fortune:125,fishing_exp_bonus:7,def:8,cost:500000,desc:'Улучшенная морская экипировка. +125 фортуны, +7% опыта рыбалки, +8 защиты.'},
-        {name:'🎣 Броня глубин',type:'armor',fishing_fortune:200,fishing_exp_bonus:10,def:15,hp:25,cost:5000000,desc:'Редкая броня из глубин океана. +200 фортуны, +10% опыта рыбалки, +15 защиты, +25 ХП.'},
-        {name:'🎣 Левиафанова броня',type:'armor',fishing_fortune:300,fishing_exp_bonus:15,def:25,hp:50,cost:50000000,desc:'Легендарная броня из чешуи Левиафана. +300 фортуны, +15% опыта рыбалки, +25 защиты, +50 ХП.'}
+        {name:'🎣 Рыбацкая броня',type:'armor',fishing_fortune:50,fishing_exp_bonus:5,cost:50000,rarity:'uncommon',desc:'Базовая рыбацкая экипировка. +50 фортуны, +5% опыта рыбалки.'},
+        {name:'🎣 Морская броня',type:'armor',fishing_fortune:125,fishing_exp_bonus:7,def:8,cost:500000,rarity:'rare',desc:'Улучшенная морская экипировка. +125 фортуны, +7% опыта рыбалки, +8 защиты.'},
+        {name:'🎣 Броня глубин',type:'armor',fishing_fortune:200,fishing_exp_bonus:10,def:15,hp:25,cost:5000000,rarity:'epic',desc:'Редкая броня из глубин океана. +200 фортуны, +10% опыта рыбалки, +15 защиты, +25 ХП.'},
+        {name:'🎣 Левиафанова броня',type:'armor',fishing_fortune:300,fishing_exp_bonus:15,def:25,hp:50,cost:50000000,rarity:'legendary',desc:'Легендарная броня из чешуи Левиафана. +300 фортуны, +15% опыта рыбалки, +25 защиты, +50 ХП.'}
     ],
     foraging_armor: [
-        {name:'🌲 Лесная броня',type:'armor',foraging_fortune:50,foraging_exp_bonus:5,cost:50000,desc:'Базовая лесная экипировка. +50 фортуны, +5% опыта леса.'},
-        {name:'🌲 Броня лесника',type:'armor',foraging_fortune:125,foraging_exp_bonus:7,str:10,cost:500000,desc:'Улучшенная лесная экипировка. +125 фортуны, +7% опыта леса, +10 силы.'},
-        {name:'🌲 Древесная броня',type:'armor',foraging_fortune:200,foraging_exp_bonus:10,str:20,def:10,cost:5000000,desc:'Редкая древесная броня. +200 фортуны, +10% опыта леса, +20 силы, +10 защиты.'},
-        {name:'🌲 Броня Друида',type:'armor',foraging_fortune:300,foraging_exp_bonus:15,str:30,def:20,hp:30,cost:50000000,desc:'Легендарная броня Друида. +300 фортуны, +15% опыта леса, +30 силы, +20 защиты, +30 ХП.'}
+        {name:'🌲 Лесная броня',type:'armor',foraging_fortune:50,foraging_exp_bonus:5,cost:50000,rarity:'uncommon',desc:'Базовая лесная экипировка. +50 фортуны, +5% опыта леса.'},
+        {name:'🌲 Броня лесника',type:'armor',foraging_fortune:125,foraging_exp_bonus:7,str:10,cost:500000,rarity:'rare',desc:'Улучшенная лесная экипировка. +125 фортуны, +7% опыта леса, +10 силы.'},
+        {name:'🌲 Древесная броня',type:'armor',foraging_fortune:200,foraging_exp_bonus:10,str:20,def:10,cost:5000000,rarity:'epic',desc:'Редкая древесная броня. +200 фортуны, +10% опыта леса, +20 силы, +10 защиты.'},
+        {name:'🌲 Броня Друида',type:'armor',foraging_fortune:300,foraging_exp_bonus:15,str:30,def:20,hp:30,cost:50000000,rarity:'legendary',desc:'Легендарная броня Друида. +300 фортуны, +15% опыта леса, +30 силы, +20 защиты, +30 ХП.'}
     ],
-    tool: [], // Deprecated, split into subsections
+    tool: [],
     mining_tool: [
-        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:500},
-        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:30,cost:2500},
-        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:60,double_chance:10,cost:15000},
-        {name:'Золотая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:100,double_chance:25,cost:50000},
-        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,triple_chance:10,cost:250000},
-        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:250,triple_chance:20,cost:1000000},
-        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:400,triple_chance:30,cost:10000000},
-        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:600,triple_chance:50,cost:100000000},
-        {name:'Разрушитель Границ',type:'tool',sub_type:'pickaxe',mining_fortune:1000,triple_chance:70,cost:5000000000}
+        {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:500,rarity:'common'},
+        {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:30,cost:2500,rarity:'common'},
+        {name:'Железная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:60,double_chance:10,cost:15000,rarity:'common'},
+        {name:'Золотая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:100,double_chance:25,cost:50000,rarity:'uncommon'},
+        {name:'Алмазная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:150,triple_chance:10,cost:250000,rarity:'uncommon'},
+        {name:'Незеритовая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:250,triple_chance:20,cost:1000000,rarity:'rare'},
+        {name:'Титаническая кирка',type:'tool',sub_type:'pickaxe',mining_fortune:400,triple_chance:30,cost:10000000,rarity:'epic'},
+        {name:'Дивайн кирка',type:'tool',sub_type:'pickaxe',mining_fortune:600,triple_chance:50,cost:100000000,rarity:'legendary'},
+        {name:'Разрушитель Границ',type:'tool',sub_type:'pickaxe',mining_fortune:1000,triple_chance:70,cost:5000000000,rarity:'legendary'}
     ],
     farming_tool: [
-        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:500},
-        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:30,cost:2500},
-        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:60,cost:15000},
-        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:250000},
-        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:250,cost:1000000},
-        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:400,cost:10000000},
-        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:600,cost:100000000},
-        {name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000}
+        {name:'Деревянная мотыга',type:'tool',sub_type:'hoe',farming_fortune:10,cost:500,rarity:'common'},
+        {name:'Каменная мотыга',type:'tool',sub_type:'hoe',farming_fortune:30,cost:2500,rarity:'common'},
+        {name:'Железная мотыга',type:'tool',sub_type:'hoe',farming_fortune:60,cost:15000,rarity:'common'},
+        {name:'Алмазная мотыга',type:'tool',sub_type:'hoe',farming_fortune:150,cost:250000,rarity:'uncommon'},
+        {name:'Незеритовая мотыга',type:'tool',sub_type:'hoe',farming_fortune:250,cost:1000000,rarity:'rare'},
+        {name:'Титаническая мотыга',type:'tool',sub_type:'hoe',farming_fortune:400,cost:10000000,rarity:'epic'},
+        {name:'Дивайн мотыга',type:'tool',sub_type:'hoe',farming_fortune:600,cost:100000000,rarity:'legendary'},
+        {name:'Мотыга созидания',type:'tool',sub_type:'hoe',farming_fortune:1000,farming_exp_bonus:15,cost:5000000000,rarity:'legendary'}
     ],
     foraging_tool: [
-        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:500},
-        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:30,cost:2500},
-        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:60,cost:15000},
-        {name:'Золотой топор',type:'tool',sub_type:'axe',foraging_fortune:100,cost:50000},
-        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:250000},
-        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:250,cost:1000000},
-        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:400,cost:10000000},
-        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:600,cost:100000000}
+        {name:'Деревянный топор',type:'tool',sub_type:'axe',foraging_fortune:10,cost:500,rarity:'common'},
+        {name:'Каменный топор',type:'tool',sub_type:'axe',foraging_fortune:30,cost:2500,rarity:'common'},
+        {name:'Железный топор',type:'tool',sub_type:'axe',foraging_fortune:60,cost:15000,rarity:'common'},
+        {name:'Золотой топор',type:'tool',sub_type:'axe',foraging_fortune:100,cost:50000,rarity:'uncommon'},
+        {name:'Алмазный топор',type:'tool',sub_type:'axe',foraging_fortune:150,cost:250000,rarity:'uncommon'},
+        {name:'Незеритовый топор',type:'tool',sub_type:'axe',foraging_fortune:250,cost:1000000,rarity:'rare'},
+        {name:'Титанический топор',type:'tool',sub_type:'axe',foraging_fortune:400,cost:10000000,rarity:'epic'},
+        {name:'Дивайн топор',type:'tool',sub_type:'axe',foraging_fortune:600,cost:100000000,rarity:'legendary'}
     ],
     fishing_tool: [
-        {name:'Старая удочка',type:'tool',sub_type:'rod',fishing_fortune:10,cost:500},
-        {name:'Укрепленная удочка',type:'tool',sub_type:'rod',fishing_fortune:30,cost:5000},
-        {name:'Удочка мастера',type:'tool',sub_type:'rod',fishing_fortune:70,cost:50000},
-        {name:'Морская удочка',type:'tool',sub_type:'rod',fishing_fortune:150,cost:500000},
-        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_fortune:300,triple_chance:25,cost:100000000},
-        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_fortune:500,triple_chance:25,cost:500000000}
+        {name:'Старая удочка',type:'tool',sub_type:'rod',fishing_fortune:10,cost:500,rarity:'common'},
+        {name:'Укрепленная удочка',type:'tool',sub_type:'rod',fishing_fortune:30,cost:5000,rarity:'common'},
+        {name:'Удочка мастера',type:'tool',sub_type:'rod',fishing_fortune:70,cost:50000,rarity:'uncommon'},
+        {name:'Морская удочка',type:'tool',sub_type:'rod',fishing_fortune:150,cost:500000,rarity:'rare'},
+        {name:'Удочка гиганта',type:'tool',sub_type:'rod',fishing_fortune:300,triple_chance:25,cost:100000000,rarity:'legendary'},
+        {name:'Удочка героя',type:'tool',sub_type:'rod',fishing_fortune:500,triple_chance:25,cost:500000000,rarity:'legendary'}
     ],
     accessory: [ 
         {name:'🍀 Талисман удачи',type:'accessory',mf:10,cost:10000},
@@ -310,6 +345,12 @@ const shopItems = {
         }
     ]
 };
+
+Object.values(shopItems).forEach(arr => {
+    if (Array.isArray(arr)) arr.forEach(item => {
+        if (!item.rarity && item.cost > 0) item.rarity = autoRarity(item.cost);
+    });
+});
 
 window.petRarityBonuses = {
     common: 0.1,
@@ -698,9 +739,8 @@ const game = {
             this.msg('Запуск вне Telegram — тестовый режим');
         }
         await this.loadFromSupabase();
-        await this.initMayor();
+        if (typeof this.initMayor === 'function') await this.initMayor();
         if (typeof this.initGlobalMayor === 'function') await this.initGlobalMayor();
-        if (typeof this.initMayor === 'function') this.initMayor();
         setInterval(() => this.minionTick(), 1000);
         setInterval(() => this.saveToSupabase(), 10000);
         tg.expand?.();
@@ -737,6 +777,12 @@ const game = {
                                 if (s[stat] !== undefined) s[stat] += val;
                             });
                         }
+                    });
+                }
+                if (i.reforge && i.reforge.bonuses) {
+                    Object.entries(i.reforge.bonuses).forEach(([stat, val]) => {
+                        if (s[stat] !== undefined) s[stat] += val;
+                        else s[stat] = val;
                     });
                 }
             }
@@ -1478,11 +1524,11 @@ addPetXp(pet, amount) {
             if (nextIdx < swordProgression.length && nextIdx > 0) {
                 const i = shopItems.weapon.find(w => w.name === swordProgression[nextIdx]);
                 if (i) {
-                    l.innerHTML += `<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.upgradeSwordInShop()">УЛУЧШИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
+                    l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.upgradeSwordInShop()">УЛУЧШИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
                 }
             } else if (nextIdx === 0) {
                 const i = shopItems.weapon[0];
-                l.innerHTML += `<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('weapon', 0)">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
+                l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('weapon', 0)">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
             } else {
                 l.innerHTML = '<div class="card" style="text-align:center;color:#666">Максимальный уровень меча!</div>';
             }
@@ -1498,7 +1544,7 @@ addPetXp(pet, amount) {
                 let price = i.cost;
                 if (discount) price = Math.floor(price * (1 - discount / 100));
                 const statsText = this.getItemDesc(i);
-                let html = `<div class="card" ${owned?'style="opacity:0.5;border-color:var(--green)"':''}><b>${i.name}</b>`;
+                let html = `<div class="card" ${owned?`style="opacity:0.5;border-color:var(--green);border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"`:`style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"`}><b>${i.name}</b> ${getRarityTag(i.rarity)}`;
                 if (i.desc) html += `<br><small style="color:var(--gray)">${i.desc}</small>`;
                 html += `<br><small style="color:var(--green)">${statsText}</small>`;
                 if (owned) {
@@ -1526,7 +1572,7 @@ addPetXp(pet, amount) {
             if (nextIdx < items.length) {
                 const i = items[nextIdx];
                 const action = bestIdx >= 0 ? 'УЛУЧШИТЬ' : 'КУПИТЬ';
-                l.innerHTML+=`<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${nextIdx})">${action} (${i.cost.toLocaleString()}💰)</button></div></div>`;
+                l.innerHTML+=`<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${nextIdx})">${action} (${i.cost.toLocaleString()}💰)</button></div></div>`;
             } else {
                 l.innerHTML='<div class="card" style="text-align:center;color:#666">Максимальный уровень!</div>';
             }
@@ -1534,7 +1580,7 @@ addPetXp(pet, amount) {
         }
 
         items.forEach((i,x)=>{
-            l.innerHTML+=`<div class="card"><b>${i.name}</b><br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
+            l.innerHTML+=`<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
         });
     },
 
