@@ -17,9 +17,9 @@ game.loadTop = async function(type = 'rich') {
             data = rawData.map(row => ({
                 username: row.username || 'Аноним',
                 value: (() => {
-                    let total = 0;
-                    if (row.skills) Object.values(row.skills).forEach(sk => total += sk.lvl || 1);
-                    return ((total - 6) / 10).toFixed(2);
+                    const sbSkill = row.skills?.skyblock || { lvl: 0, xp: 0, next: 1 };
+                    const next = sbSkill.next || 1;
+                    return (sbSkill.lvl + (sbSkill.xp || 0) / next).toFixed(2);
                 })()
             })).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)).slice(0, TOP_LIMIT);
         }
