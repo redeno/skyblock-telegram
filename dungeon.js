@@ -1,12 +1,12 @@
 // dungeon.js — обновлённый XP по формуле (этаж * множитель)
 const dungeonConfig = {
-    1: { mobs: ['ЗОМБИ','СКЕЛЕТ','ПАУК','МЕРТВЕЦ'], baseHp:50, baseDmg:25, baseDef:5, bossMultiplier:2 },
-    2: { mobs: ['ПАУК','ПЕЩЕРНЫЙ ПАУК','ПАУК-СКОРПИОН','БРУДА'], baseHp:250, baseDmg:50, baseDef:15, bossMultiplier:2 },
-    3: { mobs: ['ЭНДЕРМИТ','ЭНДЕРМЕН','ШАЛКЕР','ЗАЩИТНИК КРАЯ'], baseHp:500, baseDmg:100, baseDef:10, bossStats:{hp:750,dmg:125,def:50} },
-    4: { mobs: ['РЫЦАРЬ','ПАЛАДИН','ПРОРОК','КОРОЛЬ'], baseHp:450, baseDmg:100, baseDef:30, bossStats:{hp:1000,dmg:150,def:50}, bossSpecial:'kingDefDrop' },
-    5: { mobs: ['ОХОТНИК','ИСКАТЕЛЬ','МАГ','АССАСИН'], baseHp:500, baseDmg:175, baseDef:0, baseCc:5, baseCd:25, bossStats:{hp:750,dmg:200,cc:25,cd:75} },
-    6: { mobs: ['ОРК','ГОБЛИН','ТРОЛЬ','ГИГАНТ'], baseHp:1000, baseDmg:100, baseDef:10, bossStats:{hp:2000,dmg:125,def:20} },
-    7: { mobs: ['БЛЕЙЗ','ГАСТ','СКЕЛЕТ ИССУШИТЕЛЬ','ИССУШИТЕЛЬ'], baseHp:750, baseDmg:50, baseDef:0, fireStacks:true, bossStats:{hp:3000,dmgBase:75,dmgInc:15}, bossSpecial:'witherPhase' }
+    1: { mobs: ['ЗОМБИ','СКЕЛЕТ','ПАУК','МЕРТВЕЦ'], baseHp:80, baseDmg:35, baseDef:10, bossMultiplier:2.5 },
+    2: { mobs: ['ПАУК','ПЕЩЕРНЫЙ ПАУК','ПАУК-СКОРПИОН','БРУДА'], baseHp:500, baseDmg:80, baseDef:25, bossMultiplier:2.5 },
+    3: { mobs: ['ЭНДЕРМИТ','ЭНДЕРМЕН','ШАЛКЕР','ЗАЩИТНИК КРАЯ'], baseHp:1000, baseDmg:150, baseDef:20, bossStats:{hp:2000,dmg:200,def:80} },
+    4: { mobs: ['РЫЦАРЬ','ПАЛАДИН','ПРОРОК','КОРОЛЬ'], baseHp:1200, baseDmg:180, baseDef:50, bossStats:{hp:3000,dmg:250,def:80}, bossSpecial:'kingDefDrop' },
+    5: { mobs: ['ОХОТНИК','ИСКАТЕЛЬ','МАГ','АССАСИН'], baseHp:1500, baseDmg:250, baseDef:0, baseCc:10, baseCd:40, bossStats:{hp:3500,dmg:350,cc:30,cd:100} },
+    6: { mobs: ['ОРК','ГОБЛИН','ТРОЛЬ','ГИГАНТ'], baseHp:3000, baseDmg:200, baseDef:30, bossStats:{hp:6000,dmg:300,def:50} },
+    7: { mobs: ['БЛЕЙЗ','ГАСТ','СКЕЛЕТ ИССУШИТЕЛЬ','ИССУШИТЕЛЬ'], baseHp:2500, baseDmg:120, baseDef:0, fireStacks:true, bossStats:{hp:8000,dmgBase:150,dmgInc:25}, bossSpecial:'witherPhase' }
 };
 
 const dungeonRewards = {
