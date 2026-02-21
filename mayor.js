@@ -14,7 +14,7 @@ const MAYORS = {
             '  Эпический → Легендарный: 350,000',
             'Пропадает когда DoDoll уходит',
             '+500,000 монет при появлении мэра',
-            'Автосбор миньонов каждые 10 минут'
+            'Автосбор миньонов каждый час'
         ],
         onActivate(game) {
             game.state.coins += 500000;
@@ -109,6 +109,7 @@ Object.assign(game, {
                 await this.createFirstGlobalMayor();
             }
             this.updateMayorBuffDisplay();
+            this.updateNavIcons();
         } catch (error) {
             console.error('syncGlobalMayor:', error);
         }
@@ -170,17 +171,41 @@ Object.assign(game, {
         }
     },
 
+    updateNavIcons() {
+        const nav = document.getElementById('nav');
+        if (!nav) return;
+        const btns = nav.querySelectorAll('.nav-item');
+        const isDoDoll = this.globalMayor?.current_mayor === 'dodoll';
+        const iconMap = [
+            { emoji: '🏠', img: 'img_home.png', label: 'ДОМ' },
+            { emoji: '🌀', img: 'img_portal.png', label: 'ПОРТАЛ' },
+            { emoji: '👷', img: 'img_minions.png', label: 'МИНЬОНЫ' },
+            { emoji: '🎒', img: 'img_inventory.png', label: 'ИНВЕНТАРЬ' }
+        ];
+        btns.forEach((btn, idx) => {
+            const m = iconMap[idx];
+            if (!m) return;
+            const span = btn.querySelector('span');
+            if (!span) return;
+            if (isDoDoll) {
+                span.innerHTML = `<img src="${m.img}" style="width:20px;height:20px;vertical-align:middle;">`;
+            } else {
+                span.textContent = m.emoji;
+            }
+        });
+    },
+
     startMayorTimers() {
         if (this.mayorSyncInterval) clearInterval(this.mayorSyncInterval);
         if (this.mayorAutoCollectInterval) clearInterval(this.mayorAutoCollectInterval);
 
-        this.mayorSyncInterval = setInterval(() => this.syncGlobalMayor(), 30000);
+        this.mayorSyncInterval = setInterval(() => this.syncGlobalMayor(), 60000);
         this.mayorAutoCollectInterval = setInterval(() => {
             const bonuses = this.getMayorBonuses();
             if (bonuses.auto_collect_minions) {
                 this.autoCollectAllMinions();
             }
-        }, 60000);
+        }, 3600000);
     },
 
     getMayorBonuses() {
@@ -305,7 +330,7 @@ Object.assign(game, {
             </div>
             ${current.id === 'dodoll' ? this.renderMayorPetUI() : ''}
             <div style="margin-top:15px; padding:10px; background:rgba(0,255,0,0.1); border-radius:8px; text-align:center;">
-                <small style="color:var(--accent);">⏰ Синхронизация каждые 30 сек</small><br>
+                <small style="color:var(--accent);">⏰ Синхронизация каждые 60 сек</small><br>
                 <small style="color:var(--gray);">🌍 ОДИНАКОВЫЙ ДЛЯ ВСЕХ ИГРОКОВ</small>
             </div>
         `;
