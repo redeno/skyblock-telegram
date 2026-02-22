@@ -550,7 +550,12 @@ const game = {
 
         this.state.farmingQuests = data.farmingQuests || { lastReset: 0, active: [] };
         this.state.mayor = data.mayor || defaultState.mayor;
-        this.state.slayer = data.slayer || { zombie: { lvl: 1, xp: 0 } };
+        this.state.slayer = {
+    zombie: {
+        lvl: data.slayer?.zombie?.lvl ?? 1,
+        xp: data.slayer?.zombie?.xp ?? 0
+    }
+};
         this.checkDailyQuests();
 
         this.msg('Сохранение успешно загружено!');
