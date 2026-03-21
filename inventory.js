@@ -3,7 +3,10 @@
 Object.assign(game, {
     getItemDesc(i) {
         let d = '';
-        if (i.str) d += `+${i.str} СИЛЫ `;
+        if (i.ranged && i.bow_base_str) d += `+${i.bow_base_str} СИЛЫ ЛУКА `;
+        else if (i.str) d += `+${i.str} СИЛЫ `;
+        if (i.ranged && i.bow_base_cc) d += `+${i.bow_base_cc}% КРИТ ШАНС (ЛУК) `;
+        if (i.ranged && i.bow_base_cd) d += `+${i.bow_base_cd}% КРИТ УРОН (ЛУК) `;
         if (i.def) d += `+${i.def} БРОНИ `;
         if (i.cc) d += `+${i.cc}% КРИТ ШАНС `;
         if (i.cd) d += `+${i.cd}% КРИТ УРОН `;
@@ -27,6 +30,8 @@ Object.assign(game, {
         if (i.bow_fire) d += `+${i.bow_fire} УРОНА ОГНЁМ (ЛУК) `;
         if (i.arrow_save) d += `+${i.arrow_save}% ШАНС ЭКОНОМИИ СТРЕЛЫ `;
         if (i.bow_cc) d += `+${i.bow_cc}% ШАНС КРИТА (ЛУК) `;
+        if (i.vampirism) d += `+${i.vampirism}% ВАМПИРИЗМ `;
+        if (i.slayer_zombie_def_bonus) d += `+${i.slayer_zombie_def_bonus}% ЗАЩИТЫ В ZOMBIE SLAYER `;
         if (i.gold_bonus) d += `+${i.gold_bonus}% ЗОЛОТО `;
         if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
         if (i.triple_chance) d += `+${i.triple_chance}% ШАНС УТРОЕНИЯ `;
@@ -134,6 +139,10 @@ Object.assign(game, {
         if (name === 'Обычный осколок') return 200000;
         if (name === 'Древний осколок') return 1000000;
         if (name === 'Реликвия Алтаря') return 30000000;
+        if (name === 'Стрела') return 1;
+        if (name === 'Ядовитая стрела') return 4000;
+        if (name === 'Пробивающая стрела') return 6000;
+        if (name === 'Тяжёлая пробивающая стрела') return 10000;
         return prices[name] || 2;
     },
 
@@ -169,7 +178,7 @@ Object.assign(game, {
     renderInvList(t) {
         const l = document.getElementById('inv-list');
         l.innerHTML = '';
-        const items = t === 'pet' ? this.state.pets : this.state.inventory.filter(i => i.type === t);
+        const items = t === 'pet' ? this.state.pets : this.state.inventory.filter(i => i.type === t || (t === 'accessory' && i.type === 'artifact'));
         
         if (t === 'chest' && items.length > 0) {
              l.innerHTML += `<button class="cooldown-btn" style="margin-bottom:10px;height:40px" onclick="game.openAllChests()">ОТКРЫТЬ ВСЕ СУНДУКИ</button>`;
@@ -193,8 +202,15 @@ Object.assign(game, {
             } else if (i.type === 'material') {
                 const pricePer = this.getMaterialSellPrice(i.name);
                 const totalPrice = pricePer * (i.count || 1);
-                a = `<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${totalPrice.toLocaleString()}💰 | ${pricePer}/шт)</button>`;
-            } else if (i.type === 'accessory') {
+                let arrowExtra = '';
+                if (window.ALL_ARROW_NAMES && window.ALL_ARROW_NAMES.includes(i.name)) {
+                    arrowExtra = `
+                    <button class="act-btn" style="font-size:0.72rem;padding:6px 8px;" onclick="game.bumpArrowPriority('${i.name.replace(/'/g, "\\'")}',-1)">Приоритет ↑</button>
+                    <button class="act-btn" style="font-size:0.72rem;padding:6px 8px;" onclick="game.bumpArrowPriority('${i.name.replace(/'/g, "\\'")}',1)">Приоритет ↓</button>
+                    <button class="act-btn" style="font-size:0.72rem;padding:6px 8px;" onclick="game.setSelectedArrowType('${i.name.replace(/'/g, "\\'")}')">В данж: эти</button>`;
+                }
+                a = `${arrowExtra}<button class="act-btn" onclick="game.sellItem(${i.id})">ПРОДАТЬ (${totalPrice.toLocaleString()}💰 | ${pricePer}/шт)</button>`;
+            } else if (i.type === 'accessory' || i.type === 'artifact') {
                 const sellPrice = Math.floor((i.cost || 100) / 2);
                 let upgradeBtn = '';
                 if (i.name === 'Zombie Ring' && !i.upgraded) {
@@ -400,11 +416,11 @@ Object.assign(game, {
 
     toggleEquip(id) {
         const i = this.state.inventory.find(x => x.id === id);
-        if (!i || !['weapon','armor','tool','accessory'].includes(i.type)) return;
+        if (!i || !['weapon','armor','tool','accessory','artifact'].includes(i.type)) return;
 
-        if (i.type === 'accessory') {
+        if (i.type === 'accessory' || i.type === 'artifact') {
             if (!i.equipped) {
-                const sameName = this.state.inventory.find(x => x.type === 'accessory' && x.equipped && x.name === i.name);
+                const sameName = this.state.inventory.find(x => (x.type === 'accessory' || x.type === 'artifact') && x.equipped && x.name === i.name);
                 if (sameName) {
                     this.msg('Талисман с таким названием уже надет!');
                     return;

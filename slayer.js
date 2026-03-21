@@ -62,6 +62,18 @@ const slayerConfig = {
                 fleshDropMin: 4,
                 fleshDropMax: 5,
                 enrage: { hpThreshold: 0.4, dmg: 350, def: 150 }
+            },
+            {
+                tier: 5,
+                hp: 10000,
+                dmg: 250,
+                def: 150,
+                magicRes: 80,
+                reqKills: 25,
+                cost: 2000000,
+                xp: 2000,
+                fleshDropMin: 6,
+                fleshDropMax: 10
             }
         ],
         tierMobs: {
@@ -82,6 +94,11 @@ const slayerConfig = {
                 { name: 'Обычный Зомби', hp: 800, dmg: 80, def: 60, exp: 1, chance: 70 },
                 { name: 'Крепкий Зомби', hp: 1200, dmg: 100, def: 80, exp: 2, chance: 20 },
                 { name: 'Агрессивный Зомби', hp: 1200, dmg: 140, def: 90, exp: 3, chance: 10 }
+            ],
+            5: [
+                { name: 'Обычный Зомби', hp: 1400, dmg: 140, def: 120, exp: 1, chance: 65 },
+                { name: 'Крепкий Зомби', hp: 1900, dmg: 190, def: 140, exp: 2, chance: 22 },
+                { name: 'Агрессивный Зомби', hp: 2200, dmg: 250, def: 150, exp: 3, chance: 13 }
             ]
         },
         mobs: [
@@ -160,7 +177,8 @@ Object.assign(game, {
             { tier: 1, label: 'TIER I', hp: 100, cost: 500, mobs: 5, xp: 5, flesh: '1' },
             { tier: 2, label: 'TIER II', hp: 500, cost: 2500, mobs: 10, xp: 25, flesh: '2' },
             { tier: 3, label: 'TIER III', hp: 1500, cost: 10000, mobs: 15, xp: 100, flesh: '2-4' },
-            { tier: 4, label: 'TIER IV', hp: 5000, cost: 500000, mobs: 20, xp: 500, flesh: '4-5' }
+            { tier: 4, label: 'TIER IV', hp: 5000, cost: 500000, mobs: 20, xp: 500, flesh: '4-5' },
+            { tier: 5, label: 'TIER V', hp: 10000, cost: 2000000, mobs: 25, xp: 2000, flesh: '6-10' }
         ];
 
         let tiersHtml = '';
@@ -192,8 +210,10 @@ Object.assign(game, {
                 <div style="font-size:0.75rem; color:var(--gray); padding:8px; background:rgba(0,0,0,0.2); border-radius:6px;">
                     <b style="color:var(--accent);">Награды:</b><br>
                     ● Плоть зомби (1-5 шт. в зависимости от тира)<br>
-                    ● Zombie Ring (0.1% шанс дропа)<br>
-                    ● Питомец Гуль (0.01%, Tier IV)<br>
+                    ● Zombie Ring (до 0.2% на Tier V)<br>
+                    ● Питомец Гуль (до 0.02% на Tier V)<br>
+                    ● Gem Stone (0.01%, Tier V)<br>
+                    ● Artefact Slayer Zombie (0.001%, Tier V)<br>
                     ● Combat XP (тир × 25)
                 </div>
             </div>
@@ -312,11 +332,18 @@ Object.assign(game, {
         }
 
         if(Math.random()*100 < s.cc) {
-            damage *= (1 + s.cd/100); 
-            this.msg('КРИТ!');
+            damage *= (1 + s.cd/100);
+            if (typeof this.showCombatFeedback === 'function') this.showCombatFeedback('КРИТ!', 'crit');
         }
 
         this.slayerMobHp -= damage;
+        const vamp = this.state.inventory
+            .filter(i => i.equipped && i.vampirism)
+            .reduce((s, i) => s + (i.vampirism || 0), 0);
+        if (vamp > 0 && this.slayerPlayerHp > 0) {
+            const heal = Math.max(1, Math.floor(damage * (vamp / 100)));
+            this.slayerPlayerHp = Math.min(this.slayerPlayerMaxHp, this.slayerPlayerHp + heal);
+        }
         
         if (this.slayerMobHp > 0) {
             if (this.slayerCurrentMob.isBoss && this.slayerActive) {
@@ -333,8 +360,14 @@ Object.assign(game, {
                     }
                 }
             }
-            let actualDmg = Math.max(1, this.slayerMobDmg - s.def);
+            const slayerArtifact = this.state.inventory.find(i => i.equipped && i.name === 'Artefact Slayer Zombie');
+            const bonusDef = (slayerArtifact && this.slayerActive?.type === 'zombie') ? Math.floor((s.def || 0) * 0.2) : 0;
+            let actualDmg = Math.max(1, this.slayerMobDmg - (s.def + bonusDef));
             this.slayerPlayerHp -= actualDmg;
+            if (this.slayerCurrentMob.isBoss && this.slayerCurrentMob.phase2 && this.slayerCurrentMob.lifeSteal) {
+                this.slayerMobHp = Math.min(this.slayerMobMaxHp, this.slayerMobHp + this.slayerCurrentMob.lifeSteal);
+                if (typeof this.showCombatFeedback === 'function') this.showCombatFeedback(`+${this.slayerCurrentMob.lifeSteal} HP`, 'buff');
+            }
 
             if (s.vitality > 0 && this.slayerPlayerHp > 0) {
                 const healAmt = Math.floor(this.slayerPlayerMaxHp * s.vitality / 100);
@@ -353,6 +386,25 @@ Object.assign(game, {
             }
         } else {
             if (this.slayerCurrentMob.isBoss) {
+                if (this.slayerActive.tier === 5 && !this.slayerCurrentMob.phase2) {
+                    this.slayerCurrentMob = {
+                        name: 'Воскресший Revenant Hollow',
+                        hp: 6000,
+                        dmg: 280,
+                        def: 170,
+                        isBoss: true,
+                        exp: 0,
+                        phase2: true,
+                        lifeSteal: 25
+                    };
+                    this.slayerMobHp = this.slayerCurrentMob.hp;
+                    this.slayerMobMaxHp = this.slayerCurrentMob.hp;
+                    this.slayerMobDef = this.slayerCurrentMob.def;
+                    this.slayerMobDmg = this.slayerCurrentMob.dmg;
+                    this.msg('☠️ БОСС ВОСКРЕС! Вторая фаза началась.');
+                    this.updateSlayerUI();
+                    return;
+                }
                 this.finishSlayerBoss();
                 return;
             } else {
@@ -392,11 +444,12 @@ Object.assign(game, {
         this.addXp('combat', combatXp);
         
         let dropMsg = '';
-        if (Math.random() * 100 < 0.1) {
+        const luckMult = this.slayerActive.tier >= 5 ? 2 : 1;
+        if (Math.random() * 100 < (0.1 * luckMult)) {
             this.state.inventory.push({ id: this.state.nextItemId++, name: 'Zombie Ring', type: 'accessory', equipped: false, cost: 50000 });
             dropMsg += ' ВЫПАЛ ZOMBIE RING!';
         }
-        if (this.slayerActive.tier >= 4 && Math.random() * 10000 < 1) {
+        if (this.slayerActive.tier >= 4 && Math.random() * 10000 < (1 * luckMult)) {
             const ghoul = {
                 name: 'Гуль',
                 type: 'pet',
@@ -409,6 +462,24 @@ Object.assign(game, {
             };
             this.state.pets.push({ ...ghoul, equipped: false });
             dropMsg += ' 🎉 ВЫПАЛ ПИТОМЕЦ ГУЛЬ!';
+        }
+        if (this.slayerActive.tier >= 5 && Math.random() * 10000 < 1) {
+            this.state.emeralds = (this.state.emeralds || 0) + 1;
+            dropMsg += ' 💎 ВЫПАЛ Gem Stone!';
+        }
+        if (this.slayerActive.tier >= 5 && Math.random() * 100000 < 1) {
+            this.state.inventory.push({
+                id: this.state.nextItemId++,
+                name: 'Artefact Slayer Zombie',
+                type: 'accessory',
+                rarity: 'legendary',
+                def: 0,
+                slayer_zombie_def_bonus: 20,
+                vampirism: 5,
+                cost: 100000000,
+                equipped: false
+            });
+            dropMsg += ' 🌟 ВЫПАЛ Artefact Slayer Zombie!';
         }
         let fleshDrop = boss.fleshDrop || 1;
         if (boss.fleshDropMin && boss.fleshDropMax) {

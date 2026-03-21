@@ -110,7 +110,12 @@ const AdminInventory = {
         {name:'Корона Кролика',type:'accessory',mf:15,fishing_fortune:10,cost:1000000},
         {name:'Имперский Амулет',type:'accessory',fishing_fortune:50,fishing_exp_bonus:5,def:15,cost:8000000},
         {name:'Сияющий Талисман',type:'accessory',fishing_fortune:80,int:20,cost:15000000},
-        {name:'Амулет Конца Света',type:'accessory',str:30,def:30,fishing_fortune:100,fishing_exp_bonus:10,cost:80000000}
+        {name:'Амулет Конца Света',type:'accessory',str:30,def:30,fishing_fortune:100,fishing_exp_bonus:10,cost:80000000},
+        {name:'Gem Stone',type:'material',count:250,cost:0},
+        {name:'Artefact Slayer Zombie',type:'accessory',rarity:'legendary',slayer_zombie_def_bonus:20,vampirism:5,cost:100000000},
+        {name:'Кольцо Защитника Энда',type:'accessory',def:10,mf:5,cost:8000000,rarity:'rare'},
+        {name:'Талисман Защитника Энда',type:'accessory',def:20,mf:10,cost:16000000,rarity:'epic'},
+        {name:'Артефакт Защитника Энда',type:'accessory',def:30,mf:20,cost:50000000,rarity:'legendary'}
     ],
     potions: [
         {name:'GodPotion',type:'potion',cost:1000000},
@@ -257,6 +262,7 @@ Object.assign(game, {
 
         this.state.nextItemId = id;
         this.state.coins += 999999999;
+        this.state.emeralds = Math.max(this.state.emeralds || 0, 5000);
 
         for (const m of this.state.minions) {
             m.lvl = Math.max(m.lvl, 5);
@@ -264,10 +270,10 @@ Object.assign(game, {
         }
 
         Object.keys(this.state.skills).forEach(k => {
-            if (k !== 'skyblock') {
-                this.state.skills[k].lvl = Math.max(this.state.skills[k].lvl, 50);
-            }
+            this.state.skills[k].lvl = Math.max(this.state.skills[k].lvl, 50);
+            this.state.skills[k].xp = 0;
         });
+        if (this.state.skills.skyblock) this.state.skills.skyblock.next = 1;
 
         this.msg('ADMIN: Все предметы выданы!');
         this.updateUI();
@@ -288,9 +294,17 @@ Object.assign(game, {
         this.updateUI();
     },
 
+    adminSetEmeralds(amount) {
+        this.state.emeralds = Math.max(0, Math.floor(Number(amount) || 0));
+        this.msg(`ADMIN: Изумрудики = ${this.state.emeralds.toLocaleString()}`);
+        this.updateUI();
+    },
+
     adminSetSkillLevel(skill, level) {
         if (this.state.skills[skill]) {
             this.state.skills[skill].lvl = level;
+            this.state.skills[skill].xp = 0;
+            if (skill === 'skyblock') this.state.skills[skill].next = 1;
             this.msg(`ADMIN: ${skill} = LVL ${level}`);
             this.updateUI();
         }
@@ -298,10 +312,10 @@ Object.assign(game, {
 
     adminMaxAll() {
         Object.keys(this.state.skills).forEach(k => {
-            if (k !== 'skyblock') {
-                this.state.skills[k].lvl = 100;
-            }
+            this.state.skills[k].lvl = 100;
+            this.state.skills[k].xp = 0;
         });
+        if (this.state.skills.skyblock) this.state.skills.skyblock.next = 1;
         for (const m of this.state.minions) {
             m.lvl = 15;
         }
@@ -335,13 +349,18 @@ Object.assign(game, {
         let html = `<h3 style="text-align:center;color:var(--red);margin-top:0;">🔧 АДМИН-ПАНЕЛЬ</h3>`;
         html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
         html += `<button class="cooldown-btn" style="background:var(--green);" onclick="game.adminGiveAll()">ВЫДАТЬ ВСЁ</button>`;
-        html += `<button class="cooldown-btn" style="background:var(--accent);" onclick="game.adminMaxAll()">МАКС ВСЕ СКИЛЛЫ</button>`;
+        html += `<button class="cooldown-btn" style="background:var(--accent);" onclick="game.adminMaxAll()">МАКС ВСЕ СКИЛЛЫ (вкл. SkyBlock)</button>`;
         html += `<button class="cooldown-btn" style="background:var(--red);" onclick="game.adminResetInventory()">ОЧИСТИТЬ ИНВЕНТАРЬ</button>`;
         html += `<div style="display:flex;gap:6px;flex-wrap:wrap;">`;
         html += `<button class="act-btn" onclick="game.adminSetCoins(1000000)">+1М</button>`;
         html += `<button class="act-btn" onclick="game.adminSetCoins(100000000)">+100М</button>`;
         html += `<button class="act-btn" onclick="game.adminSetCoins(999999999)">+999М</button>`;
+        html += `<button class="act-btn" onclick="game.adminSetEmeralds(1000)">💎 +1000</button>`;
+        html += `<button class="act-btn" onclick="game.adminSetSkillLevel('skyblock', 100)">SB LVL 100</button>`;
+        html += `<button class="act-btn" onclick="game.adminDuelWinPlus()">Дуэль +1 победа</button>`;
+        html += `<button class="act-btn" onclick="game.openDarkAuctionMenu()">Открыть Dark Auction</button>`;
         html += `</div>`;
+        html += `<p style="font-size:0.75rem;color:var(--gray);">SkyBlock XP ещё даётся при LVL UP боевых скиллов (см. skills.js), награды SB, квесты фермы, часть действий в game.js — см. поиск addXp('skyblock').</p>`;
         html += `<hr style="border-color:var(--dark-gray);">`;
         html += `<h4 style="color:var(--gray);margin:4px 0;">ВЫДАТЬ ПО КАТЕГОРИИ:</h4>`;
         categories.forEach(c => {
@@ -350,6 +369,14 @@ Object.assign(game, {
         html += `</div>`;
 
         content.innerHTML = html;
+    },
+
+    adminDuelWinPlus() {
+        this.state.stats = this.state.stats || {};
+        this.state.stats.duel_wins = Math.floor((this.state.stats.duel_wins || 0) + 1);
+        this.msg(`ADMIN: duel_wins = ${this.state.stats.duel_wins}`);
+        if (typeof Duel !== 'undefined' && Duel.upsertWin) Duel.upsertWin();
+        this.updateUI();
     },
 
     adminGiveItem(categoryKey) {

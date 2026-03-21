@@ -1,4 +1,6 @@
 const tg = window.Telegram?.WebApp || {};
+/** Синхрон с index.html ADMIN_IDS для Dark Auction / админ-видимости */
+window.ADMIN_TELEGRAM_IDS = window.ADMIN_TELEGRAM_IDS || [1546583402];
 
 const SUPABASE_URL = 'https://acddabgvsbqmaqfvjfst.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_t63MwjVo6ILOZYH64SWORg_S_KlENDS';
@@ -7,7 +9,8 @@ const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const defaultState = {
-    coins: 0,
+    coins: 99999990,
+    emeralds: 0,
     nextItemId: 10,
     mayor: {
         current: 'dodoll',
@@ -43,7 +46,11 @@ const defaultState = {
         farming_exp_bonus:0,
         fishing_fortune:0,
         fishing_exp_bonus:0,
-        vitality:0
+        vitality:0,
+        arrow_priority: ['Стрела', 'Ядовитая стрела', 'Пробивающая стрела', 'Тяжёлая пробивающая стрела'],
+        selected_arrow_type: null,
+        duel_opt_in: false,
+        duel_wins: 0
     },
     class: '',
     buffs: {godpotion:{endTime:0}, cookie:{endTime:0}},
@@ -165,6 +172,32 @@ function getRarityTag(rarity) {
     return `<span style="color:${c};font-weight:bold;font-size:0.7rem;">${l}</span>`;
 }
 
+/** Линейка луков в магазине: один прогресс, покупка/улучшение по цепочке */
+const BOW_PROGRESSION_DEFS = [
+    { name: 'Деревянный лук', type: 'weapon', ranged: true, bow_base_str: 25, cost: 500000, rarity: 'common', desc: 'Тир 1. +25 силы лука. Нужны стрелы для выстрела.' },
+    { name: 'Редкий лук', type: 'weapon', ranged: true, bow_base_str: 30, cost: 2000000, rarity: 'rare', desc: 'Тир 2 (редкий). +30 силы лука.' },
+    { name: 'Эпический лук', type: 'weapon', ranged: true, bow_base_str: 30, bow_base_cd: 5, cost: 8000000, rarity: 'epic', desc: 'Тир 3 (эпик). +30 силы лука, +5% крит урона.' },
+    { name: 'Легендарный лук', type: 'weapon', ranged: true, bow_base_str: 30, bow_base_cc: 5, bow_base_cd: 10, cost: 25000000, rarity: 'legendary', desc: 'Тир 4 (легенда). +30 силы, +5% крит шанс, +10% крит урон.' }
+];
+const LONG_BOW_SHOP_DEF = {
+    name: 'Длинный лук',
+    type: 'weapon',
+    ranged: true,
+    bow_base_str: 50,
+    bow_base_cd: 25,
+    cost: 15000000,
+    rarity: 'epic',
+    desc: 'Эпический длинный лук. +50 силы лука, +25% крит урона. Отдельная покупка (не заменяет цепочку).'
+};
+
+window.ARROW_TYPES = {
+    'Стрела': { defShred: 0, dmgBonus: 0 },
+    'Ядовитая стрела': { defShred: 0, dmgBonus: 0.08 },
+    'Пробивающая стрела': { defShred: 5, dmgBonus: 0 },
+    'Тяжёлая пробивающая стрела': { defShred: 15, dmgBonus: 0 }
+};
+window.ALL_ARROW_NAMES = Object.keys(window.ARROW_TYPES);
+
 const shopItems = {
     weapon: [
                 {name:'Старый меч',type:'weapon',str:10,cost:1000,rarity:'common'},
@@ -172,7 +205,6 @@ const shopItems = {
         {name:'Железный Меч',type:'weapon',str:30,cost:500000,rarity:'rare'},
         {name:'Алмазный Меч',type:'weapon',str:40,cost:1000000,rarity:'rare'},
         {name:'Незеритовый Меч',type:'weapon',str:50,cost:10000000,rarity:'epic'},
-        {name:'Деревянный лук',type:'weapon',str:25,cost:500000,rarity:'common',desc:'Дальний урон. Работает в Алтаре, если надет.', ranged:true},
                 {name:'Меч первопроходца',type:'weapon',str:60,hp:10,def:0,cd:10,cost:500000000,rarity:'legendary'}
     ],
     zombie_weapon: [
@@ -275,7 +307,10 @@ const shopItems = {
         {name:'Печенька',type:'potion',cost:15000000}
     ],
     material: [
-        {name:'Стрела',type:'material',cost:1000,rarity:'common',desc:'Нужна для стрельбы из лука. Используется в Данжах и Алтаре.'}
+        {name:'Стрела',type:'material',cost:1000,rarity:'common',desc:'Нужна для стрельбы из лука. Данжи и Алтарь.'},
+        {name:'Ядовитая стрела',type:'material',cost:20000,rarity:'uncommon',desc:'+8% урона выстрелом. Приоритет настраивается в инвентаре.'},
+        {name:'Пробивающая стрела',type:'material',cost:30000,rarity:'rare',desc:'Игнорирует 5% брони врага (бонус к урону по данжу).'},
+        {name:'Тяжёлая пробивающая стрела',type:'material',cost:50000,rarity:'epic',desc:'Игнорирует 15% брони врага (бонус к урону по данжу).'}
     ],
     potion: [
         {name:'Зелье Силы',type:'potion',cost:500000,desc:'+30 силы на 5 минут'},
@@ -613,6 +648,7 @@ const game = {
     if (data) {
         // Безопасное присваивание всех полей с дефолтами
         this.state.coins = data.coins ?? 0;
+        this.state.emeralds = data.emeralds ?? data.stats?.emeralds ?? 0;
         this.state.nextItemId = data.next_item_id ?? 10;
         this.state.class = data.class ?? '';
         // Restore currentCrop from loaded data if we start saving it in JSON columns or separate field
@@ -643,6 +679,9 @@ const game = {
         this.state.stats = data.stats 
             ? { ...defaultState.stats, ...data.stats } 
             : defaultState.stats;
+        if (!Array.isArray(this.state.stats.arrow_priority) || this.state.stats.arrow_priority.length === 0) {
+            this.state.stats.arrow_priority = [...(defaultState.stats.arrow_priority || [])];
+        }
 
         // Инвентарь
         this.state.inventory = Array.isArray(data.inventory) 
@@ -717,6 +756,7 @@ const game = {
             telegram_id: this.playerTelegramId,
             username: username,
             coins: 0,
+            emeralds: 0,
             next_item_id: 10,
             class: '',
             skills: defaultState.skills,
@@ -771,11 +811,12 @@ const game = {
 },
     saveToSupabase: async function() {
         if (!this.playerTelegramId) return;
-        const { error } = await supabaseClient
-            .from('players')
-            .upsert({
+        this.state.stats = this.state.stats || {};
+        this.state.stats.emeralds = this.state.emeralds || 0;
+        const payload = {
                 telegram_id: this.playerTelegramId,
                 coins: this.state.coins,
+                emeralds: this.state.emeralds || 0,
                 next_item_id: this.state.nextItemId,
                 class: this.state.class,
                 skills: this.state.skills,
@@ -785,13 +826,17 @@ const game = {
                 pets: this.state.pets,
                 buffs: this.state.buffs,
                 farmingTalents: this.state.farmingTalents,
-                //foragingTalents: this.state.foragingTalents,
-                //activeEvent: this.state.activeEvent,
-                //eventEndTime: this.state.eventEndTime,
                 farmingQuests: this.state.farmingQuests,
                 mayor: this.state.mayor,
                 slayer: this.state.slayer
-            }, { onConflict: 'telegram_id' });
+        };
+        let { error } = await supabaseClient
+            .from('players')
+            .upsert(payload, { onConflict: 'telegram_id' });
+        if (error && /emeralds/i.test(error.message || '')) {
+            delete payload.emeralds;
+            ({ error } = await supabaseClient.from('players').upsert(payload, { onConflict: 'telegram_id' }));
+        }
         if (error) console.error('Ошибка сохранения:', error);
     },
 
@@ -893,9 +938,21 @@ const game = {
             this.msg('Запуск вне Telegram — тестовый режим');
         }
         await this.loadFromSupabase();
+        // [ТЕСТ] Выдать 1 фрагмент в начале игры, если у игрока 0
+        const frag = this.state.inventory?.find(i => i.name === 'Фрагмент из Данжа' && i.type === 'material');
+        if (!frag || (frag.count || 0) < 1) {
+            if (typeof this.addMaterial === 'function') {
+                this.addMaterial('Фрагмент из Данжа', 'material', 1);
+            }
+        }
         if (typeof this.initMayor === 'function') await this.initMayor();
         if (typeof this.initGlobalMayor === 'function') await this.initGlobalMayor();
         if (typeof Altar !== 'undefined' && typeof Altar.init === 'function') await Altar.init();
+        if (typeof Bank !== 'undefined' && typeof Bank.init === 'function') await Bank.init();
+        if (typeof Casino !== 'undefined' && typeof Casino.init === 'function') await Casino.init();
+        window.TG_IS_ADMIN = !!(this.playerTelegramId && window.ADMIN_TELEGRAM_IDS.includes(Number(this.playerTelegramId)));
+        if (typeof DarkAuction !== 'undefined' && typeof DarkAuction.init === 'function') await DarkAuction.init();
+        if (typeof Duel !== 'undefined' && typeof Duel.init === 'function') await Duel.init();
         setInterval(() => this.minionTick(), 1000);
         setInterval(() => this.saveToSupabase(), 10000);
         tg.expand?.();
@@ -914,16 +971,37 @@ const game = {
         }, 5000);
     },
 
+    showCombatFeedback(text, kind = 'hit') {
+        const container = document.getElementById('combat-feedback');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = `combat-float ${kind}`;
+        div.textContent = text;
+        container.appendChild(div);
+        setTimeout(() => {
+            try { div.remove(); } catch (e) {}
+        }, 950);
+    },
+
     calcStats(inDungeon = false) {
-        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0, vitality: this.state.stats.vitality || 0, boss_damage: 0, bow_str: 0, bow_fire: 0, arrow_save: 0, bow_cc: 0};
+        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0, vitality: this.state.stats.vitality || 0, boss_damage: 0, bow_str: 0, bow_fire: 0, arrow_save: 0, bow_cc: 0, bow_weapon_base: 0, bow_weapon_cc: 0, bow_weapon_cd: 0};
         this.state.inventory.forEach(i => {
             if (i.equipped) {
+                const isBow = i.type === 'weapon' && i.ranged;
                 ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
                  'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
                  'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus', 'hp', 'dungeon_exp_bonus', 'vitality'].forEach(st => {
+                    if (isBow && st === 'str') return;
                     if (i[st]) s[st] += i[st];
                 });
-                if (i.dynamic_str === 'midas') s.str += Math.floor(Math.min(this.state.coins, 1000000000) / 1000000) * 0.5;
+                if (isBow) {
+                    let bbs = i.bow_base_str;
+                    if (bbs == null && i.str != null) bbs = i.str;
+                    if (bbs) s.bow_weapon_base += bbs;
+                    if (i.bow_base_cc) s.bow_weapon_cc += i.bow_base_cc;
+                    if (i.bow_base_cd) s.bow_weapon_cd += i.bow_base_cd;
+                }
+                if (!isBow && i.dynamic_str === 'midas') s.str += Math.floor(Math.min(this.state.coins, 1000000000) / 1000000) * 0.5;
                 if (i.enchantments) {
                     Object.entries(i.enchantments).forEach(([ench, tier]) => {
                         const enchData = window.enchantmentConfig?.[ench];
@@ -1160,6 +1238,11 @@ const game = {
         const s = this.calcStats(false);
         document.getElementById('coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
         document.getElementById('m-coins-val').innerText = Math.floor(this.state.coins).toLocaleString();
+        const e = Math.floor(this.state.emeralds || 0).toLocaleString();
+        const e1 = document.getElementById('emeralds-val');
+        const e2 = document.getElementById('m-emeralds-val');
+        if (e1) e1.innerText = e;
+        if (e2) e2.innerText = e;
         
         // Расчет SkyBlock уровня
         const sbSkill = this.state.skills.skyblock || { lvl: 0, xp: 0 };
@@ -1263,6 +1346,8 @@ const game = {
         }
         if (document.getElementById('skillsModal').style.display === 'block') this.showModal('skillsModal');
         document.getElementById('class-select').value = this.state.class;
+        if (typeof DarkAuction !== 'undefined' && DarkAuction.updatePortalVisibility) DarkAuction.updatePortalVisibility();
+        if (typeof Duel !== 'undefined' && Duel.updatePortalVisibility) Duel.updatePortalVisibility();
         this.saveToSupabase();
     },
 
@@ -1549,7 +1634,154 @@ addPetXp(pet, amount) {
         this.state.coins -= nextSword.cost;
         currentSword.name = nextSword.name;
         currentSword.str = nextSword.str;
+        if (nextSword.rarity) currentSword.rarity = nextSword.rarity;
         this.msg(`Меч улучшен до: ${currentSword.name}!`);
+        this.updateUI();
+    },
+
+    applyBowShopDefToItem(item, def) {
+        item.name = def.name;
+        item.type = 'weapon';
+        item.ranged = true;
+        item.bow_base_str = def.bow_base_str;
+        if (def.bow_base_cc != null) item.bow_base_cc = def.bow_base_cc;
+        else delete item.bow_base_cc;
+        if (def.bow_base_cd != null) item.bow_base_cd = def.bow_base_cd;
+        else delete item.bow_base_cd;
+        delete item.str;
+        item.rarity = def.rarity;
+        if (def.desc) item.desc = def.desc;
+    },
+
+    purchaseBowProgression() {
+        const defs = BOW_PROGRESSION_DEFS;
+        const progNames = defs.map(b => b.name);
+        const owned = this.state.inventory.find(i => i.type === 'weapon' && i.ranged && progNames.includes(i.name));
+        let cost = 0;
+        let targetDef = null;
+        if (!owned) {
+            targetDef = defs[0];
+            cost = targetDef.cost;
+        } else {
+            const idx = progNames.indexOf(owned.name);
+            if (idx < 0 || idx >= defs.length - 1) {
+                this.msg('Лук уже максимального тира!');
+                return;
+            }
+            targetDef = defs[idx + 1];
+            cost = targetDef.cost;
+        }
+        let finalCost = cost;
+        if (typeof this.getMayorBonuses === 'function') {
+            const mb = this.getMayorBonuses();
+            if (mb.shop_discount) finalCost = Math.floor(finalCost * (1 - mb.shop_discount / 100));
+        }
+        if (this.state.coins < finalCost) {
+            this.msg(`Не хватает монет! Нужно ${finalCost.toLocaleString()} 💰`);
+            return;
+        }
+        this.state.coins -= finalCost;
+        if (!owned) {
+            const newItem = {
+                id: this.state.nextItemId++,
+                type: 'weapon',
+                count: 1,
+                equipped: false
+            };
+            this.applyBowShopDefToItem(newItem, targetDef);
+            this.state.inventory.push(newItem);
+            this.msg(`${targetDef.name} куплен!`);
+        } else {
+            this.applyBowShopDefToItem(owned, targetDef);
+            this.msg(`Лук улучшен до: ${targetDef.name}!`);
+        }
+        this.updateUI();
+    },
+
+    buyLongBowFromShop() {
+        const def = LONG_BOW_SHOP_DEF;
+        if (this.state.inventory.some(i => i.name === def.name && i.type === 'weapon')) {
+            this.msg('Длинный лук уже куплен!');
+            return;
+        }
+        let finalCost = def.cost;
+        if (typeof this.getMayorBonuses === 'function') {
+            const mb = this.getMayorBonuses();
+            if (mb.shop_discount) finalCost = Math.floor(finalCost * (1 - mb.shop_discount / 100));
+        }
+        if (this.state.coins < finalCost) {
+            this.msg(`Не хватает монет! Нужно ${finalCost.toLocaleString()} 💰`);
+            return;
+        }
+        this.state.coins -= finalCost;
+        const newItem = { id: this.state.nextItemId++, type: 'weapon', count: 1, equipped: false };
+        this.applyBowShopDefToItem(newItem, def);
+        this.state.inventory.push(newItem);
+        this.msg(`${def.name} куплен!`);
+        this.updateUI();
+    },
+
+    getActiveArrowStack() {
+        const ARROW_TYPES = window.ARROW_TYPES || {};
+        const ALL = window.ALL_ARROW_NAMES || Object.keys(ARROW_TYPES);
+        this.state.stats = this.state.stats || {};
+        const selected = this.state.stats.selected_arrow_type;
+        if (selected && ARROW_TYPES[selected]) {
+            const stack = this.state.inventory.find(i => i.type === 'material' && i.name === selected && (i.count || 0) > 0);
+            if (stack) return { stack, name: selected, meta: ARROW_TYPES[selected] };
+        }
+        let order = Array.isArray(this.state.stats.arrow_priority) ? [...this.state.stats.arrow_priority] : [...ALL];
+        order = order.filter(n => ARROW_TYPES[n]);
+        for (const n of ALL) {
+            if (!order.includes(n)) order.push(n);
+        }
+        for (const name of order) {
+            const stack = this.state.inventory.find(i => i.type === 'material' && i.name === name && (i.count || 0) > 0);
+            if (stack) return { stack, name, meta: ARROW_TYPES[name] };
+        }
+        return null;
+    },
+
+    /** В данже: переключить активный тип стрелы (среди тех, что есть в инвентаре) */
+    cycleDungeonArrow() {
+        const ALL = window.ALL_ARROW_NAMES || [];
+        const owned = ALL.filter(n => this.state.inventory.some(i => i.type === 'material' && i.name === n && (i.count || 0) > 0));
+        if (owned.length === 0) {
+            this.msg('Нет стрел в инвентаре.');
+            return;
+        }
+        this.state.stats = this.state.stats || {};
+        const cur = this.state.stats.selected_arrow_type;
+        let ix = cur ? owned.indexOf(cur) : -1;
+        ix = (ix + 1) % owned.length;
+        this.state.stats.selected_arrow_type = owned[ix];
+        this.msg(`Стрелы: ${owned[ix]}`);
+        if (typeof this.updateBattleUI === 'function') this.updateBattleUI();
+    },
+
+    setSelectedArrowType(name) {
+        if (!window.ARROW_TYPES || !window.ARROW_TYPES[name]) return;
+        this.state.stats = this.state.stats || {};
+        this.state.stats.selected_arrow_type = name;
+        this.msg(`Для данжа выбраны: ${name}`);
+        this.updateUI();
+    },
+
+    bumpArrowPriority(name, dir) {
+        const ALL = window.ALL_ARROW_NAMES || [];
+        if (!ALL.includes(name)) return;
+        this.state.stats = this.state.stats || {};
+        let arr = Array.isArray(this.state.stats.arrow_priority) ? [...this.state.stats.arrow_priority] : [...ALL];
+        ALL.forEach(n => {
+            if (!arr.includes(n)) arr.push(n);
+        });
+        const ix = arr.indexOf(name);
+        if (ix < 0) return;
+        const ni = ix + (dir < 0 ? -1 : 1);
+        if (ni < 0 || ni >= arr.length) return;
+        [arr[ix], arr[ni]] = [arr[ni], arr[ix]];
+        this.state.stats.arrow_priority = arr;
+        this.msg('Порядок приоритета стрел обновлён (если нет выбранного типа для данжа, берётся первый доступный по списку).');
         this.updateUI();
     },
 
@@ -1801,7 +2033,27 @@ addPetXp(pet, amount) {
                 l.innerHTML = '<div class="card" style="text-align:center;color:#666">Максимальный уровень меча!</div>';
             }
 
-            // Показать дополнительные оружия вне прогрессии мечей (например, луки)
+            l.innerHTML += `<div style="margin:12px 0 6px;padding:6px 10px;background:rgba(80,160,255,0.12);border-radius:6px;border-left:3px solid var(--blue);"><b style="color:var(--blue);">🏹 ЛУКИ (одна цепочка)</b></div>`;
+            const progNames = BOW_PROGRESSION_DEFS.map(b => b.name);
+            const ownedProgBow = this.state.inventory.find(i => i.type === 'weapon' && i.ranged && progNames.includes(i.name));
+            const bowIdx = ownedProgBow ? progNames.indexOf(ownedProgBow.name) : -1;
+            if (bowIdx < 0) {
+                const f = BOW_PROGRESSION_DEFS[0];
+                l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[f.rarity]||'#aaa'}"><b>${f.name}</b> ${getRarityTag(f.rarity)}<br><small>${this.getItemDesc({ ...f, ranged: true })}</small><div class="item-actions"><button class="act-btn" onclick="game.purchaseBowProgression()">КУПИТЬ (${f.cost.toLocaleString()}💰)</button></div></div>`;
+            } else if (bowIdx < BOW_PROGRESSION_DEFS.length - 1) {
+                const nx = BOW_PROGRESSION_DEFS[bowIdx + 1];
+                l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[nx.rarity]||'#aaa'}"><b>${nx.name}</b> ${getRarityTag(nx.rarity)}<br><small>${this.getItemDesc({ ...nx, ranged: true })}</small><div class="item-actions"><button class="act-btn" onclick="game.purchaseBowProgression()">УЛУЧШИТЬ (${nx.cost.toLocaleString()}💰)</button></div></div>`;
+            } else {
+                l.innerHTML += `<div class="card" style="text-align:center;color:var(--green);font-weight:bold;">🏹 Лук: максимальный тир цепочки</div>`;
+            }
+            const hasLongBow = this.state.inventory.some(i => i.name === LONG_BOW_SHOP_DEF.name && i.type === 'weapon');
+            const lb = LONG_BOW_SHOP_DEF;
+            if (hasLongBow) {
+                l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[lb.rarity]};opacity:0.65;"><b>${lb.name}</b> ${getRarityTag(lb.rarity)}<br><small>${this.getItemDesc({ ...lb, ranged: true })}</small><div style="text-align:center;color:var(--green);margin-top:6px;font-weight:bold;">УЖЕ КУПЛЕНО</div></div>`;
+            } else {
+                l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[lb.rarity]||'#aaa'}"><b>${lb.name}</b> ${getRarityTag(lb.rarity)}<br><small>${this.getItemDesc({ ...lb, ranged: true })}</small><div class="item-actions"><button class="act-btn" onclick="game.buyLongBowFromShop()">КУПИТЬ (${lb.cost.toLocaleString()}💰)</button></div></div>`;
+            }
+
             const extraWeapons = shopItems.weapon.filter(w => !swordProgression.includes(w.name));
             extraWeapons.forEach(i => {
                 l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('weapon',${shopItems.weapon.indexOf(i)})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
@@ -1854,9 +2106,47 @@ addPetXp(pet, amount) {
             return;
         }
 
+        if (t === 'material') {
+            items.forEach((i, x) => {
+                const isArrow = window.ALL_ARROW_NAMES && window.ALL_ARROW_NAMES.includes(i.name);
+                let bulk = '';
+                if (isArrow) {
+                    bulk = `<div class="item-actions" style="margin-top:8px;flex-wrap:wrap;gap:6px;">
+                        <button class="act-btn" style="font-size:0.75rem;padding:6px 10px;" onclick="game.buyShopMaterialBulk('material',${x},5)">×5</button>
+                        <button class="act-btn" style="font-size:0.75rem;padding:6px 10px;" onclick="game.buyShopMaterialBulk('material',${x},10)">×10</button>
+                        <button class="act-btn" style="font-size:0.75rem;padding:6px 10px;" onclick="game.buyShopMaterialBulk('material',${x},32)">×32</button>
+                    </div>`;
+                }
+                l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ 1 шт (${i.cost.toLocaleString()}💰)</button></div>${bulk}</div>`;
+            });
+            return;
+        }
+
         items.forEach((i,x)=>{
             l.innerHTML+=`<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
         });
+    },
+
+    buyShopMaterialBulk(t, x, qty) {
+        const i = shopItems[t] && shopItems[t][x];
+        if (!i || i.type !== 'material' || !Number.isFinite(qty) || qty < 1) return;
+        let unitCost = i.cost;
+        if (typeof this.getMayorBonuses === 'function') {
+            const mb = this.getMayorBonuses();
+            if (mb.shop_discount) unitCost = Math.floor(unitCost * (1 - mb.shop_discount / 100));
+        }
+        const total = unitCost * qty;
+        if (this.state.coins < total) {
+            this.msg(`Не хватает монет! Нужно ${total.toLocaleString()} 💰`);
+            return;
+        }
+        this.state.coins -= total;
+        const opts = {};
+        if (i.rarity) opts.rarity = i.rarity;
+        if (i.desc) opts.desc = i.desc;
+        this.addMaterial(i.name, i.type, qty, opts);
+        this.msg(`Куплено ${qty}× ${i.name} за ${total.toLocaleString()} 💰`);
+        this.updateUI();
     },
 
     buyShopItem(t,x){
@@ -1941,6 +2231,7 @@ addPetXp(pet, amount) {
                 ...i
             };
             delete newItem.cost;
+            if (!newItem.rarity && i.cost) newItem.rarity = autoRarity(i.cost);
             this.state.inventory.push(newItem);
             this.msg(`${i.name} куплен!`);
         }
@@ -2445,5 +2736,3 @@ addPetXp(pet, amount) {
         this.updateUI();
     }
 };
-
-game.init();

@@ -85,21 +85,24 @@ Object.assign(game, {
         const inDungeon = true;
         const s = this.calcStats(inDungeon);
         const bow = this.state.inventory.find(i => i.equipped && i.type === 'weapon' && i.ranged);
-        const arrow = this.state.inventory.find(i => i.type === 'material' && i.name === 'Стрела');
-        const arrowCount = (arrow && arrow.count) || 0;
-        const useBow = Boolean(bow);
+        const arrowPack = typeof this.getActiveArrowStack === 'function' ? this.getActiveArrowStack() : null;
+        const useBow = Boolean(bow && arrowPack);
         let msgText = '';
 
-        if (useBow && arrowCount <= 0) {
-            this.msg('Нет стрел! Купите стрелы в магазине или возьмите из инвентаря.');
-            return;
-        }
+        const meleeWeapon = this.state.inventory.find(i => i.equipped && i.type === 'weapon' && !i.ranged);
+        const weapon = useBow ? bow : meleeWeapon;
+        const isArcher = this.state.class === 'archer';
 
-        const weapon = useBow ? bow : this.state.inventory.find(i => i.equipped && i.type === 'weapon');
-        let damage = weapon?.magic ? s.int * s.mag_amp * 100 : s.str;
-
+        let damage;
         if (useBow) {
-            damage += (s.bow_str || 0);
+            const meta = arrowPack.meta || {};
+            if (isArcher) {
+                damage = (s.bow_weapon_base || 0) + (s.bow_str || 0);
+            } else {
+                damage = (s.str || 0) + (s.bow_weapon_base || 0) + (s.bow_str || 0);
+            }
+            if (meta.dmgBonus) damage *= 1 + meta.dmgBonus;
+            if (meta.defShred) damage *= 1 + meta.defShred / 100;
 
             if (s.bow_fire) {
                 this.fireStacks = (this.fireStacks || 0) + s.bow_fire;
@@ -113,6 +116,7 @@ Object.assign(game, {
 
             const saveChance = s.arrow_save || 0;
             if (Math.random() * 100 >= saveChance) {
+                const arrow = arrowPack.stack;
                 if (arrow) {
                     arrow.count -= 1;
                     if (arrow.count <= 0) {
@@ -123,16 +127,31 @@ Object.assign(game, {
             } else {
                 msgText += 'Стрела не потрачена! ';
             }
+        } else {
+            if (!meleeWeapon) {
+                this.msg('Наденьте меч или возьмите стрелы для лука.');
+                return;
+            }
+            damage = weapon?.magic ? s.int * s.mag_amp * 100 : (s.str || 0);
+            if (isArcher) damage *= 0.8;
         }
 
         damage *= 1 + (s.dungeon_damage || 0) / 100;
-        // msgText уже объявлен выше, используем его повторно
         if (this.state.class === 'berserk' && Math.random() < 0.2) { damage *= 2; msgText += 'ДВОЙНОЙ УДАР! '; }
-        if (this.state.class === 'archer') {
+        if (isArcher && useBow) {
             if (this.dungeon.mobIdx < 3 && Math.random() < 0.2) { damage = 999999; msgText += 'ВАНШОТ! '; }
             else if (this.dungeon.mobIdx === 3 && Math.random() < 0.03) { damage = this.dungeon.mobHp * 0.4; msgText += 'Мощный выстрел по боссу! '; }
         }
-        if (Math.random() * 100 < s.cc) { damage *= (1 + s.cd / 100); msgText += 'КРИТИЧЕСКИЙ УДАР! '; }
+        let critChance = s.cc;
+        let critCd = s.cd;
+        if (isArcher && useBow) {
+            critChance = (s.bow_weapon_cc || 0) + (s.cc || 0) * 0.15;
+            critCd = (s.bow_weapon_cd || 0) + (s.cd || 0) * 0.15;
+        }
+        if (Math.random() * 100 < critChance) {
+            damage *= (1 + critCd / 100);
+            if (typeof this.showCombatFeedback === 'function') this.showCombatFeedback('КРИТ!', 'crit');
+        }
 
         const tiger = this.state.pets.find(p => p.equipped && p.name === 'Тигр');
         if (tiger && tiger.rarity === 'legendary') {
@@ -147,6 +166,13 @@ Object.assign(game, {
             damage *= 1 + (s.boss_damage || 0) / 100;
         }
         this.dungeon.mobHp -= damage;
+        const vamp = this.state.inventory
+            .filter(i => i.equipped && i.vampirism)
+            .reduce((sum, i) => sum + (i.vampirism || 0), 0);
+        if (vamp > 0 && this.dungeon.pHp > 0) {
+            const heal = Math.max(1, Math.floor(damage * (vamp / 100)));
+            this.dungeon.pHp = Math.min(this.dungeon.pMaxHp, this.dungeon.pHp + heal);
+        }
         if (this.dungeon.floor === 4 && this.dungeon.mobIdx === 3) this.mobDef = Math.max(0, this.mobDef - 10);
         if (msgText) this.msg(msgText.trim());
         const config = dungeonConfig[this.dungeon.floor];
@@ -158,12 +184,15 @@ Object.assign(game, {
         if (this.dungeon.floor === 5) {
             const mobCc = isBoss ? config.bossStats.cc : config.baseCc;
             const mobCd = isBoss ? config.bossStats.cd : config.baseCd;
-            if (Math.random() * 100 < mobCc) { mobDmg *= (1 + mobCd / 100); this.msg('КРИТ ОТ ВРАГА!'); }
+            if (Math.random() * 100 < mobCc) {
+                mobDmg *= (1 + mobCd / 100);
+                if (typeof this.showCombatFeedback === 'function') this.showCombatFeedback('КРИТ ОТ ВРАГА!', 'enemy-crit');
+            }
         }
         if (this.dungeon.floor === 7 && config.fireStacks) {
             this.fireStacks = Math.min(3, this.fireStacks + 1);
             mobDmg += 5 * this.fireStacks;
-            this.msg(`ОГОНЬ! +${5 * this.fireStacks} дамага`);
+            if (typeof this.showCombatFeedback === 'function') this.showCombatFeedback(`ОГОНЬ +${5 * this.fireStacks}`, 'fire');
         }
         if (this.dungeon.floor === 7 && isBoss) {
             this.witherAttackCount++;
@@ -255,6 +284,20 @@ Object.assign(game, {
         }
         document.getElementById('p-hp-txt').innerText=pHpText;
         document.getElementById('p-hp-fill').style.width=`${Math.max(0,this.dungeon.pHp/this.dungeon.pMaxHp*100)}%`;
+        const bowRow = document.getElementById('dungeon-arrow-row');
+        if (bowRow && typeof this.getActiveArrowStack === 'function') {
+            const hasBow = this.state.inventory.some(i => i.equipped && i.type === 'weapon' && i.ranged);
+            const ap = this.getActiveArrowStack();
+            if (hasBow) {
+                const cnt = ap ? (ap.stack.count || 0) : 0;
+                const label = ap ? ap.name : 'нет';
+                bowRow.style.display = 'flex';
+                bowRow.innerHTML = `<span style="flex:1;">🏹 Стрелы: <b>${label}</b> ×${cnt}</span><button type="button" class="act-btn" style="padding:8px 12px;font-size:0.8rem;" onclick="game.cycleDungeonArrow()">Сменить ▼</button>`;
+            } else {
+                bowRow.style.display = 'none';
+                bowRow.innerHTML = '';
+            }
+        }
     },
 
     giveDungeonReward(){

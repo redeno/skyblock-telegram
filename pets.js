@@ -36,5 +36,9 @@ window.calcPetBonus = function(pet, skills) {
         bonus.fortune += skills[pet.skill].lvl * lvl * r.skill_fortune;
     }
 
+    if (pet.universal_bonus) {
+        bonus.xp_bonus += lvl * 0.05;
+    }
+
     return bonus;
 };

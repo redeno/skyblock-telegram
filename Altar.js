@@ -36,7 +36,7 @@
 
 const BOSS_NAME = 'Защитник Энда';
 const ALTAR_FRAGMENT_NAME = 'Фрагмент из Данжа';
-const DEFAULT_REQUIRED_FRAGMENTS = 100;
+const DEFAULT_REQUIRED_FRAGMENTS = 1;
 const DEFAULT_BOSS_HP = 2000;
 const DEFAULT_BOSS_ARMOR = 500;
 const BOSS_DURATION_MS = 10 * 60 * 1000;
@@ -59,6 +59,10 @@ const Altar = {
     supportsDamagePlayerHp: true,
     countdownTimerId: null,
     currentExpiresAt: 0,
+
+    // HP только для мини-игры Алтаря (не влияет на game.state.stats.hp)
+    altarPlayerHp: 100,
+    altarPlayerMaxHp: 100,
 
     // Текущий вид: 'list' — список боссов, 'boss' — детальная страница босса
     view: 'list',
@@ -121,12 +125,11 @@ const Altar = {
         }
     },
 
-    restorePlayerHp() {
-        if (!window.game || !game.state || !game.state.stats) return;
-        const prevHp = game.state.stats.hp;
-        game.state.stats.hp = 100;
+    initAltarHp() {
+        if (!window.game) return;
         const maxHp = (typeof game.calcStats === 'function' ? game.calcStats(false).hp : 100) || 100;
-        game.state.stats.hp = Math.max(1, maxHp);
+        this.altarPlayerMaxHp = Math.max(100, Math.floor(maxHp));
+        this.altarPlayerHp = this.altarPlayerMaxHp;
     },
 
     async init() {
@@ -140,6 +143,9 @@ const Altar = {
         game.switchTab('altar-menu');
         this.view = 'list';
         await this.refresh();
+        if (this.event && this.event.status === 'active' && this.altarPlayerMaxHp <= 100) {
+            this.initAltarHp();
+        }
     },
 
     setSchemaError(err) {
@@ -199,10 +205,8 @@ const Altar = {
                     return;
                 }
 
-                if ((game.state.stats.hp || 0) <= 0) {
-                    await this.expireBoss('💀 У вас 0 HP — босс ушёл.');
-                    return;
-                }
+                // Не завершаем бой глобально из-за 0 HP одного игрока — иначе босс пропадает
+                // для всех, даже если призвавший полон HP. Игрок с 0 HP просто не может атаковать.
             }
 
             // Если игроки пожертвовали фрагменты, но не призвали босса в течение времени — возвращаем фрагменты.
@@ -364,7 +368,6 @@ const Altar = {
 
     async expireBoss(reason) {
         if (!this.event) return;
-        this.restorePlayerHp();
 
         const bossMax = this.event.boss_max_hp || DEFAULT_BOSS_HP;
         const updates = {
@@ -388,7 +391,7 @@ const Altar = {
         if (this.event.status !== 'waiting') return;
         if ((this.event.contributed_fragments || 0) < (this.event.required_fragments || 0)) return;
 
-        this.restorePlayerHp();
+        this.initAltarHp();
         const bossHp = DEBUG_WEAK_BOSS ? DEBUG_BOSS_HP : (this.event.boss_max_hp || DEFAULT_BOSS_HP);
         const bossArmor = DEBUG_WEAK_BOSS ? 0 : (this.event.boss_armor || DEFAULT_BOSS_ARMOR);
         const expiresAt = new Date(Date.now() + BOSS_DURATION_MS).toISOString();
@@ -430,7 +433,7 @@ const Altar = {
     async attackBoss(mode = 'melee') {
         if (!this.event) return;
         if (this.event.status !== 'active') return;
-        if ((game.state.stats.hp || 0) <= 0) {
+        if ((this.altarPlayerHp || 0) <= 0) {
             game.msg('Вы мертвы и не можете атаковать. Дождитесь ухода босса или используйте зелье.');
             return;
         }
@@ -446,27 +449,43 @@ const Altar = {
 
         const stats = game.calcStats(true);
         const useBow = mode === 'ranged' && game.state.inventory.some(i => i.equipped && i.type === 'weapon' && i.ranged);
+        const arrowPack = useBow && typeof game.getActiveArrowStack === 'function' ? game.getActiveArrowStack() : null;
         if (useBow) {
-            const arrowItem = game.state.inventory.find(i => i.type === 'material' && i.name === 'Стрела');
-            if (!arrowItem || arrowItem.count <= 0) {
+            if (!arrowPack || !arrowPack.stack || (arrowPack.stack.count || 0) <= 0) {
                 game.msg('Нет стрел! Купите стрелы в магазине.');
                 return;
             }
             const saveChance = stats.arrow_save || 0;
             if (Math.random() * 100 >= saveChance) {
+                const arrowItem = arrowPack.stack;
                 arrowItem.count -= 1;
                 if (arrowItem.count <= 0) game.state.inventory = game.state.inventory.filter(i => i.id !== arrowItem.id);
             }
         }
 
         const baseMultiplier = useBow ? 0.4 : 0.5;
-        const bowExtra = useBow ? (stats.bow_str || 0) : 0;
+        const bowExtra = useBow ? ((stats.bow_str || 0) + (stats.bow_weapon_base || 0)) : 0;
         const baseDmg = Math.max(1, Math.round(stats.str * baseMultiplier + (stats.cc || 0) * 0.2 + bowExtra));
         const bossArmor = this.event.boss_armor ?? DEFAULT_BOSS_ARMOR;
         const dmgMultiplier = 100 / (100 + bossArmor);
         const bowBonus = useBow ? 1.2 : 1;
         let damage = Math.max(1, Math.floor(baseDmg * (1 + Math.random() * 0.2) * dmgMultiplier * bowBonus));
+        if (useBow && arrowPack && arrowPack.meta) {
+            if (arrowPack.meta.dmgBonus) damage = Math.max(1, Math.floor(damage * (1 + arrowPack.meta.dmgBonus)));
+            if (arrowPack.meta.defShred) damage = Math.max(1, Math.floor(damage * (1 + arrowPack.meta.defShred / 100)));
+        }
+        if (Math.random() * 100 < (stats.cc || 0)) {
+            damage = Math.max(1, Math.floor(damage * (1 + (stats.cd || 0) / 100)));
+            if (typeof game.showCombatFeedback === 'function') game.showCombatFeedback('КРИТ!', 'crit');
+        }
         if (stats.boss_damage) damage = Math.max(1, Math.floor(damage * (1 + stats.boss_damage / 100)));
+        const vamp = game.state.inventory
+            .filter(i => i.equipped && i.vampirism)
+            .reduce((sum, i) => sum + (i.vampirism || 0), 0);
+        if (vamp > 0 && (this.altarPlayerHp || 0) > 0) {
+            const heal = Math.max(1, Math.floor(damage * (vamp / 100)));
+            this.altarPlayerHp = Math.min(this.altarPlayerMaxHp || 100, (this.altarPlayerHp || 0) + heal);
+        }
 
         const newHp = Math.max(0, (this.event.boss_hp || 0) - damage);
         const updates = { boss_hp: newHp, updated_at: new Date().toISOString() };
@@ -497,7 +516,7 @@ const Altar = {
         }
 
         const damageEntry = { altar_id: this.event.id, user_id: this.userId, user_name: this.userName, damage };
-        if (this.supportsDamagePlayerHp) damageEntry.player_hp = game.state.stats.hp || 0;
+        if (this.supportsDamagePlayerHp) damageEntry.player_hp = this.altarPlayerHp || 0;
 
         let damageInsertError = null;
         const { error: insertErr } = await supabaseClient.from('altar_damage').insert([damageEntry]);
@@ -516,21 +535,27 @@ const Altar = {
         const contributors = [...new Map((this.contributions || []).map(c => [c.user_id || c.user_name, c.user_name]))].map(([id, name]) => ({ id, name }));
         if (contributors.length) {
             const target = contributors[Math.floor(Math.random() * contributors.length)];
-            const bossHp = this.event.boss_hp ?? 0;
-            const bossMax = this.event.boss_max_hp ?? DEFAULT_BOSS_HP;
-            const damageToPlayer = bossHp > 0 && bossHp <= bossMax * 0.4 ? 50 : 25;
+            const rawBossDmg = 50;
             const isSelf = target.id === this.userId || target.name === this.userName;
             if (isSelf) {
-                const curHp = game.state.stats.hp || 0;
-                game.state.stats.hp = Math.max(0, curHp - damageToPlayer);
+                const playerDef = (typeof game.calcStats === 'function' ? game.calcStats(true).def : 0) || 0;
+                const damageToPlayer = Math.max(1, Math.floor(rawBossDmg * 100 / (100 + playerDef)));
+                this.altarPlayerHp = Math.max(0, (this.altarPlayerHp || 0) - damageToPlayer);
                 game.msg(`🛡️ ${BOSS_NAME} ударил вас за ${damageToPlayer} HP!`);
+                if (typeof game.showCombatFeedback === 'function') game.showCombatFeedback(`-${damageToPlayer} HP`, 'enemy-crit');
             } else {
-                game.msg(`🛡️ ${BOSS_NAME} ударил ${target.name} за ${damageToPlayer} HP!`);
+                game.msg(`🛡️ ${BOSS_NAME} ударил ${target.name} за ${rawBossDmg} HP!`);
             }
         }
 
         if (drop) {
-            const dropItem = drop.item ? { ...drop.item } : { name: drop.name, type: 'material', rarity: drop.rarity };
+            const typeMap = {
+                'Питомец Голем': 'pet',
+                'Меч Защитника Энда': 'weapon',
+                'Кольцо Защитника Энда': 'accessory'
+            };
+            const inferredType = typeMap[drop.name] || 'material';
+            const dropItem = drop.item ? { ...drop.item } : { name: drop.name, type: inferredType, rarity: drop.rarity };
             if (dropItem.type === 'pet') {
                 game.state.pets.push({ ...dropItem, equipped: false });
             } else if (dropItem.type === 'material' || dropItem.type === 'potion') {
@@ -553,14 +578,20 @@ const Altar = {
     },
 
     useHealthPotion() {
-        if (!game.usePotion) return;
         const hasPotion = game.state.inventory.some(i => i.type === 'potion' && i.name === 'Зелье восстановления хп');
         if (!hasPotion) {
             game.msg('У вас нет зелья восстановления HP.');
             return;
         }
-        game.usePotion('Зелье восстановления хп');
+        this.altarPlayerHp = Math.min(this.altarPlayerMaxHp, (this.altarPlayerHp || 0) + 150);
+        const potionItem = game.state.inventory.find(i => i.type === 'potion' && i.name === 'Зелье восстановления хп');
+        if (potionItem) {
+            potionItem.count = (potionItem.count || 1) - 1;
+            if (potionItem.count <= 0) game.state.inventory = game.state.inventory.filter(i => i.id !== potionItem.id);
+        }
+        game.msg('💖 +150 HP');
         this.refresh();
+        if (typeof game.updateUI === 'function') game.updateUI();
     },
 
     // ─────────────────────────────────────────────
@@ -729,8 +760,8 @@ const Altar = {
         const hasBow = game.state.inventory.some(i => i.equipped && i.type === 'weapon' && i.ranged);
         const hasHealthPotion = game.state.inventory.some(i => i.type === 'potion' && i.name === 'Зелье восстановления хп');
 
-        const playerHp = game.state.stats.hp || 0;
-        const playerMaxHp = (typeof game.calcStats === 'function' ? game.calcStats(false).hp : playerHp) || 100;
+        const playerMaxHp = this.altarPlayerMaxHp || 100;
+        const playerHp = Math.min(Math.max(0, this.altarPlayerHp ?? playerMaxHp), playerMaxHp);
         const playerHpPct = playerMaxHp > 0 ? Math.floor((playerHp / playerMaxHp) * 100) : 0;
 
         const rarityColor = { legendary: '#e5c07b', epic: '#c678dd', rare: '#5b8af0', common: '#9ca3af' };

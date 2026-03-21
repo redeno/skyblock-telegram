@@ -44,6 +44,7 @@ function initInfoData() {
                 registerInfoItem(id, Object.assign({ typeGroup: 'accessory', sources: [src] }, it));
             });
         }
+        if (shopItems.material) regShopGroup('material', shopItems.material, 'material');
     }
 
     // Дроп из данжей
@@ -136,6 +137,37 @@ function initInfoData() {
         const fleshItem = window.INFO_ITEMS[fleshId];
         fleshItem.sources = fleshItem.sources || [];
         fleshItem.sources.push({ source: 'slayer', slayerType: 'zombie', note: 'Гарантированный дроп с босса, количество зависит от тира' });
+
+        // Gem Stone (новая валюта)
+        const gemName = 'Gem Stone';
+        let gemId = window.INFO_ITEM_BY_NAME[gemName];
+        if (!gemId) {
+            gemId = 'currency_gem_stone';
+            registerInfoItem(gemId, {
+                name: gemName,
+                type: 'material',
+                rarity: 'legendary',
+                desc: 'Новая валюта. Отображается как 💎 в меню игрока.',
+                sources: [{ source: 'slayer', slayerType: 'zombie', tier: 5, chance: 0.01, note: 'Редкий дроп с Tier V босса' }]
+            });
+        }
+
+        // Artefact Slayer Zombie
+        const aszName = 'Artefact Slayer Zombie';
+        let aszId = window.INFO_ITEM_BY_NAME[aszName];
+        if (!aszId) {
+            aszId = 'artifact_slayer_zombie';
+            registerInfoItem(aszId, {
+                name: aszName,
+                type: 'accessory',
+                rarity: 'legendary',
+                cost: 100000000,
+                slayer_zombie_def_bonus: 20,
+                vampirism: 5,
+                desc: 'Даёт +20% защиты в Zombie Slayer и +5% вампиризма.',
+                sources: [{ source: 'slayer', slayerType: 'zombie', tier: 5, chance: 0.001, note: 'Ультра-редкий дроп с Tier V босса' }]
+            });
+        }
 
         // Дропы из Алтаря (Защитник Энда)
         const altarDrops = [
@@ -425,7 +457,22 @@ Object.assign(game, {
             this.renderMobsInfo(container);
         } else if (section === 'modes') {
             this.renderModesInfo(container);
+        } else if (section === 'events_hub') {
+            this.renderEventsHubInfo(container);
         }
+    },
+
+    renderEventsHubInfo(container) {
+        const lines = [];
+        lines.push('<h4>🎩 Dark Auction</h4>');
+        lines.push('<p>Выходные (сб/вс), каждые <b>3 часа</b> новый слот. Первые <b>10 минут</b> — регистрация, затем <b>3 лота</b>. Ставки не списываются до победы в лоте; минимальный шаг обычно <b>800 000 💰</b>. <b>70%</b> от победной ставки уходит в казну казино.</p>');
+        lines.push('<p style="color:var(--gray);font-size:0.85rem;">Подробное расписание для админов: файл <code>darkAuction_schedule.txt</code> в проекте.</p>');
+        lines.push('<h4>⚔️ Дуэли</h4>');
+        lines.push('<p>Тренировочный бой: до <b>2 побед</b>, есть меч / лук (нужны стрелы) / зелье. Если оба «падают» в одном обмене — <b>ничья</b>. Топ побед при наличии таблицы <code>duel_wins</code> в Supabase.</p>');
+        lines.push('<p style="color:var(--gray);font-size:0.85rem;">PvP со ставкой и уведомления в ЛС Telegram требуют серверного бота — в клиенте задел под чекбокс «запросы».</p>');
+        lines.push('<h4>🏹 Стрелы в магазине</h4>');
+        lines.push('<p>У стрел можно купить пачками <b>×5, ×10, ×32</b> отдельными кнопками.</p>');
+        container.innerHTML = `<div class="card">${lines.join('')}</div>`;
     },
 
     renderWeaponsInfo(container) {

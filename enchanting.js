@@ -226,6 +226,8 @@ const enchantmentConfig = {
 };
 
 window.enchantmentConfig = enchantmentConfig;
+/** Зачары только для луков (не показывать на мечах и наоборот) */
+window.BOW_ONLY_ENCHANT_KEYS = new Set(['bow_strength', 'flaming_arrow', 'arrow_saver', 'eagle_eye']);
 
 const enchantCosts = [10000, 50000, 250000, 1000000, 15000000];
 const enchantXpMultipliers = [10, 15, 20, 25, 30];
@@ -251,7 +253,8 @@ Object.assign(game, {
         if (!item) {
             html += `<div style="text-align:center;margin:15px 0;"><b style="color:var(--accent);">Выберите предмет для зачарования</b></div>`;
             html += `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;">`;
-            html += `<button class="act-btn" onclick="game.showEnchantPicker('weapon')" style="flex:1;min-width:80px;">⚔️ ОРУЖИЕ</button>`;
+            html += `<button class="act-btn" onclick="game.showEnchantPicker('weapon','melee')" style="flex:1;min-width:72px;">⚔️ МЕЧИ</button>`;
+            html += `<button class="act-btn" onclick="game.showEnchantPicker('weapon','bow')" style="flex:1;min-width:72px;">🏹 ЛУКИ</button>`;
             html += `<button class="act-btn" onclick="game.showEnchantPicker('armor')" style="flex:1;min-width:80px;">🛡️ БРОНЯ</button>`;
             html += `<button class="act-btn" onclick="game.showEnchantPicker('tool')" style="flex:1;min-width:80px;">🔧 ИНСТРУМЕНТЫ</button>`;
             html += `</div>`;
@@ -263,12 +266,16 @@ Object.assign(game, {
         el.innerHTML = html;
     },
 
-    showEnchantPicker(type) {
+    showEnchantPicker(type, weaponKind) {
         const picker = document.getElementById('enchant-picker');
         if (!picker) return;
-        const items = this.state.inventory.filter(i => i.type === type);
+        let items = this.state.inventory.filter(i => i.type === type);
+        if (type === 'weapon') {
+            if (weaponKind === 'bow') items = items.filter(i => i.ranged);
+            else items = items.filter(i => !i.ranged);
+        }
         if (!items.length) {
-            picker.innerHTML = '<div class="card" style="text-align:center;color:#666;">Нет подходящих предметов</div>';
+            picker.innerHTML = `<div class="card" style="text-align:center;color:#666;">Нет ${type === 'weapon' ? (weaponKind === 'bow' ? 'луков' : 'мечей') : 'предметов'}</div>`;
             return;
         }
         let html = '';
@@ -293,7 +300,13 @@ Object.assign(game, {
     _renderEnchantWorkbench(item) {
         const enchants = item.enchantments || {};
         const itemType = item.type;
-        const available = Object.entries(enchantmentConfig).filter(([, e]) => e.targets.includes(itemType));
+        const bowKeys = window.BOW_ONLY_ENCHANT_KEYS || new Set();
+        const isBow = item.type === 'weapon' && item.ranged;
+        const available = Object.entries(enchantmentConfig).filter(([key, e]) => {
+            if (!e.targets.includes(itemType)) return false;
+            if (isBow) return bowKeys.has(key);
+            return !bowKeys.has(key);
+        });
 
         let html = `<div style="text-align:center;margin-bottom:10px;">`;
         html += `<div class="card" style="border-color:var(--accent);display:inline-block;padding:8px 20px;">`;
@@ -323,7 +336,8 @@ Object.assign(game, {
                 const conflictNote = hasConflict ? ' <span style="color:var(--red);font-size:0.6rem;">⚠️ КОНФЛИКТ</span>' : '';
                 const statDesc = Object.entries(ench.stats[t - 1]).map(([st, v]) => {
                     const statNames = {str:'СИЛА',def:'БРОНЯ',cd:'КРИТ УРОН',cc:'КРИТ ШАНС',mf:'УДАЧА',hp:'ХП',vitality:'ВОССТ',
-                        mining_fortune:'⛏️ФОРТ',farming_fortune:'🌾ФОРТ',foraging_fortune:'🌲ФОРТ',fishing_fortune:'🎣ФОРТ'};
+                        mining_fortune:'⛏️ФОРТ',farming_fortune:'🌾ФОРТ',foraging_fortune:'🌲ФОРТ',fishing_fortune:'🎣ФОРТ',
+                        bow_str:'УРОН ЛУКА',bow_fire:'ОГОНЬ ЛУКА',arrow_save:'ЭКОН. СТРЕЛ',bow_cc:'ДВОЙНОЙ ВЫСТРЕЛ %'};
                     return `+${v} ${statNames[st] || st}`;
                 }).join(', ');
                 html += `<div class="card" style="padding:6px 8px;margin-bottom:4px;border-left:3px solid ${color};cursor:pointer;" onclick="game.applyEnchant(${item.id},'${key}',${t})">`;
@@ -350,7 +364,8 @@ Object.assign(game, {
                 const color = tierColors[tier - 1];
                 const statDesc = Object.entries(ench.stats[tier - 1]).map(([st, v]) => {
                     const statNames = {str:'СИЛА',def:'БРОНЯ',cd:'КРИТ УРОН',cc:'КРИТ ШАНС',mf:'УДАЧА',hp:'ХП',vitality:'ВОССТ',
-                        mining_fortune:'⛏️ФОРТ',farming_fortune:'🌾ФОРТ',foraging_fortune:'🌲ФОРТ',fishing_fortune:'🎣ФОРТ'};
+                        mining_fortune:'⛏️ФОРТ',farming_fortune:'🌾ФОРТ',foraging_fortune:'🌲ФОРТ',fishing_fortune:'🎣ФОРТ',
+                        bow_str:'УРОН ЛУКА',bow_fire:'ОГОНЬ ЛУКА',arrow_save:'ЭКОН. СТРЕЛ',bow_cc:'ДВОЙНОЙ ВЫСТРЕЛ %'};
                     return `+${v} ${statNames[st] || st}`;
                 }).join(', ');
                 html += `<div class="card" style="padding:6px 8px;margin-bottom:4px;border-left:3px solid ${color};">`;

@@ -610,3 +610,114 @@ select {
         transform: none;
     }
 }
+
+/* Сокровещница */
+.chest-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 8px 0 16px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.chest-carousel::-webkit-scrollbar {
+    height: 6px;
+}
+.chest-carousel::-webkit-scrollbar-thumb {
+    background: rgba(255,170,0,0.3);
+    border-radius: 3px;
+}
+.chest-card {
+    flex: 0 0 90px;
+    scroll-snap-align: center;
+    background: linear-gradient(145deg, rgba(22,22,26,0.95), rgba(15,15,20,0.98));
+    border: 1px solid rgba(255,170,0,0.2);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+.chest-card:hover {
+    border-color: rgba(255,170,0,0.4);
+    transform: translateY(-2px);
+}
+.chest-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(255,170,0,0.2);
+}
+.chest-card-icon {
+    font-size: 2rem;
+    margin-bottom: 6px;
+}
+.chest-card-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+}
+.chest-card-cost {
+    font-size: 0.7rem;
+    color: var(--accent);
+    margin-top: 4px;
+}
+.chest-card-desc {
+    font-size: 0.65rem;
+    color: var(--gray);
+}
+.chest-soon {
+    font-size: 0.65rem;
+    color: var(--gray);
+    margin-top: 6px;
+    opacity: 0.7;
+}
+#chest-spin-overlay .chest-reel-item {
+    flex: 0 0 90px;
+    min-width: 90px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,170,0,0.08);
+    border: 1px solid rgba(255,170,0,0.2);
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+@keyframes chestPopup {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes roulettePulse {
+    from { box-shadow: 0 0 10px rgba(255,170,0,0.3); }
+    to { box-shadow: 0 0 20px rgba(255,170,0,0.6); }
+}
+
+#combat-feedback {
+    position: fixed;
+    left: 50%;
+    top: 28%;
+    transform: translateX(-50%);
+    z-index: 9998;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.combat-float {
+    font-weight: 800;
+    font-size: 1.1rem;
+    text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    animation: combatFloatUp 0.9s ease forwards;
+}
+.combat-float.crit { color: #ff5555; }
+.combat-float.enemy-crit { color: #ff8a8a; }
+.combat-float.fire { color: #ffaa00; }
+.combat-float.buff { color: #55ff55; }
+@keyframes combatFloatUp {
+    0% { opacity: 0; transform: translateY(8px) scale(0.95); }
+    20% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-22px) scale(1.03); }
+}

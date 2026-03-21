@@ -19,6 +19,7 @@
         <div id="home" class="screen active">
             <div class="card" style="text-align:center">
                 <h1 style="margin:0;color:var(--accent)">💰 <span id="coins-val">0</span></h1>
+                <div style="margin-top:4px;color:#55ff55;font-weight:700;">💎 <span id="emeralds-val">0</span></div>
                 <small style="color:var(--gray)">ТВОИ МОНЕТЫ</small>
             </div>
             <div id="active-buffs" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;"></div>
@@ -43,6 +44,11 @@
                 <div class="portal-node" onclick="game.openExchange()">⚖️ ОБМЕН</div>
                 <div class="portal-node" onclick="game.openEventsMenu()">📅 ИВЕНТ</div>
                 <div class="portal-node" onclick="game.openAltarMenu()">🕯️ АЛТАРЬ</div>
+                <div class="portal-node" onclick="game.openChestMenu()">📦 СОКРОВЕЩНИЦА</div>
+                <div class="portal-node" onclick="game.openBankMenu()">🏦 БАНК</div>
+                <div class="portal-node" onclick="game.openCasinoMenu()">🎰 КАЗИНО</div>
+                <div id="portal-node-dark-auction" class="portal-node" style="display:none;" onclick="game.openDarkAuctionMenu()">🎩 DARK AUCTION</div>
+                <div id="portal-node-duel" class="portal-node" onclick="game.openDuelMenu()">⚔️ ДУЭЛИ</div>
                 <div class="portal-node" onclick="game.openMayorMenu()">🗳️ МЭР</div>
                 <div class="portal-node" onclick="game.showBlacksmith()">🔨 КУЗНЕЦ</div>
                 <div class="portal-node" onclick="game.openAdminPanel()" style="border-color:var(--red);">🔧 АДМИН</div>
@@ -92,6 +98,43 @@
             <div id="altar-content" class="card" style="margin-top:10px"></div>
         </div>
 
+        <div id="chest-menu" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3 style="text-align:center;margin-top:0;">📦 СОКРОВЕЩНИЦА</h3>
+            <p style="text-align:center;color:var(--gray);font-size:0.9rem;margin:-8px 0 12px;">Выберите сундук и испытайте удачу</p>
+            <div id="chest-content"></div>
+        </div>
+        <div id="bank-menu" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3 style="text-align:center;margin-top:0;">🏦 БАНК</h3>
+            <div id="bank-content"></div>
+        </div>
+        <div id="casino-menu" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3 style="text-align:center;margin-top:0;">🎰 КАЗИНО</h3>
+            <div id="casino-content"></div>
+        </div>
+        <div id="dark-auction-menu" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3 style="text-align:center;margin-top:0;">🎩 DARK AUCTION</h3>
+            <div id="dark-auction-content"></div>
+        </div>
+        <div id="duel-menu" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3 style="text-align:center;margin-top:0;">⚔️ ДУЭЛИ</h3>
+            <div id="duel-menu-content"></div>
+        </div>
+        <div id="duel-battle-screen" class="screen">
+            <button class="top-btn" onclick="game.switchTab('duel-menu')">← НАЗАД</button>
+            <h3 style="text-align:center;">ДУЭЛЬ</h3>
+            <div id="duel-battle-content" class="card"></div>
+        </div>
+
+        <div id="chest-spin-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.3s;">
+            <div id="chest-roulette" style="display:flex;flex-direction:column;align-items:center;padding:20px;"></div>
+            <div id="chest-result" style="display:none;font-size:1.5rem;font-weight:700;color:var(--accent);"></div>
+        </div>
+
         <div id="slayer-battle-screen" class="screen">
             <button class="top-btn" onclick="game.cancelSlayer()">← ОТМЕНА</button>
             <h2 style="text-align:center;color:var(--red)">👹 СЛЕЙЕР БОЙ</h2>
@@ -117,6 +160,7 @@
                 <div style="display:flex;justify-content:space-between"><span>ТВОЁ ХП</span><span id="p-hp-txt">100/100</span></div>
                 <div class="hp-bar"><div id="p-hp-fill" class="hp-fill" style="width:100%;background:var(--blue)"></div></div>
             </div>
+            <div id="dungeon-arrow-row" class="card" style="display:none;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;padding:10px;font-size:0.85rem;"></div>
             <button class="cooldown-btn" style="height:80px" onclick="game.dungeonAttack()">💥 УДАРИТЬ</button>
         </div>
 
@@ -164,6 +208,7 @@
         <div id="minions" class="screen">
             <div class="card" style="border-color:var(--accent);text-align:center">
                 КОШЕЛЕК: <span id="m-coins-val" style="color:var(--accent)">0</span> 💰
+                <div style="margin-top:4px;color:#55ff55;">💎 <span id="m-emeralds-val">0</span></div>
             </div>
             <div id="minions-list"></div>
         </div>
@@ -196,6 +241,7 @@
                 <div class="inv-tab" onclick="game.showInfoSection('pets', this)">ПИТОМЦЫ</div>
                 <div class="inv-tab" onclick="game.showInfoSection('mobs', this)">МОБЫ</div>
                 <div class="inv-tab" onclick="game.showInfoSection('modes', this)">РЕЖИМЫ</div>
+                <div class="inv-tab" onclick="game.showInfoSection('events_hub', this)">СОБЫТИЯ</div>
             </div>
             <div id="info-book-content" class="card" style="margin-top:10px; max-height:60vh; overflow-y:auto;"></div>
         </div>
@@ -287,11 +333,17 @@
         <button class="nav-item" onclick="game.switchTab('minions',this)"><span>👷</span>МИНЬОНЫ</button>
         <button class="nav-item" onclick="game.switchTab('inventory',this)"><span>🎒</span>ИНВЕНТАРЬ</button>
     </nav>
+    <div id="combat-feedback"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="game.js"></script>
     <script src="potion.js"></script>
     <script src="Altar.js"></script>
+    <script src="OpenChest.js"></script>
+    <script src="bank.js"></script>
+    <script src="casino.js"></script>
+    <script src="darkAuction.js"></script>
+    <script src="duel.js"></script>
     <script src="InfoBook.js"></script>
     <script src="news.js"></script>
     <script src="inventory.js"></script>
@@ -311,9 +363,13 @@
     <script src="enchanting.js"></script>
     <script src="blacksmith.js"></script>
     <script>
+      game.init();
+    </script>
+    <script>
       const ADMIN_IDS = [1546583402];
       const user = Telegram.WebApp.initDataUnsafe?.user;
       const isAdmin = user && ADMIN_IDS.includes(user.id);
+      window.TG_IS_ADMIN = !!isAdmin;
       const adminNode = document.querySelector('.portal-node[onclick="game.openAdminPanel()"]');
       if (adminNode) {
         if (!isAdmin) {
