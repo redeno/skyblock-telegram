@@ -1,6 +1,7 @@
 // top.js — топ игроков по разделам
 
 const TOP_LIMIT = 50;
+const getTgNick = (row) => row.username || 'Аноним';
 
 // Добавляем функцию прямо в game
 game.loadTop = async function(type = 'rich') {
@@ -15,7 +16,7 @@ game.loadTop = async function(type = 'rich') {
         error = rawError;
         if (!error && rawData) {
             data = rawData.map(row => ({
-                username: row.username || 'Аноним',
+                nick: getTgNick(row),
                 value: (() => {
                     const sbSkill = row.skills?.skyblock || { lvl: 0, xp: 0, next: 1 };
                     const next = sbSkill.next || 1;
@@ -28,7 +29,7 @@ game.loadTop = async function(type = 'rich') {
         error = rawError;
         if (!error && rawData) {
             data = rawData.map(row => ({
-                username: row.username || 'Аноним',
+                nick: getTgNick(row),
                 value: row.coins || 0
             }));
         }
@@ -37,9 +38,24 @@ game.loadTop = async function(type = 'rich') {
         error = rawError;
         if (!error && rawData) {
             data = rawData.map(row => ({
-                username: row.username || 'Аноним',
+                nick: getTgNick(row),
                 value: row.skills?.dungeons?.lvl || 1
             })).sort((a, b) => b.value - a.value).slice(0, TOP_LIMIT);
+        }
+    } else if (type === 'slayer') {
+        const { data: rawData, error: rawError } = await supabaseClient.from('players').select('skills, username');
+        error = rawError;
+        if (!error && rawData) {
+            data = rawData.map(row => {
+                const sl = row.skills?.slayer || {};
+                return {
+                    nick: getTgNick(row),
+                    zombie: sl.zombie?.lvl || 0,
+                    spider: sl.spider?.lvl || 0,
+                    wolf: sl.wolf?.lvl || 0,
+                    total: (sl.zombie?.lvl || 0) + (sl.spider?.lvl || 0) + (sl.wolf?.lvl || 0)
+                };
+            }).sort((a, b) => b.total - a.total).slice(0, TOP_LIMIT);
         }
     }
 
@@ -57,14 +73,36 @@ game.loadTop = async function(type = 'rich') {
     let html = '';
     let label = type === 'rich' ? '💰' : type === 'dungeons' ? '💀 LVL' : '🌟 LVL';
 
+    if (type === 'slayer') {
+        html += `<div class="card" style="display:grid;grid-template-columns:56px 1.4fr 1fr 1fr 1fr;gap:8px;align-items:center;font-weight:bold;color:var(--accent);">
+            <span>#</span>
+            <span>Ник</span>
+            <span>Zombie</span>
+            <span>Spider</span>
+            <span>Wolf</span>
+        </div>`;
+        data.forEach((player, index) => {
+            const place = index + 1;
+            const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `${place}.`;
+            html += `<div class="card" style="display:grid;grid-template-columns:56px 1.4fr 1fr 1fr 1fr;gap:8px;align-items:center;">
+                <span>${medal}</span>
+                <span>${player.nick}</span>
+                <span style="color:var(--accent)">${player.zombie}</span>
+                <span style="color:var(--accent)">${player.spider}</span>
+                <span style="color:var(--accent)">${player.wolf}</span>
+            </div>`;
+        });
+        listEl.innerHTML = html;
+        return;
+    }
+
     data.forEach((player, index) => {
         const place = index + 1;
         const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `${place}.`;
-        const nick = player.username.startsWith('@') ? player.username : `@${player.username}`;
         const value = type === 'rich' ? Math.floor(player.value).toLocaleString() : player.value;
 
         html += `<div class="card" style="display:flex;justify-content:space-between;align-items:center">
-            <span>${medal} ${nick}</span>
+            <span>${medal} ${player.nick}</span>
             <span style="color:var(--accent)">${value} ${label}</span>
         </div>`;
     });
@@ -95,6 +133,7 @@ document.querySelectorAll('#leadModal .inv-tab').forEach(tab => {
         const text = this.textContent.trim();
         if (text.includes('БОГАТЫЕ')) game.loadTop('rich');
         else if (text.includes('ДАНЖИ')) game.loadTop('dungeons');
+        else if (text.includes('SLAYER')) game.loadTop('slayer');
         else if (text.includes('УРОВЕНЬ')) game.loadTop('level');
     });
 });

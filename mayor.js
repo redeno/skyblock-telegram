@@ -73,6 +73,24 @@ const MAYORS = {
         getBonuses() {
             return { mf_bonus: 30, gold_bonus: 10, shop_discount: 10 };
         }
+    },
+    y3m1: {
+        id: 'y3m1',
+        name: 'Y3M1',
+        icon: '👹',
+        color: '#ff4d4d',
+        desc: [
+            '🌍 +25% Slayer EXP за убийство босса',
+            '🌍 +50% прогресс призыва за убийство мобов Slayer',
+            '🌍 +20% к шансу дропа с боссов Slayer'
+        ],
+        getBonuses() {
+            return {
+                slayer_boss_xp_bonus: 25,
+                slayer_mob_kill_bonus: 50,
+                slayer_drop_chance_bonus: 20
+            };
+        }
     }
 };
 
@@ -144,7 +162,7 @@ Object.assign(game, {
                 .insert([{
                     event_type: 'mayor',
                     current_mayor: 'dodoll',
-                    rotation_order: ['dodoll', 'diana', 'waifu625', 'necronchik'],
+                    rotation_order: ['dodoll', 'diana', 'waifu625', 'necronchik', 'y3m1'],
                     last_switch: new Date().toISOString()
                 }]);
 
@@ -187,7 +205,7 @@ Object.assign(game, {
     async rotateGlobalMayor() {
         if (!this.globalMayor) return;
 
-        const rotation = this.globalMayor.rotation_order || ['dodoll', 'diana', 'waifu625', 'necronchik'];
+        const rotation = this.globalMayor.rotation_order || ['dodoll', 'diana', 'waifu625', 'necronchik', 'y3m1'];
         const currentIdx = rotation.indexOf(this.globalMayor.current_mayor);
         const newMayor = rotation[(currentIdx + 1) % rotation.length];
 
@@ -279,6 +297,9 @@ Object.assign(game, {
         if (bonuses.pet_xp_bonus) bonusText.push(`+${bonuses.pet_xp_bonus}% Pet XP`);
         if (bonuses.mf_bonus) bonusText.push(`+${bonuses.mf_bonus} удача`);
         if (bonuses.shop_discount) bonusText.push(`-${bonuses.shop_discount}% магазин`);
+        if (bonuses.slayer_boss_xp_bonus) bonusText.push(`+${bonuses.slayer_boss_xp_bonus}% Slayer Boss XP`);
+        if (bonuses.slayer_mob_kill_bonus) bonusText.push(`+${bonuses.slayer_mob_kill_bonus}% Slayer summon XP`);
+        if (bonuses.slayer_drop_chance_bonus) bonusText.push(`+${bonuses.slayer_drop_chance_bonus}% Slayer drop chance`);
 
         // Удаляем старый буфф мэра
         const oldMayorBuff = buffContainer.querySelector('.global-mayor-buff');
@@ -348,7 +369,7 @@ Object.assign(game, {
         if (!content || !this.globalMayor) return;
 
         const current = this.getCurrentMayor();
-        const rotation = this.globalMayor.rotation_order || ['dodoll', 'diana', 'waifu625', 'necronchik'];
+        const rotation = this.globalMayor.rotation_order || ['dodoll', 'diana', 'waifu625', 'necronchik', 'y3m1'];
         const currentIdx = rotation.indexOf(this.globalMayor.current_mayor);
         const nextId = rotation[(currentIdx + 1) % rotation.length] || rotation[0];
         const nextMayor = MAYORS[nextId] || MAYORS.dodoll;

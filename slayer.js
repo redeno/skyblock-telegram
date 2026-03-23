@@ -120,6 +120,11 @@ Object.assign(game, {
     slayerCurrentMob: null,
     slayerPlayerHp: 0,
     slayerPlayerMaxHp: 0,
+
+    getSlayerBonusMultiplier(key) {
+        const mb = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
+        return 1 + (mb[key] || 0) / 100;
+    },
     
     openSlayerMenu() {
         if (!this.state.slayer) {
@@ -408,7 +413,8 @@ Object.assign(game, {
                 this.finishSlayerBoss();
                 return;
             } else {
-                this.slayerActive.kills += this.slayerCurrentMob.exp;
+                const mobProgressMul = this.getSlayerBonusMultiplier('slayer_mob_kill_bonus');
+                this.slayerActive.kills += (this.slayerCurrentMob.exp || 0) * mobProgressMul;
                 if (this.slayerActive.kills > this.slayerActive.reqKills) this.slayerActive.kills = this.slayerActive.reqKills;
                 this.msg('МОБ УБИТ!');
                 this.spawnSlayerMob();
@@ -427,7 +433,7 @@ Object.assign(game, {
         const slayerData = this.state.slayer[this.slayerActive.type];
         const config = slayerConfig[this.slayerActive.type];
         const boss = config.bosses[this.slayerActive.tier - 1];
-        const xpGain = boss.xp || 5;
+        const xpGain = Math.floor((boss.xp || 5) * this.getSlayerBonusMultiplier('slayer_boss_xp_bonus'));
         slayerData.xp += xpGain;
         
         if (slayerData.lvl < 10) {
@@ -445,11 +451,12 @@ Object.assign(game, {
         
         let dropMsg = '';
         const luckMult = this.slayerActive.tier >= 5 ? 2 : 1;
-        if (Math.random() * 100 < (0.1 * luckMult)) {
+        const dropMul = this.getSlayerBonusMultiplier('slayer_drop_chance_bonus');
+        if (Math.random() * 100 < (0.1 * luckMult * dropMul)) {
             this.state.inventory.push({ id: this.state.nextItemId++, name: 'Zombie Ring', type: 'accessory', equipped: false, cost: 50000 });
             dropMsg += ' ВЫПАЛ ZOMBIE RING!';
         }
-        if (this.slayerActive.tier >= 4 && Math.random() * 10000 < (1 * luckMult)) {
+        if (this.slayerActive.tier >= 4 && Math.random() * 10000 < (1 * luckMult * dropMul)) {
             const ghoul = {
                 name: 'Гуль',
                 type: 'pet',
@@ -463,11 +470,11 @@ Object.assign(game, {
             this.state.pets.push({ ...ghoul, equipped: false });
             dropMsg += ' 🎉 ВЫПАЛ ПИТОМЕЦ ГУЛЬ!';
         }
-        if (this.slayerActive.tier >= 5 && Math.random() * 10000 < 1) {
+        if (this.slayerActive.tier >= 5 && Math.random() * 10000 < (1 * dropMul)) {
             this.state.emeralds = (this.state.emeralds || 0) + 1;
             dropMsg += ' 💎 ВЫПАЛ Gem Stone!';
         }
-        if (this.slayerActive.tier >= 5 && Math.random() * 100000 < 1) {
+        if (this.slayerActive.tier >= 5 && Math.random() * 100000 < (1 * dropMul)) {
             this.state.inventory.push({
                 id: this.state.nextItemId++,
                 name: 'Artefact Slayer Zombie',

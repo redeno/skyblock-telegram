@@ -449,7 +449,7 @@ const Ritual = {
             <div class="card">
                 <b>Лунка ${st.hole + 1}/${st.maxHoles}</b><br>
                 <small>Выберите путь. Цвет — редкость лунки.</small>
-                <div class="item-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                <div class="item-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;">
                     <button class="act-btn" style="border-color:${leftHole.color};color:${leftHole.color};"
                         onclick="Ritual.choosePath('left')">⬅️ Влево<br><small>${leftHole.label}</small></button>
                     <button class="act-btn" style="border-color:${fwdHole.color};color:${fwdHole.color};"

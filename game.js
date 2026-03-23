@@ -413,12 +413,14 @@ Object.values(shopItems).forEach(arr => {
 
 window.petRarityBonuses = {
     common: 0.1,
+    uncommon: 0.15,
     rare: 0.2,
     epic: 0.3,
     legendary: 0.5
 };
 
 const petUpgradeCosts = {
+    uncommon: {coins:0, resources:16},
     rare: {coins:0, resources:32},
     epic: {coins:250000, resources:256},
     legendary: {coins:8000000, resources:1000, upgradeItem:1}
@@ -511,12 +513,14 @@ function getGramotaName(level) {
 
 function makeGramotaItem(level) {
     const rarity = getGramotaRarityForLevel(level);
+    const bonus = gramotaBonusByRarity[rarity] || 1;
     return {
         name: getGramotaName(level),
-        type: 'material',
+        type: 'accessory',
         rarity,
         gramota: true,
-        gramotaLevel: level / 10
+        gramotaLevel: level / 10,
+        desc: `Пассивно даёт +${bonus}% ко всем статам.`
     };
 }
 
@@ -1506,14 +1510,14 @@ const game = {
 
     upgradePet(idx) {
         const pet = this.state.pets[idx];
-        const nextRarity = {common:'rare', rare:'epic', epic:'legendary'}[pet.rarity];
+        const nextRarity = {common:'uncommon', uncommon:'rare', rare:'epic', epic:'legendary'}[pet.rarity];
         if (!nextRarity) { this.msg('Уже максимальная редкость!'); return; }
         if (pet.name === 'Гриффон') {
             const costs = {
+                uncommon: [{n:'Griffin Feather',c:4},{n:'Золото',c:8},{n:'Булыжник',c:4}],
                 rare: [{n:'Griffin Feather',c:8},{n:'Золото',c:16},{n:'Булыжник',c:8}],
                 epic: [{n:'Griffin Feather',c:8},{n:'Ancient Claw',c:32},{n:'Золото',c:48}],
-                legendary: [{n:'Griffin Feather',c:16},{n:'Ancient Claw',c:64},{n:'Золото',c:128}],
-                mythic: [{n:'Griffin Feather',c:64},{n:'Ancient Claw',c:128},{n:'Золото',c:256}]
+                legendary: [{n:'Griffin Feather',c:16},{n:'Ancient Claw',c:64},{n:'Золото',c:128}]
             };
             const step = { common:'uncommon', uncommon:'rare', rare:'epic', epic:'legendary' }[pet.rarity];
             const req = costs[step] || costs[nextRarity];
@@ -2154,9 +2158,9 @@ addPetXp(pet, amount) {
                 const hasChallenger = this.state.inventory.some(i => i.name === 'Challenger Armor' && i.type === 'armor');
                 const hasMythos = this.state.inventory.some(i => i.name === 'Mythos Armor' && i.type === 'armor');
                 if (!hasChallenger && !hasMythos) {
-                    l.innerHTML += `<div class="card" style="border-left:3px solid #aa00aa;"><b>Challenger Armor</b> ${getRarityTag('epic')}<br><small>+60 HP +32.5 DEF +15 STR, x2 в Diana.</small><div class="item-actions"><button class="act-btn" onclick="game.buyOrUpgradeDianaArmor()">КУПИТЬ (256 Ancient Claw + 16 Griffin Feather + 160 Золота)</button></div></div>`;
+                    l.innerHTML += `<div class="card" style="border-left:3px solid #aa00aa;"><b>Challenger Armor</b> ${getRarityTag('epic')}<br><small>+60 HP +32.5 DEF +15 STR, x2 в Diana.</small><div class="item-actions"><button class="act-btn" onclick="game.buyOrUpgradeDianaArmor()">КУПИТЬ (256 Ancient Claw + 16 Griffin Feather + 160 Золото)</button></div></div>`;
                 } else if (hasChallenger && !hasMythos) {
-                    l.innerHTML += `<div class="card" style="border-left:3px solid #ffaa00;"><b>Mythos Armor</b> ${getRarityTag('legendary')}<br><small>+120 HP +65 DEF +30 STR, x2 в Diana, +20% урон/деф против мобов Дианы, +40 MF в Diana.</small><div class="item-actions"><button class="act-btn" onclick="game.buyOrUpgradeDianaArmor()">УЛУЧШИТЬ (16 Mythos Fragment + 768 Ancient Claw + 512 Золота + 64 Griffin Feather)</button></div></div>`;
+                    l.innerHTML += `<div class="card" style="border-left:3px solid #ffaa00;"><b>Mythos Armor</b> ${getRarityTag('legendary')}<br><small>+120 HP +65 DEF +30 STR, x2 в Diana, +20% урон/деф против мобов Дианы, +40 MF в Diana.</small><div class="item-actions"><button class="act-btn" onclick="game.buyOrUpgradeDianaArmor()">УЛУЧШИТЬ (16 Mythos Fragment + 768 Ancient Claw + 512 Золото + 64 Griffin Feather)</button></div></div>`;
                 }
             }
             return;
@@ -2225,12 +2229,24 @@ addPetXp(pet, amount) {
     },
 
     _hasMaterial(name, count) {
-        const it = this.state.inventory.find(i => i.type === 'material' && i.name === name);
+        const normalize = (v) => {
+            const s = String(v || '').trim().toLowerCase().replace(/ё/g, 'е');
+            if (s.startsWith('золот')) return 'gold';
+            return s;
+        };
+        const target = normalize(name);
+        const it = this.state.inventory.find(i => i.type === 'material' && normalize(i.name) === target);
         return (it?.count || 0) >= count;
     },
 
     _consumeMaterial(name, count) {
-        const it = this.state.inventory.find(i => i.type === 'material' && i.name === name);
+        const normalize = (v) => {
+            const s = String(v || '').trim().toLowerCase().replace(/ё/g, 'е');
+            if (s.startsWith('золот')) return 'gold';
+            return s;
+        };
+        const target = normalize(name);
+        const it = this.state.inventory.find(i => i.type === 'material' && normalize(i.name) === target);
         if (!it || (it.count || 0) < count) return false;
         it.count -= count;
         if (it.count <= 0) this.state.inventory = this.state.inventory.filter(x => x.id !== it.id);
@@ -2258,7 +2274,7 @@ addPetXp(pet, amount) {
         if (myth) { this.msg('Mythos Armor уже есть.'); return; }
         if (!chall) {
             if (!this._hasMaterial('Ancient Claw', 256) || !this._hasMaterial('Griffin Feather', 16) || !this._hasMaterial('Золото', 160)) {
-                this.msg('Нужно: 256 Ancient Claw, 16 Griffin Feather, 160 Золота.');
+                this.msg('Нужно: 256 Ancient Claw, 16 Griffin Feather, 160 Золото.');
                 return;
             }
             this._consumeMaterial('Ancient Claw', 256); this._consumeMaterial('Griffin Feather', 16); this._consumeMaterial('Золото', 160);
@@ -2266,7 +2282,7 @@ addPetXp(pet, amount) {
             this.msg('Challenger Armor куплена!');
         } else {
             if (!this._hasMaterial('Mythos Fragment', 16) || !this._hasMaterial('Ancient Claw', 768) || !this._hasMaterial('Золото', 512) || !this._hasMaterial('Griffin Feather', 64)) {
-                this.msg('Нужно: 16 Mythos Fragment, 768 Ancient Claw, 512 Золота, 64 Griffin Feather.');
+                this.msg('Нужно: 16 Mythos Fragment, 768 Ancient Claw, 512 Золото, 64 Griffin Feather.');
                 return;
             }
             this._consumeMaterial('Mythos Fragment', 16); this._consumeMaterial('Ancient Claw', 768); this._consumeMaterial('Золото', 512); this._consumeMaterial('Griffin Feather', 64);
@@ -2298,7 +2314,7 @@ addPetXp(pet, amount) {
             this.msg('Лопата улучшена до Archaic Spade!');
         } else if (spade.name === 'Archaic Spade') {
             if (!this._hasMaterial('Ancient Claw', 1024) || !this._hasMaterial('Griffin Feather', 128) || !this._hasMaterial('Золото', 512) || !this._hasMaterial('Mythos Fragment', 64)) {
-                this.msg('Нужно: 1024 Ancient Claw, 128 Griffin Feather, 512 Золота, 64 Mythos Fragment.');
+                this.msg('Нужно: 1024 Ancient Claw, 128 Griffin Feather, 512 Золото, 64 Mythos Fragment.');
                 return;
             }
             this._consumeMaterial('Ancient Claw', 1024); this._consumeMaterial('Griffin Feather', 128); this._consumeMaterial('Золото', 512); this._consumeMaterial('Mythos Fragment', 64);
