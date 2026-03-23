@@ -43,11 +43,11 @@ game.loadTop = async function(type = 'rich') {
             })).sort((a, b) => b.value - a.value).slice(0, TOP_LIMIT);
         }
     } else if (type === 'slayer') {
-        const { data: rawData, error: rawError } = await supabaseClient.from('players').select('skills, username');
+        const { data: rawData, error: rawError } = await supabaseClient.from('players').select('slayer, username');
         error = rawError;
         if (!error && rawData) {
             data = rawData.map(row => {
-                const sl = row.skills?.slayer || {};
+                const sl = row.slayer || {};
                 return {
                     nick: getTgNick(row),
                     zombie: sl.zombie?.lvl || 0,
@@ -74,22 +74,23 @@ game.loadTop = async function(type = 'rich') {
     let label = type === 'rich' ? '💰' : type === 'dungeons' ? '💀 LVL' : '🌟 LVL';
 
     if (type === 'slayer') {
-        html += `<div class="card" style="display:grid;grid-template-columns:56px 1.4fr 1fr 1fr 1fr;gap:8px;align-items:center;font-weight:bold;color:var(--accent);">
+        const slayerGrid = 'display:grid;grid-template-columns:44px 1fr 60px 60px 60px;gap:4px;align-items:center;';
+        html += `<div class="card" style="${slayerGrid}font-weight:bold;color:var(--accent);">
             <span>#</span>
             <span>Ник</span>
-            <span>Zombie</span>
-            <span>Spider</span>
-            <span>Wolf</span>
+            <span style="text-align:center">🧟</span>
+            <span style="text-align:center">🕷️</span>
+            <span style="text-align:center">🐺</span>
         </div>`;
         data.forEach((player, index) => {
             const place = index + 1;
             const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `${place}.`;
-            html += `<div class="card" style="display:grid;grid-template-columns:56px 1.4fr 1fr 1fr 1fr;gap:8px;align-items:center;">
-                <span>${medal}</span>
-                <span>${player.nick}</span>
-                <span style="color:var(--accent)">${player.zombie}</span>
-                <span style="color:var(--accent)">${player.spider}</span>
-                <span style="color:var(--accent)">${player.wolf}</span>
+            html += `<div class="card" style="${slayerGrid}">
+                <span style="white-space:nowrap">${medal}</span>
+                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${player.nick}</span>
+                <span style="color:var(--accent);text-align:center;font-weight:bold">${player.zombie}</span>
+                <span style="color:var(--accent);text-align:center;font-weight:bold">${player.spider}</span>
+                <span style="color:var(--accent);text-align:center;font-weight:bold">${player.wolf}</span>
             </div>`;
         });
         listEl.innerHTML = html;
