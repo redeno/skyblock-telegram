@@ -52,7 +52,9 @@ Object.assign(game, {
     },
 
     addPetXp(pet, xp) {
-        pet.xp += xp;
+        const mb = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
+        const petXpMul = 1 + (mb.pet_xp_bonus || 0) / 100;
+        pet.xp += xp * petXpMul;
         while(pet.xp >= pet.next){
             pet.lvl++;
             pet.xp -= pet.next;

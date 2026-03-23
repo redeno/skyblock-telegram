@@ -143,6 +143,11 @@ Object.assign(game, {
         if (name === 'Ядовитая стрела') return 4000;
         if (name === 'Пробивающая стрела') return 6000;
         if (name === 'Тяжёлая пробивающая стрела') return 10000;
+        if (name === 'Griffin Feather') return 15000;
+        if (name === 'Ancient Claw') return 60000;
+        if (name === 'Daedalus Stick') return 5000000;
+        if (name === 'Chimera Enchantment') return 50000000;
+        if (name === 'Mythos Fragment') return 40000;
         return prices[name] || 2;
     },
 

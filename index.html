@@ -48,6 +48,7 @@
                 <div class="portal-node" onclick="game.openBankMenu()">🏦 БАНК</div>
                 <div class="portal-node" onclick="game.openCasinoMenu()">🎰 КАЗИНО</div>
                 <div id="portal-node-dark-auction" class="portal-node" style="display:none;" onclick="game.openDarkAuctionMenu()">🎩 DARK AUCTION</div>
+                <div id="portal-node-ritual" class="portal-node" style="display:none;" onclick="game.openRitualMenu()">🦅 РИТУАЛ</div>
                 <div id="portal-node-duel" class="portal-node" onclick="game.openDuelMenu()">⚔️ ДУЭЛИ</div>
                 <div class="portal-node" onclick="game.openMayorMenu()">🗳️ МЭР</div>
                 <div class="portal-node" onclick="game.showBlacksmith()">🔨 КУЗНЕЦ</div>
@@ -128,6 +129,11 @@
             <button class="top-btn" onclick="game.switchTab('duel-menu')">← НАЗАД</button>
             <h3 style="text-align:center;">ДУЭЛЬ</h3>
             <div id="duel-battle-content" class="card"></div>
+        </div>
+        <div id="ritual-menu" class="screen">
+            <button class="top-btn" onclick="game.switchTab('portal')">← НАЗАД</button>
+            <h3 style="text-align:center;margin-top:0;">🦅 РИТУАЛ ДИАНЫ</h3>
+            <div id="ritual-content"></div>
         </div>
 
         <div id="chest-spin-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.3s;">
@@ -344,6 +350,7 @@
     <script src="casino.js"></script>
     <script src="darkAuction.js"></script>
     <script src="duel.js"></script>
+    <script src="ritual.js"></script>
     <script src="InfoBook.js"></script>
     <script src="news.js"></script>
     <script src="inventory.js"></script>

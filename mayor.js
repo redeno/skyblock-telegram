@@ -1,6 +1,16 @@
 // mayor.js — ГЛОБАЛЬНАЯ система мэров через Supabase (4 часа ротация)
 
 const MAYORS = {
+    diana: {
+        id: 'diana',
+        name: 'Diana',
+        icon: '🦅',
+        color: '#fbbf24',
+        desc: ['🌍 +35% Pet XP', '🌍 +20 MF', '🌍 Открывает Ритуал (Mythological)'],
+        getBonuses() {
+            return { pet_xp_bonus: 35, mf_bonus: 20, diana_event: true };
+        }
+    },
     dodoll: {
         id: 'dodoll',
         name: 'DoDoll',
@@ -102,6 +112,17 @@ Object.assign(game, {
 
             if (data) {
                 this.globalMayor = data;
+
+                // Проверяем что все мэры есть в ротации (вдруг добавили нового мэра)
+                const expectedIds = Object.keys(MAYORS);
+                const storedRotation = data.rotation_order || [];
+                const missing = expectedIds.filter(id => !storedRotation.includes(id));
+                if (missing.length > 0) {
+                    console.log('Ротация не включает:', missing, '-- обновляю...');
+                    await this.fixMayorRotation(expectedIds);
+                    return;
+                }
+
                 this.checkGlobalMayorRotation();
                 this.globalMayorLastSync = Date.now();
                 console.log('🌍 Глобальный мэр:', data.current_mayor);
@@ -123,7 +144,7 @@ Object.assign(game, {
                 .insert([{
                     event_type: 'mayor',
                     current_mayor: 'dodoll',
-                    rotation_order: ['dodoll', 'waifu625', 'necronchik'],
+                    rotation_order: ['dodoll', 'diana', 'waifu625', 'necronchik'],
                     last_switch: new Date().toISOString()
                 }]);
 
@@ -133,6 +154,24 @@ Object.assign(game, {
             }
         } catch (error) {
             console.error('createFirstGlobalMayor:', error);
+        }
+    },
+
+    // Обновляем rotation_order в Supabase если там не хватает мэров
+    async fixMayorRotation(newRotation) {
+        try {
+            const { error } = await supabaseClient
+                .from('global_events')
+                .update({ rotation_order: newRotation })
+                .eq('event_type', 'mayor');
+            if (!error) {
+                console.log('Ротация мэров обновлена:', newRotation);
+                await this.syncGlobalMayor();
+            } else {
+                console.error('fixMayorRotation error:', error);
+            }
+        } catch (err) {
+            console.error('fixMayorRotation:', err);
         }
     },
 
@@ -148,7 +187,7 @@ Object.assign(game, {
     async rotateGlobalMayor() {
         if (!this.globalMayor) return;
 
-        const rotation = this.globalMayor.rotation_order || ['dodoll', 'waifu625', 'necronchik'];
+        const rotation = this.globalMayor.rotation_order || ['dodoll', 'diana', 'waifu625', 'necronchik'];
         const currentIdx = rotation.indexOf(this.globalMayor.current_mayor);
         const newMayor = rotation[(currentIdx + 1) % rotation.length];
 
@@ -237,6 +276,7 @@ Object.assign(game, {
         if (bonuses.craft_xp_bonus) bonusText.push(`+${bonuses.craft_xp_bonus}% ремесло`);
         if (bonuses.auto_collect_minions) bonusText.push('авто-сбор');
         if (bonuses.dungeon_xp_bonus) bonusText.push(`+${bonuses.dungeon_xp_bonus}% данж XP`);
+        if (bonuses.pet_xp_bonus) bonusText.push(`+${bonuses.pet_xp_bonus}% Pet XP`);
         if (bonuses.mf_bonus) bonusText.push(`+${bonuses.mf_bonus} удача`);
         if (bonuses.shop_discount) bonusText.push(`-${bonuses.shop_discount}% магазин`);
 
@@ -308,6 +348,11 @@ Object.assign(game, {
         if (!content || !this.globalMayor) return;
 
         const current = this.getCurrentMayor();
+        const rotation = this.globalMayor.rotation_order || ['dodoll', 'diana', 'waifu625', 'necronchik'];
+        const currentIdx = rotation.indexOf(this.globalMayor.current_mayor);
+        const nextId = rotation[(currentIdx + 1) % rotation.length] || rotation[0];
+        const nextMayor = MAYORS[nextId] || MAYORS.dodoll;
+        const others = rotation.filter(id => id !== this.globalMayor.current_mayor).map(id => MAYORS[id]).filter(Boolean);
         const timeLeft = this.getMayorTimeLeft();
         const hours = Math.floor(timeLeft / 3600000);
         const mins = Math.floor((timeLeft % 3600000) / 60000);
@@ -327,6 +372,16 @@ Object.assign(game, {
                 <ul style="margin:8px 0 0 0; padding-left:20px; list-style:none;">
                     ${current.desc.map(line => `<li style="margin-bottom:4px; color:var(--green); font-size:0.9rem;">${line}</li>`).join('')}
                 </ul>
+            </div>
+            <div class="card" style="margin-top:12px;">
+                <b>Следующий мэр:</b> <span style="color:${nextMayor.color}">${nextMayor.icon} ${nextMayor.name}</span>
+            </div>
+            <div class="card" style="margin-top:10px;">
+                <b>Остальные мэры и баффы:</b>
+                ${others.map(m => `<div style="margin-top:8px;border-left:3px solid ${m.color};padding-left:8px;">
+                    <b style="color:${m.color}">${m.icon} ${m.name}</b>
+                    <div style="font-size:0.85rem;color:var(--green);">${(m.desc || []).join(' | ')}</div>
+                </div>`).join('')}
             </div>
             ${current.id === 'dodoll' ? this.renderMayorPetUI() : ''}
             <div style="margin-top:15px; padding:10px; background:rgba(0,255,0,0.1); border-radius:8px; text-align:center;">

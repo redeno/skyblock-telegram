@@ -9,13 +9,13 @@ const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const defaultState = {
-    coins: 99999990,
+    coins: 999999990,
     emeralds: 0,
     nextItemId: 10,
     mayor: {
         current: 'dodoll',
         lastSwitch: Date.now(),
-        rotation: ['dodoll', 'waifu625', 'necronchik']
+        rotation: ['dodoll', 'diana', 'waifu625', 'necronchik']
     },
     globalMayor: null,
     skills: {
@@ -248,7 +248,9 @@ const shopItems = {
         {name:'🌲 Древесная броня',type:'armor',foraging_fortune:200,foraging_exp_bonus:10,str:20,def:10,cost:5000000,rarity:'epic',desc:'Редкая древесная броня. +200 фортуны, +10% опыта леса, +20 силы, +10 защиты.'},
         {name:'🌲 Броня Друида',type:'armor',foraging_fortune:300,foraging_exp_bonus:15,str:30,def:20,hp:30,cost:50000000,rarity:'legendary',desc:'Легендарная броня Друида. +300 фортуны, +15% опыта леса, +30 силы, +20 защиты, +30 ХП.'}
     ],
-    tool: [],
+    tool: [
+        {name:'Ancestral Spade',type:'tool',sub_type:'spade',cost:10000,rarity:'rare',desc:'Нужен для Ритуала Дианы. 4 лунки.'}
+    ],
     mining_tool: [
         {name:'Деревянная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:10,cost:500,rarity:'common'},
         {name:'Каменная кирка',type:'tool',sub_type:'pickaxe',mining_fortune:30,cost:2500,rarity:'common'},
@@ -310,7 +312,12 @@ const shopItems = {
         {name:'Стрела',type:'material',cost:1000,rarity:'common',desc:'Нужна для стрельбы из лука. Данжи и Алтарь.'},
         {name:'Ядовитая стрела',type:'material',cost:20000,rarity:'uncommon',desc:'+8% урона выстрелом. Приоритет настраивается в инвентаре.'},
         {name:'Пробивающая стрела',type:'material',cost:30000,rarity:'rare',desc:'Игнорирует 5% брони врага (бонус к урону по данжу).'},
-        {name:'Тяжёлая пробивающая стрела',type:'material',cost:50000,rarity:'epic',desc:'Игнорирует 15% брони врага (бонус к урону по данжу).'}
+        {name:'Тяжёлая пробивающая стрела',type:'material',cost:50000,rarity:'epic',desc:'Игнорирует 15% брони врага (бонус к урону по данжу).'},
+        {name:'Griffin Feather',type:'material',cost:0,rarity:'uncommon',desc:'Материал ритуала Дианы.'},
+        {name:'Ancient Claw',type:'material',cost:0,rarity:'rare',desc:'Дроп с мобов ритуала.'},
+        {name:'Daedalus Stick',type:'material',cost:0,rarity:'epic',desc:'Редкий дроп ритуала.'},
+        {name:'Chimera Enchantment',type:'material',cost:0,rarity:'legendary',desc:'Очень редкий дроп Minos Inquisitor.'},
+        {name:'Mythos Fragment',type:'material',cost:0,rarity:'rare',desc:'Ресурс ритуала Дианы.'}
     ],
     potion: [
         {name:'Зелье Силы',type:'potion',cost:500000,desc:'+30 силы на 5 минут'},
@@ -318,6 +325,7 @@ const shopItems = {
         {name:'Зелье Удачи',type:'potion',cost:250000,desc:'+30 фортуны на 5 минут'}
     ],
     pet: [
+        {name:'Гриффон',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'combat',base_bonus:0.1,cost:50000,desc:'Нужен для Ритуала Дианы.'},
         {name:'Чешуйница',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'mining',base_bonus:0.1,cost:5000},
         {name:'Кролик',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'farming',base_bonus:0.1,cost:5000},
         {name:'Сквид',type:'pet',rarity:'common',lvl:1,xp:0,next:100,skill:'fishing',base_bonus:0.1,cost:5000},
@@ -953,6 +961,7 @@ const game = {
         window.TG_IS_ADMIN = !!(this.playerTelegramId && window.ADMIN_TELEGRAM_IDS.includes(Number(this.playerTelegramId)));
         if (typeof DarkAuction !== 'undefined' && typeof DarkAuction.init === 'function') await DarkAuction.init();
         if (typeof Duel !== 'undefined' && typeof Duel.init === 'function') await Duel.init();
+        if (typeof Ritual !== 'undefined' && typeof Ritual.init === 'function') await Ritual.init();
         setInterval(() => this.minionTick(), 1000);
         setInterval(() => this.saveToSupabase(), 10000);
         tg.expand?.();
@@ -984,7 +993,9 @@ const game = {
     },
 
     calcStats(inDungeon = false) {
-        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0, vitality: this.state.stats.vitality || 0, boss_damage: 0, bow_str: 0, bow_fire: 0, arrow_save: 0, bow_cc: 0, bow_weapon_base: 0, bow_weapon_cc: 0, bow_weapon_cd: 0};
+        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0, vitality: this.state.stats.vitality || 0, boss_damage: 0, bow_str: 0, bow_fire: 0, arrow_save: 0, bow_cc: 0, bow_weapon_base: 0, bow_weapon_cc: 0, bow_weapon_cd: 0, ritual_mob_damage: 0, ritual_mob_def_bonus: 0};
+        const mayorBonuses = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
+        const isDianaEvent = !!mayorBonuses.diana_event;
         this.state.inventory.forEach(i => {
             if (i.equipped) {
                 const isBow = i.type === 'weapon' && i.ranged;
@@ -992,8 +1003,13 @@ const game = {
                  'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
                  'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus', 'hp', 'dungeon_exp_bonus', 'vitality'].forEach(st => {
                     if (isBow && st === 'str') return;
-                    if (i[st]) s[st] += i[st];
+                    let addVal = i[st] || 0;
+                    if (addVal && isDianaEvent && i.diana_scaled) addVal *= 2;
+                    if (addVal) s[st] += addVal;
                 });
+                if (isDianaEvent && i.diana_mf_bonus) s.mf += i.diana_mf_bonus;
+                if (i.ritual_mob_damage) s.ritual_mob_damage += i.ritual_mob_damage;
+                if (i.ritual_mob_def_bonus) s.ritual_mob_def_bonus += i.ritual_mob_def_bonus;
                 if (isBow) {
                     let bbs = i.bow_base_str;
                     if (bbs == null && i.str != null) bbs = i.str;
@@ -1174,6 +1190,22 @@ const game = {
             s.str += Math.floor(strB);
             s.def += Math.floor(defB);
         }
+        const griffon = this.state.pets.find(p => p.equipped && p.name === 'Гриффон');
+        if (griffon) {
+            const byR = {
+                common: { str: 10, mf: 5, cd: 5 },
+                uncommon: { str: 20, mf: 10, cd: 7.5 },
+                rare: { str: 30, mf: 15, cd: 10 },
+                epic: { str: 40, mf: 20, cd: 12.5 },
+                legendary: { str: 50, mf: 25, cd: 15 }
+            };
+            const g = byR[griffon.rarity] || byR.common;
+            s.str += g.str;
+            s.cd += g.cd;
+            let gMf = g.mf;
+            if (isDianaEvent && griffon.rarity === 'legendary') gMf *= 2;
+            s.mf += gMf;
+        }
 
         s.def += 2 * (this.state.skills.mining.lvl - 1);
         s.hp += 2 * (this.state.skills.farming.lvl - 1);
@@ -1348,6 +1380,7 @@ const game = {
         document.getElementById('class-select').value = this.state.class;
         if (typeof DarkAuction !== 'undefined' && DarkAuction.updatePortalVisibility) DarkAuction.updatePortalVisibility();
         if (typeof Duel !== 'undefined' && Duel.updatePortalVisibility) Duel.updatePortalVisibility();
+        if (typeof Ritual !== 'undefined' && Ritual.updatePortalVisibility) Ritual.updatePortalVisibility();
         this.saveToSupabase();
     },
 
@@ -1455,6 +1488,10 @@ const game = {
 
     toggleEquipPet(idx) {
         const pet = this.state.pets[idx];
+        if (this.ritualState?.active && this.ritualState?.lockedPetName && pet.name !== this.ritualState.lockedPetName) {
+            this.msg(`Во время ритуала нельзя сменить питомца (${this.ritualState.lockedPetName}).`);
+            return;
+        }
         if (pet.equipped) {
             pet.equipped = false;
         } else {
@@ -1471,6 +1508,27 @@ const game = {
         const pet = this.state.pets[idx];
         const nextRarity = {common:'rare', rare:'epic', epic:'legendary'}[pet.rarity];
         if (!nextRarity) { this.msg('Уже максимальная редкость!'); return; }
+        if (pet.name === 'Гриффон') {
+            const costs = {
+                rare: [{n:'Griffin Feather',c:8},{n:'Золото',c:16},{n:'Булыжник',c:8}],
+                epic: [{n:'Griffin Feather',c:8},{n:'Ancient Claw',c:32},{n:'Золото',c:48}],
+                legendary: [{n:'Griffin Feather',c:16},{n:'Ancient Claw',c:64},{n:'Золото',c:128}],
+                mythic: [{n:'Griffin Feather',c:64},{n:'Ancient Claw',c:128},{n:'Золото',c:256}]
+            };
+            const step = { common:'uncommon', uncommon:'rare', rare:'epic', epic:'legendary' }[pet.rarity];
+            const req = costs[step] || costs[nextRarity];
+            if (!req) { this.msg('Уже максимальная редкость!'); return; }
+            const missing = req.filter(x => !this._hasMaterial(x.n, x.c));
+            if (missing.length) {
+                this.msg(`Не хватает: ${missing.map(x => `${x.c} ${x.n}`).join(', ')}`);
+                return;
+            }
+            req.forEach(x => this._consumeMaterial(x.n, x.c));
+            pet.rarity = step;
+            this.msg(`Гриффон улучшен до ${step.toUpperCase()}!`);
+            this.updateUI();
+            return;
+        }
         const petOverrides = {
             'Гуль': { rare: {coins:0, resources:64, resName:'Плоть зомби'}, epic: {coins:500000, resources:256, resName:'Плоть зомби'}, legendary: {coins:10000000, resources:4, resName:'Живая плоть', upgradeItem:1} },
             'Зомби': { rare: {coins:0, resources:64, resName:'Плоть зомби'}, epic: {coins:250000, resources:128, resName:'Плоть зомби'}, legendary: {coins:5000000, resources:2, resName:'Живая плоть', upgradeItem:1} }
@@ -1608,7 +1666,9 @@ const game = {
         this.updateUI();
     },
 addPetXp(pet, amount) {
-    pet.xp += amount;
+    const mb = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
+    const petXpMul = 1 + (mb.pet_xp_bonus || 0) / 100;
+    pet.xp += amount * petXpMul;
     while (pet.xp >= pet.next && pet.lvl < 100) {
         pet.xp -= pet.next;
         pet.lvl++;
@@ -2058,6 +2118,12 @@ addPetXp(pet, amount) {
             extraWeapons.forEach(i => {
                 l.innerHTML += `<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('weapon',${shopItems.weapon.indexOf(i)})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
             });
+            const hasSpade = this.state.inventory.some(i => i.type === 'tool' && i.sub_type === 'spade');
+            const spade = this.state.inventory.find(i => i.type === 'tool' && i.sub_type === 'spade');
+            const spadeName = spade?.name || 'Ancestral Spade';
+            l.innerHTML += `<div class="card" style="border-left:3px solid #fbbf24"><b>Ритуальные лопаты</b><br><small>${hasSpade ? `Текущая: ${spadeName}` : 'Ancestral Spade открывает ритуал (4 лунки).'}</small><div class="item-actions"><button class="act-btn" onclick="game.upgradeSpadeInShop()">${hasSpade ? 'УЛУЧШИТЬ ЛОПАТУ' : 'КУПИТЬ ANCESTRAL SPADE (10,000💰)'}</button></div></div>`;
+            const hasDaedalusSword = this.state.inventory.some(i => i.name === 'Daedalus Sword' && i.type === 'weapon');
+            l.innerHTML += `<div class="card" style="border-left:3px solid #ffaa00;${hasDaedalusSword ? 'opacity:0.6;' : ''}"><b>Daedalus Sword</b> ${getRarityTag('legendary')}<br><small>+75 STR +30 MF +25 CC +50 CD. В Diana ивенте x2 статы и x2 рефорж.</small>${hasDaedalusSword ? `<div style="margin-top:6px;color:var(--green);font-weight:bold;">УЖЕ КУПЛЕНО</div>` : `<div class="item-actions"><button class="act-btn" onclick="game.buyDaedalusSword()">КУПИТЬ (50M + 1 Daedalus Stick + 16 Mythos Fragment)</button></div>`}</div>`;
 
             this._renderZombieItems('zombie_weapon', l);
             return;
@@ -2084,6 +2150,15 @@ addPetXp(pet, amount) {
                 l.innerHTML += html;
             });
             if (t === 'armor') this._renderZombieItems('zombie_armor', l);
+            if (t === 'armor') {
+                const hasChallenger = this.state.inventory.some(i => i.name === 'Challenger Armor' && i.type === 'armor');
+                const hasMythos = this.state.inventory.some(i => i.name === 'Mythos Armor' && i.type === 'armor');
+                if (!hasChallenger && !hasMythos) {
+                    l.innerHTML += `<div class="card" style="border-left:3px solid #aa00aa;"><b>Challenger Armor</b> ${getRarityTag('epic')}<br><small>+60 HP +32.5 DEF +15 STR, x2 в Diana.</small><div class="item-actions"><button class="act-btn" onclick="game.buyOrUpgradeDianaArmor()">КУПИТЬ (256 Ancient Claw + 16 Griffin Feather + 160 Золота)</button></div></div>`;
+                } else if (hasChallenger && !hasMythos) {
+                    l.innerHTML += `<div class="card" style="border-left:3px solid #ffaa00;"><b>Mythos Armor</b> ${getRarityTag('legendary')}<br><small>+120 HP +65 DEF +30 STR, x2 в Diana, +20% урон/деф против мобов Дианы, +40 MF в Diana.</small><div class="item-actions"><button class="act-btn" onclick="game.buyOrUpgradeDianaArmor()">УЛУЧШИТЬ (16 Mythos Fragment + 768 Ancient Claw + 512 Золота + 64 Griffin Feather)</button></div></div>`;
+                }
+            }
             return;
         }
 
@@ -2146,6 +2221,92 @@ addPetXp(pet, amount) {
         if (i.desc) opts.desc = i.desc;
         this.addMaterial(i.name, i.type, qty, opts);
         this.msg(`Куплено ${qty}× ${i.name} за ${total.toLocaleString()} 💰`);
+        this.updateUI();
+    },
+
+    _hasMaterial(name, count) {
+        const it = this.state.inventory.find(i => i.type === 'material' && i.name === name);
+        return (it?.count || 0) >= count;
+    },
+
+    _consumeMaterial(name, count) {
+        const it = this.state.inventory.find(i => i.type === 'material' && i.name === name);
+        if (!it || (it.count || 0) < count) return false;
+        it.count -= count;
+        if (it.count <= 0) this.state.inventory = this.state.inventory.filter(x => x.id !== it.id);
+        return true;
+    },
+
+    buyDaedalusSword() {
+        if (this.state.inventory.some(i => i.name === 'Daedalus Sword' && i.type === 'weapon')) { this.msg('Уже куплено.'); return; }
+        if (this.state.coins < 50000000) { this.msg('Нужно 50,000,000 монет.'); return; }
+        if (!this._hasMaterial('Daedalus Stick', 1) || !this._hasMaterial('Mythos Fragment', 16)) {
+            this.msg('Нужно: 1 Daedalus Stick и 16 Mythos Fragment.');
+            return;
+        }
+        this.state.coins -= 50000000;
+        this._consumeMaterial('Daedalus Stick', 1);
+        this._consumeMaterial('Mythos Fragment', 16);
+        this.state.inventory.push({ id: this.state.nextItemId++, name:'Daedalus Sword', type:'weapon', str:75, mf:30, cc:25, cd:50, rarity:'legendary', diana_scaled:true, equipped:false, count:1 });
+        this.msg('Daedalus Sword куплен!');
+        this.updateUI();
+    },
+
+    buyOrUpgradeDianaArmor() {
+        const chall = this.state.inventory.find(i => i.name === 'Challenger Armor' && i.type === 'armor');
+        const myth = this.state.inventory.find(i => i.name === 'Mythos Armor' && i.type === 'armor');
+        if (myth) { this.msg('Mythos Armor уже есть.'); return; }
+        if (!chall) {
+            if (!this._hasMaterial('Ancient Claw', 256) || !this._hasMaterial('Griffin Feather', 16) || !this._hasMaterial('Золото', 160)) {
+                this.msg('Нужно: 256 Ancient Claw, 16 Griffin Feather, 160 Золота.');
+                return;
+            }
+            this._consumeMaterial('Ancient Claw', 256); this._consumeMaterial('Griffin Feather', 16); this._consumeMaterial('Золото', 160);
+            this.state.inventory.push({ id:this.state.nextItemId++, name:'Challenger Armor', type:'armor', hp:60, def:32.5, str:15, rarity:'epic', diana_scaled:true, equipped:false, count:1 });
+            this.msg('Challenger Armor куплена!');
+        } else {
+            if (!this._hasMaterial('Mythos Fragment', 16) || !this._hasMaterial('Ancient Claw', 768) || !this._hasMaterial('Золото', 512) || !this._hasMaterial('Griffin Feather', 64)) {
+                this.msg('Нужно: 16 Mythos Fragment, 768 Ancient Claw, 512 Золота, 64 Griffin Feather.');
+                return;
+            }
+            this._consumeMaterial('Mythos Fragment', 16); this._consumeMaterial('Ancient Claw', 768); this._consumeMaterial('Золото', 512); this._consumeMaterial('Griffin Feather', 64);
+            chall.name = 'Mythos Armor';
+            chall.hp = 120; chall.def = 65; chall.str = 30; chall.rarity = 'legendary';
+            chall.diana_scaled = true; chall.ritual_mob_damage = 20; chall.ritual_mob_def_bonus = 20; chall.diana_mf_bonus = 40;
+            this.msg('Challenger Armor улучшена до Mythos Armor!');
+        }
+        this.updateUI();
+    },
+
+    upgradeSpadeInShop() {
+        const spade = this.state.inventory.find(i => i.type === 'tool' && i.sub_type === 'spade');
+        if (!spade) {
+            if (this.state.coins < 10000) { this.msg('Нужно 10,000 монет.'); return; }
+            this.state.coins -= 10000;
+            this.state.inventory.push({ id:this.state.nextItemId++, name:'Ancestral Spade', type:'tool', sub_type:'spade', rarity:'rare', equipped:false, count:1, ritual_holes:4 });
+            this.msg('Ancestral Spade куплена!');
+            this.updateUI();
+            return;
+        }
+        if (spade.name === 'Ancestral Spade') {
+            if (!this._hasMaterial('Ancient Claw', 128) || !this._hasMaterial('Griffin Feather', 32) || !this._hasMaterial('Daedalus Stick', 1)) {
+                this.msg('Нужно: 128 Ancient Claw, 32 Griffin Feather, 1 Daedalus Stick.');
+                return;
+            }
+            this._consumeMaterial('Ancient Claw', 128); this._consumeMaterial('Griffin Feather', 32); this._consumeMaterial('Daedalus Stick', 1);
+            spade.name = 'Archaic Spade'; spade.rarity = 'epic'; spade.ritual_holes = 6;
+            this.msg('Лопата улучшена до Archaic Spade!');
+        } else if (spade.name === 'Archaic Spade') {
+            if (!this._hasMaterial('Ancient Claw', 1024) || !this._hasMaterial('Griffin Feather', 128) || !this._hasMaterial('Золото', 512) || !this._hasMaterial('Mythos Fragment', 64)) {
+                this.msg('Нужно: 1024 Ancient Claw, 128 Griffin Feather, 512 Золота, 64 Mythos Fragment.');
+                return;
+            }
+            this._consumeMaterial('Ancient Claw', 1024); this._consumeMaterial('Griffin Feather', 128); this._consumeMaterial('Золото', 512); this._consumeMaterial('Mythos Fragment', 64);
+            spade.name = 'Deific Spade'; spade.rarity = 'legendary'; spade.ritual_holes = 8;
+            this.msg('Лопата улучшена до Deific Spade!');
+        } else {
+            this.msg('Лопата уже максимального уровня.');
+        }
         this.updateUI();
     },
 
