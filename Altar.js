@@ -557,7 +557,14 @@ const Altar = {
             const inferredType = typeMap[drop.name] || 'material';
             const dropItem = drop.item ? { ...drop.item } : { name: drop.name, type: inferredType, rarity: drop.rarity };
             if (dropItem.type === 'pet') {
-                game.state.pets.push({ ...dropItem, equipped: false });
+                game.state.pets.push({
+                    ...dropItem,
+                    skill: dropItem.skill || 'combat',
+                    lvl: dropItem.lvl || 1,
+                    xp: dropItem.xp || 0,
+                    next: dropItem.next || 100,
+                    equipped: false
+                });
             } else if (dropItem.type === 'material' || dropItem.type === 'potion') {
                 const count = dropItem.count || 1;
                 game.addMaterial(dropItem.name, dropItem.type, count, dropItem);

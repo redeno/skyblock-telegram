@@ -25,12 +25,22 @@ Object.assign(game, {
         if (i.hp) d += `+${i.hp} ХП `;
         if (i.vitality) d += `+${i.vitality}% ВОССТАНОВЛЕНИЕ `;
         if (i.zombie_bonus) d += `+${i.zombie_bonus}% УРОН ПО ЗОМБИ `;
+        if (i.spider_bonus) d += `+${i.spider_bonus}% УРОН ПО ПАУКАМ `;
+        if (i.spider_spawn_xp_bonus) d += `${i.spider_spawn_xp_bonus}% ШАНС x1.5 XP ПРИЗЫВА (ПАУКИ) `;
+        if (i.spider_damage_reduction) d += `-${i.spider_damage_reduction}% УРОНА ОТ ПАУКОВ `;
+        if (i.spider_boss_bonus_proc && i.spider_boss_bonus_damage) d += `${i.spider_boss_bonus_proc}% ШАНС +${i.spider_boss_bonus_damage}% УРОНА ПО БОССУ ПАУКУ `;
         if (i.boss_damage) d += `+${i.boss_damage} УРОНА ПО БОССАМ `;
         if (i.bow_str) d += `+${i.bow_str} УРОНА (ЛУК) `;
         if (i.bow_fire) d += `+${i.bow_fire} УРОНА ОГНЁМ (ЛУК) `;
         if (i.arrow_save) d += `+${i.arrow_save}% ШАНС ЭКОНОМИИ СТРЕЛЫ `;
         if (i.bow_cc) d += `+${i.bow_cc}% ШАНС КРИТА (ЛУК) `;
         if (i.vampirism) d += `+${i.vampirism}% ВАМПИРИЗМ `;
+        if (i.shot_speed) d += `СКОРОСТЬ ЛУКА ${i.shot_speed} `;
+        if (i.bow_hp_cost_pct) d += `ТРАТА ХП ЛУКОМ ${i.bow_hp_cost_pct}% `;
+        if (i.bow_final_damage_bonus) d += `+${i.bow_final_damage_bonus}% ИТОГ. УРОНА ЛУКА `;
+        if (i.spider_armor_scaling) d += `+${i.spider_armor_scaling} КРИТ УРОНА ЗА 10 БРОНИ `;
+        if (i.primordial_vitality_boost) d += `ВИТАЛИТИ ЭФФЕКТИВНЕЕ НА ${i.primordial_vitality_boost}% `;
+        if (i.tarantula_pet_amp) d += `x${i.tarantula_pet_amp} СТАТЫ TARANTULA PET `;
         if (i.slayer_zombie_def_bonus) d += `+${i.slayer_zombie_def_bonus}% ЗАЩИТЫ В ZOMBIE SLAYER `;
         if (i.gold_bonus) d += `+${i.gold_bonus}% ЗОЛОТО `;
         if (i.double_chance) d += `+${i.double_chance}% ШАНС УДВОЕНИЯ `;
@@ -133,7 +143,14 @@ Object.assign(game, {
             'Стог Изумрудов': 1500,
             'Hot Potato Book': 50000,
             'Плоть зомби': 10,
-            'Живая плоть': 10000
+            'Живая плоть': 10000,
+            'Spider Catalyst': 10000,
+            'Tarantula Catalyst': 100000,
+            'Digested Mosquito': 30000000,
+            'Shriveled Wasp': 30000000,
+            'Bane Of Arthropods VI': 10000000,
+            'Bane Of Arthropods VII': 50000000,
+            'Toxic Enchantment': 30000000
         };
         // Цена при продаже для осколков из Алтаря
         if (name === 'Обычный осколок') return 200000;
@@ -147,6 +164,7 @@ Object.assign(game, {
         if (name === 'Ancient Claw') return 60000;
         if (name === 'Daedalus Stick') return 5000000;
         if (name === 'Chimera Enchantment') return 50000000;
+        if (name === 'Bank Enchantment') return 50000000;
         if (name === 'Mythos Fragment') return 40000;
         return prices[name] || 2;
     },
@@ -220,6 +238,15 @@ Object.assign(game, {
                 let upgradeBtn = '';
                 if (i.name === 'Zombie Ring' && !i.upgraded) {
                     upgradeBtn = `<button class="act-btn" onclick="game.upgradeZombieRing(${i.id})">УЛУЧШИТЬ (256 Плоть зомби)</button>`;
+                }
+                if (i.name === 'Spider Talisman') {
+                    upgradeBtn = `<button class="act-btn" onclick="game.upgradeSpiderTalisman(${i.id})">УЛУЧШИТЬ ДО RING</button>`;
+                }
+                if (i.name === 'Spider Ring') {
+                    upgradeBtn = `<button class="act-btn" onclick="game.upgradeSpiderRing(${i.id})">УЛУЧШИТЬ ДО ARTEFACT</button>`;
+                }
+                if (i.name === 'Tarantula Talisman') {
+                    upgradeBtn = `<button class="act-btn" onclick="game.upgradeTarantulaTalisman(${i.id})">УЛУЧШИТЬ ДО RING</button>`;
                 }
                 a = `
                     <button class="act-btn" onclick="game.toggleEquip(${i.id})">${i.equipped ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
@@ -416,6 +443,47 @@ Object.assign(game, {
         ring.vitality = (ring.vitality || 0) + 1;
         ring.cost = 100000;
         this.msg('Zombie Ring улучшен! +5 MF, +10 STR, +1% Восстановление');
+        this.updateUI();
+    },
+
+    upgradeSpiderTalisman(id) {
+        const tal = this.state.inventory.find(x => x.id === id && x.name === 'Spider Talisman');
+        if (!tal) return;
+        const slayerLvl = this.state.slayer?.spider?.lvl || 1;
+        if (slayerLvl < 2) { this.msg('Нужен Spider Slayer 2 уровня.'); return; }
+        if (!this._hasMaterial('Нить', 64)) { this.msg('Нужно 64 Нити.'); return; }
+        this._consumeMaterial('Нить', 64);
+        tal.name = 'Spider Ring';
+        tal.rarity = 'rare';
+        tal.spider_damage_reduction = 10;
+        this.msg('Spider Talisman улучшен до Spider Ring!');
+        this.updateUI();
+    },
+
+    upgradeSpiderRing(id) {
+        const ring = this.state.inventory.find(x => x.id === id && x.name === 'Spider Ring');
+        if (!ring) return;
+        const slayerLvl = this.state.slayer?.spider?.lvl || 1;
+        if (slayerLvl < 6) { this.msg('Нужен Spider Slayer 6 уровня.'); return; }
+        if (!this._hasMaterial('Нить', 512) || !this._hasMaterial('Изумруд', 512)) { this.msg('Нужно 512 Нити и 512 Изумрудов.'); return; }
+        this._consumeMaterial('Нить', 512);
+        this._consumeMaterial('Изумруд', 512);
+        ring.name = 'Spider Artefact';
+        ring.rarity = 'epic';
+        ring.spider_damage_reduction = 15;
+        this.msg('Spider Ring улучшен до Spider Artefact!');
+        this.updateUI();
+    },
+
+    upgradeTarantulaTalisman(id) {
+        const tal = this.state.inventory.find(x => x.id === id && x.name === 'Tarantula Talisman');
+        if (!tal) return;
+        tal.name = 'Tarantula Ring';
+        tal.rarity = 'legendary';
+        tal.spider_boss_bonus_proc = 10;
+        tal.spider_boss_bonus_damage = 75;
+        tal.cost = 25000000;
+        this.msg('Tarantula Talisman улучшен до Tarantula Ring!');
         this.updateUI();
     },
 

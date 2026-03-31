@@ -40,17 +40,20 @@ const enchantmentConfig = {
     bane: {
         name: 'Бич членистоногих',
         icon: '🕷️',
-        tiers: 5,
+        tiers: 7,
         targets: ['weapon'],
         stats: [
             { str: 5 },
             { str: 10 },
             { str: 15 },
             { str: 20 },
-            { str: 25 }
+            { str: 25 },
+            { str: 35 },
+            { str: 50 }
         ],
         conflict: 'damage_type',
-        desc: 'Против пауков'
+        desc: 'Против пауков',
+        bookCostItemByTier: { 6: 'Bane Of Arthropods VI', 7: 'Bane Of Arthropods VII' }
     },
     sharpness: {
         name: 'Острота',
@@ -222,17 +225,59 @@ const enchantmentConfig = {
             { mining_fortune: 50, farming_fortune: 50, foraging_fortune: 50, fishing_fortune: 50 }
         ],
         conflict: null
+    },
+    chimera: {
+        name: 'Chimera',
+        icon: '📖',
+        tiers: 5,
+        targets: ['weapon'],
+        stats: [{}, {}, {}, {}, {}],
+        conflict: 'ultimate',
+        rarity: 'ultimate',
+        color: '#ff66cc',
+        bookCostItem: 'Chimera Enchantment',
+        desc: 'Ультимативный чар: копирует часть статов питомца и оружия.'
+    },
+    bank: {
+        name: 'Bank',
+        icon: '🏦',
+        tiers: 5,
+        targets: ['armor'],
+        stats: [
+            { gold_bonus: 5 },
+            { gold_bonus: 10 },
+            { gold_bonus: 15 },
+            { gold_bonus: 20 },
+            { gold_bonus: 25 }
+        ],
+        conflict: 'ultimate',
+        rarity: 'ultimate',
+        color: '#ff66cc',
+        desc: 'Ультимативный чар: +5% к добыче золота за уровень.'
+    },
+    toxic: {
+        name: 'Toxic',
+        icon: '☣️',
+        tiers: 1,
+        targets: ['weapon'],
+        stats: [{}],
+        conflict: 'ultimate',
+        rarity: 'ultimate',
+        color: '#85ff66',
+        bookCostItem: 'Toxic Enchantment',
+        desc: 'Только для луков: 25% шанс ядовитой стрелы и запрет атаки врага.'
     }
 };
 
 window.enchantmentConfig = enchantmentConfig;
 /** Зачары только для луков (не показывать на мечах и наоборот) */
-window.BOW_ONLY_ENCHANT_KEYS = new Set(['bow_strength', 'flaming_arrow', 'arrow_saver', 'eagle_eye']);
+window.BOW_ONLY_ENCHANT_KEYS = new Set(['bow_strength', 'flaming_arrow', 'arrow_saver', 'eagle_eye', 'toxic']);
 
 const enchantCosts = [10000, 50000, 250000, 1000000, 15000000];
+const chimeraBookCosts = [1, 2, 4, 8, 16];
 const enchantXpMultipliers = [10, 15, 20, 25, 30];
-const tierRoman = ['I', 'II', 'III', 'IV', 'V'];
-const tierColors = ['#55ff55', '#5555ff', '#aa00aa', '#ffaa00', '#ff5555'];
+const tierRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+const tierColors = ['#55ff55', '#5555ff', '#aa00aa', '#ffaa00', '#ff5555', '#ff88ff', '#ffaa00'];
 
 Object.assign(game, {
     enchantSelectedItem: null,
@@ -297,6 +342,12 @@ Object.assign(game, {
         this.renderEnchanting();
     },
 
+    getEnchantBookCount(bookName) {
+        if (!bookName) return 0;
+        const stack = this.state.inventory.find(i => i.type === 'material' && i.name === bookName);
+        return stack ? (stack.count || 0) : 0;
+    },
+
     _renderEnchantWorkbench(item) {
         const enchants = item.enchantments || {};
         const itemType = item.type;
@@ -331,8 +382,8 @@ Object.assign(game, {
 
             for (let t = 1; t <= maxTier; t++) {
                 if (t <= currentTier) continue;
-                const cost = enchantCosts[t - 1];
-                const color = tierColors[t - 1];
+                const coinCost = enchantCosts[t - 1];
+                const color = ench.color || tierColors[t - 1];
                 const conflictNote = hasConflict ? ' <span style="color:var(--red);font-size:0.6rem;">⚠️ КОНФЛИКТ</span>' : '';
                 const statDesc = Object.entries(ench.stats[t - 1]).map(([st, v]) => {
                     const statNames = {str:'СИЛА',def:'БРОНЯ',cd:'КРИТ УРОН',cc:'КРИТ ШАНС',mf:'УДАЧА',hp:'ХП',vitality:'ВОССТ',
@@ -340,14 +391,29 @@ Object.assign(game, {
                         bow_str:'УРОН ЛУКА',bow_fire:'ОГОНЬ ЛУКА',arrow_save:'ЭКОН. СТРЕЛ',bow_cc:'ДВОЙНОЙ ВЫСТРЕЛ %'};
                     return `+${v} ${statNames[st] || st}`;
                 }).join(', ');
+                let payText = Number.isFinite(coinCost) ? `${coinCost.toLocaleString()}💰` : 'Книга зачарования';
+                if (ench.bookCostItem === 'Chimera Enchantment') {
+                    const alreadySpent = currentTier > 0 ? chimeraBookCosts[currentTier - 1] : 0;
+                    const needTotal = chimeraBookCosts[t - 1];
+                    const needNow = Math.max(0, needTotal - alreadySpent);
+                    const haveBooks = this.getEnchantBookCount('Chimera Enchantment');
+                    payText = `${needNow}× Chimera Enchantment (у вас ${haveBooks})`;
+                } else if (ench.bookCostItemByTier && ench.bookCostItemByTier[t]) {
+                    const bookName = ench.bookCostItemByTier[t];
+                    const haveBooks = this.getEnchantBookCount(bookName);
+                    payText = `1× ${bookName} (у вас ${haveBooks})`;
+                } else if (ench.bookCostItem) {
+                    const haveBooks = this.getEnchantBookCount(ench.bookCostItem);
+                    payText = `1× ${ench.bookCostItem} (у вас ${haveBooks})`;
+                }
                 html += `<div class="card" style="padding:6px 8px;margin-bottom:4px;border-left:3px solid ${color};cursor:pointer;" onclick="game.applyEnchant(${item.id},'${key}',${t})">`;
                 html += `<div style="display:flex;justify-content:space-between;align-items:center;">`;
                 html += `<span style="color:${color};font-size:0.75rem;font-weight:bold;">${ench.icon} ${ench.name} ${tierRoman[t - 1]}</span>`;
                 html += `</div>`;
-                html += `<small style="color:#0f0;">${statDesc}</small>`;
+                html += `<small style="color:#0f0;">${statDesc || 'Ультимативный эффект'}</small>`;
                 if (ench.desc) html += ` <small style="color:var(--gray);font-size:0.6rem;">(${ench.desc})</small>`;
                 html += conflictNote;
-                html += `<div style="text-align:right;"><small style="color:var(--accent);">${cost.toLocaleString()}💰</small></div>`;
+                html += `<div style="text-align:right;"><small style="color:var(--accent);">${payText}</small></div>`;
                 html += `</div>`;
             }
         });
@@ -385,25 +451,63 @@ Object.assign(game, {
         if (!item) return;
         const ench = enchantmentConfig[enchKey];
         if (!ench) return;
-        const cost = enchantCosts[tier - 1];
-        if (this.state.coins < cost) {
-            this.msg(`Не хватает монет! Нужно ${cost.toLocaleString()} 💰`);
-            return;
-        }
 
         if (!item.enchantments) item.enchantments = {};
+        const currentTier = item.enchantments[enchKey] || 0;
+        const coinCost = enchantCosts[tier - 1];
+        let spentBooksNow = 0;
+
+        if (ench.bookCostItem === 'Chimera Enchantment') {
+            const alreadySpent = currentTier > 0 ? chimeraBookCosts[currentTier - 1] : 0;
+            const needTotal = chimeraBookCosts[tier - 1];
+            spentBooksNow = Math.max(0, needTotal - alreadySpent);
+            const bookStack = this.state.inventory.find(i => i.type === 'material' && i.name === 'Chimera Enchantment');
+            const bookCount = bookStack ? (bookStack.count || 0) : 0;
+            if (bookCount < spentBooksNow) {
+                this.msg(`Недостаточно Chimera Enchantment! Нужно ${spentBooksNow}, у вас ${bookCount}.`);
+                return;
+            }
+            if (spentBooksNow > 0 && bookStack) {
+                bookStack.count -= spentBooksNow;
+                if (bookStack.count <= 0) {
+                    this.state.inventory = this.state.inventory.filter(i => i.id !== bookStack.id);
+                }
+            }
+        } else if (ench.bookCostItemByTier && ench.bookCostItemByTier[tier]) {
+            const bookName = ench.bookCostItemByTier[tier];
+            const bookStack = this.state.inventory.find(i => i.type === 'material' && i.name === bookName);
+            if (!bookStack || (bookStack.count || 0) < 1) {
+                this.msg(`Недостаточно ${bookName}.`);
+                return;
+            }
+            bookStack.count -= 1;
+            if (bookStack.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== bookStack.id);
+        } else if (ench.bookCostItem) {
+            const bookStack = this.state.inventory.find(i => i.type === 'material' && i.name === ench.bookCostItem);
+            if (!bookStack || (bookStack.count || 0) < 1) {
+                this.msg(`Недостаточно ${ench.bookCostItem}.`);
+                return;
+            }
+            bookStack.count -= 1;
+            if (bookStack.count <= 0) this.state.inventory = this.state.inventory.filter(i => i.id !== bookStack.id);
+        } else {
+            if (this.state.coins < coinCost) {
+                this.msg(`Не хватает монет! Нужно ${coinCost.toLocaleString()} 💰`);
+                return;
+            }
+            this.state.coins -= coinCost;
+        }
 
         if (ench.conflict) {
             Object.keys(item.enchantments).forEach(ek => {
                 const other = enchantmentConfig[ek];
                 if (other && other.conflict === ench.conflict && ek !== enchKey) {
                     delete item.enchantments[ek];
-                    this.msg(`${other.name} заменено на ${ench.name}!`);
+                    this.msg(`${other.name} снято: на предмете может быть только 1 ультимативное зачарование.`);
                 }
             });
         }
 
-        this.state.coins -= cost;
         item.enchantments[enchKey] = tier;
 
         const enchLvl = this.state.skills.enchanting?.lvl || 1;
@@ -412,7 +516,11 @@ Object.assign(game, {
             this.addXp('enchanting', xpGain);
         }
 
-        this.msg(`${ench.name} ${tierRoman[tier - 1]} наложено! +${xpGain} XP Зачарования`);
+        if (ench.bookCostItem === 'Chimera Enchantment') {
+            this.msg(`${ench.name} ${tierRoman[tier - 1]} наложено! Потрачено ${spentBooksNow} книг. +${xpGain} XP Зачарования`);
+        } else {
+            this.msg(`${ench.name} ${tierRoman[tier - 1]} наложено! +${xpGain} XP Зачарования`);
+        }
         this.enchantSelectedItem = item;
         this.renderEnchanting();
         this.updateUI();

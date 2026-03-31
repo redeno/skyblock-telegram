@@ -47,6 +47,7 @@ const defaultState = {
         fishing_fortune:0,
         fishing_exp_bonus:0,
         vitality:0,
+        vampirism:0,
         arrow_priority: ['Стрела', 'Ядовитая стрела', 'Пробивающая стрела', 'Тяжёлая пробивающая стрела'],
         selected_arrow_type: null,
         duel_opt_in: false,
@@ -153,7 +154,8 @@ const rarityColors = {
     legendary: '#ffaa00',
     mythic: '#ff55ff',
     divine: '#55ffff',
-    special: '#ff5555'
+    special: '#ff5555',
+    ultimate: '#ff66cc'
 };
 const rarityLabels = {
     common: 'ОБЫЧНЫЙ',
@@ -163,7 +165,8 @@ const rarityLabels = {
     legendary: 'ЛЕГЕНДАРНЫЙ',
     mythic: 'МИФИЧЕСКИЙ',
     divine: 'БОЖЕСТВЕННЫЙ',
-    special: 'ОСОБЫЙ'
+    special: 'ОСОБЫЙ',
+    ultimate: 'УЛЬТИМАТИВНЫЙ'
 };
 function getRarityTag(rarity) {
     if (!rarity) return '';
@@ -212,10 +215,25 @@ const shopItems = {
         {name:'Reaper Falchion',type:'weapon',str:30,zombie_bonus:50,cost:0,flesh_cost:512,rarity:'epic',slayer_req:5},
         {name:'Shredder Sword',type:'weapon',str:50,zombie_bonus:100,cost:0,living_flesh_cost:8,rarity:'legendary',slayer_req:7}
     ],
+    spider_weapon: [
+        {name:'Spider Sword',type:'weapon',str:10,spider_bonus:10,cost:10000,rarity:'common',slayer_req:0},
+        {name:'Recluse Fang',type:'weapon',str:30,cd:10,spider_bonus:25,spider_spawn_xp_bonus:10,spider_catalyst_cost:1,thread_cost:16,rarity:'uncommon',slayer_req:2},
+        {name:'Tarantula Fang',type:'weapon',str:45,cd:20,spider_bonus:50,spider_spawn_xp_bonus:25,tarantula_catalyst_cost:1,thread_cost:256,rarity:'rare',slayer_req:4},
+        {name:'Scorpion Foil',type:'weapon',str:60,cd:30,spider_bonus:75,spider_spawn_xp_bonus:50,tarantula_catalyst_cost:8,thread_cost:512,rarity:'epic',slayer_req:6},
+        {name:'Sting',type:'weapon',str:75,cd:40,spider_bonus:100,spider_spawn_xp_bonus:100,thread_cost:2048,iron_cost:2048,gold_cost:2048,emerald_cost:2048,shriveled_wasp_cost:4,rarity:'legendary',slayer_req:8}
+    ],
+    spider_bow: [
+        {name:'Spider Shortbow',type:'weapon',ranged:true,bow_base_str:25,bow_base_cc:10,shot_speed:0.5,cost:5000000,rarity:'epic',slayer_req:5,desc:'0.5 скорости: 2 выстрела за 1 удар.'},
+        {name:'Mosquito Shortbow',type:'weapon',ranged:true,bow_base_str:150,bow_base_cd:40,vitality:20,shot_speed:0.5,bow_hp_cost_pct:4,bow_final_damage_bonus:15,tarantula_catalyst_cost:2,digested_mosquito_cost:1,thread_cost:2048,iron_cost:2048,gold_cost:2048,emerald_cost:2048,rarity:'legendary',slayer_req:7,desc:'Тратит 4% HP за выстрел, +15% итогового урона.'}
+    ],
     zombie_armor: [
         {name:'🧟 Зомби броня',type:'armor',def:10,vitality:5,cost:0,flesh_cost:64,rarity:'uncommon',slayer_req:0},
         {name:'🧟 Ревенант броня',type:'armor',def:20,vitality:7.5,cost:0,flesh_cost:256,rarity:'epic',slayer_req:5},
         {name:'🧟 Рипер броня',type:'armor',def:30,vitality:10,zombie_bonus:10,cost:0,flesh_cost:512,living_flesh_cost:4,rarity:'legendary',slayer_req:7}
+    ],
+    spider_armor: [
+        {name:'Tarantula Armor',type:'armor',int:45,hp:90,def:75,spider_armor_scaling:1,cost:5000000,thread_cost:160,iron_cost:832,spider_catalyst_cost:1,rarity:'epic',slayer_req:4},
+        {name:'Primordial Armor',type:'armor',int:100,hp:110,def:110,cd:10,spider_armor_scaling:1.5,primordial_vitality_boost:50,tarantula_pet_amp:2,cost:30000000,thread_cost:4096,iron_cost:4096,tarantula_catalyst_cost:4,rarity:'legendary',slayer_req:7}
     ],
     armor: [
         {name:'🛡️ Железная Броня',type:'armor',def:10,cost:10000,rarity:'common'},
@@ -304,6 +322,11 @@ const shopItems = {
                 {name:'⚔️ Tiger Talisman',type:'accessory',cc:7,cost:50000000},
                 {name:'🍀 Treasure Artifact',type:'accessory',gold_bonus:5,str:10,cost:300000000}                
     ],
+    spider_accessory: [
+        {name:'Spider Talisman',type:'accessory',spider_damage_reduction:5,cost:50000,rarity:'uncommon',slayer_req:0},
+        {name:'Spider Ring',type:'accessory',spider_damage_reduction:10,thread_cost:64,slayer_req:2,rarity:'rare'},
+        {name:'Spider Artefact',type:'accessory',spider_damage_reduction:15,thread_cost:512,emerald_cost:512,slayer_req:6,rarity:'epic'}
+    ],
     buff: [
         {name:'GodPotion',type:'potion',cost:1500000},
         {name:'Печенька',type:'potion',cost:15000000}
@@ -316,8 +339,16 @@ const shopItems = {
         {name:'Griffin Feather',type:'material',cost:0,rarity:'uncommon',desc:'Материал ритуала Дианы.'},
         {name:'Ancient Claw',type:'material',cost:0,rarity:'rare',desc:'Дроп с мобов ритуала.'},
         {name:'Daedalus Stick',type:'material',cost:0,rarity:'epic',desc:'Редкий дроп ритуала.'},
-        {name:'Chimera Enchantment',type:'material',cost:0,rarity:'legendary',desc:'Очень редкий дроп Minos Inquisitor.'},
-        {name:'Mythos Fragment',type:'material',cost:0,rarity:'rare',desc:'Ресурс ритуала Дианы.'}
+        {name:'Chimera Enchantment',type:'material',cost:0,rarity:'ultimate',desc:'Ультимативная книга зачарования. Накладывается в зачаровании.'},
+        {name:'Bank Enchantment',type:'material',cost:0,rarity:'ultimate',desc:'Ультимативная книга для брони. +5% добычи золота за уровень.'},
+        {name:'Mythos Fragment',type:'material',cost:0,rarity:'rare',desc:'Ресурс ритуала Дианы.'},
+        {name:'Spider Catalyst',type:'material',cost:0,rarity:'rare',desc:'Редкий материал Spider Slayer.'},
+        {name:'Tarantula Catalyst',type:'material',cost:0,rarity:'epic',desc:'Эпический материал Spider Slayer.'},
+        {name:'Digested Mosquito',type:'material',cost:0,rarity:'legendary',desc:'Легендарный материал Spider Slayer.'},
+        {name:'Shriveled Wasp',type:'material',cost:0,rarity:'legendary',desc:'Легендарный материал Spider Slayer.'},
+        {name:'Bane Of Arthropods VI',type:'material',cost:0,rarity:'epic',desc:'Книга для зачарования: Бич членистоногих VI.'},
+        {name:'Bane Of Arthropods VII',type:'material',cost:0,rarity:'legendary',desc:'Книга для зачарования: Бич членистоногих VII.'},
+        {name:'Toxic Enchantment',type:'material',cost:0,rarity:'ultimate',desc:'Ультимативная книга Toxic I (только для луков).'}
     ],
     potion: [
         {name:'Зелье Силы',type:'potion',cost:500000,desc:'+30 силы на 5 минут'},
@@ -751,11 +782,15 @@ const game = {
         this.state.farmingQuests = data.farmingQuests || { lastReset: 0, active: [] };
         this.state.mayor = data.mayor || defaultState.mayor;
         this.state.slayer = {
-    zombie: {
-        lvl: data.slayer?.zombie?.lvl ?? 1,
-        xp: data.slayer?.zombie?.xp ?? 0
-    }
-};
+            zombie: {
+                lvl: data.slayer?.zombie?.lvl ?? 1,
+                xp: data.slayer?.zombie?.xp ?? 0
+            },
+            spider: {
+                lvl: data.slayer?.spider?.lvl ?? 1,
+                xp: data.slayer?.spider?.xp ?? 0
+            }
+        };
         this.checkDailyQuests();
 
         this.msg('Сохранение успешно загружено!');
@@ -816,7 +851,8 @@ const game = {
         farming_exp_bonus: this.state.stats.farming_exp_bonus ?? 0,
         fishing_fortune: this.state.stats.fishing_fortune ?? 0,
         fishing_exp_bonus: this.state.stats.fishing_exp_bonus ?? 0,
-        magic_res: this.state.stats.magic_res ?? 0
+        magic_res: this.state.stats.magic_res ?? 0,
+        vampirism: this.state.stats.vampirism ?? 0
     });
 
     this.updateUI();
@@ -997,7 +1033,7 @@ const game = {
     },
 
     calcStats(inDungeon = false) {
-        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0, vitality: this.state.stats.vitality || 0, boss_damage: 0, bow_str: 0, bow_fire: 0, arrow_save: 0, bow_cc: 0, bow_weapon_base: 0, bow_weapon_cc: 0, bow_weapon_cd: 0, ritual_mob_damage: 0, ritual_mob_def_bonus: 0};
+        let s = {...this.state.stats, xp_bonus: 0, gold_bonus: 0, dungeon_exp_bonus: 0, dungeon_damage: 0, vitality: this.state.stats.vitality || 0, vampirism: this.state.stats.vampirism || 0, boss_damage: 0, bow_str: 0, bow_fire: 0, arrow_save: 0, bow_cc: 0, bow_weapon_base: 0, bow_weapon_cc: 0, bow_weapon_cd: 0, ritual_mob_damage: 0, ritual_mob_def_bonus: 0};
         const mayorBonuses = typeof this.getMayorBonuses === 'function' ? this.getMayorBonuses() : {};
         const isDianaEvent = !!mayorBonuses.diana_event;
         this.state.inventory.forEach(i => {
@@ -1005,7 +1041,7 @@ const game = {
                 const isBow = i.type === 'weapon' && i.ranged;
                 ['str','def','cc','cd','mf','int','mag_amp','xp_bonus','gold_bonus','magic_res',
                  'mining_fortune','mining_exp_bonus','foraging_fortune','foraging_exp_bonus',
-                 'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus', 'hp', 'dungeon_exp_bonus', 'vitality'].forEach(st => {
+                 'farming_fortune','farming_exp_bonus','fishing_fortune','fishing_exp_bonus', 'hp', 'dungeon_exp_bonus', 'vitality', 'vampirism'].forEach(st => {
                     if (isBow && st === 'str') return;
                     let addVal = i[st] || 0;
                     if (addVal && isDianaEvent && i.diana_scaled) addVal *= 2;
@@ -1194,6 +1230,26 @@ const game = {
             s.str += Math.floor(strB);
             s.def += Math.floor(defB);
         }
+        const tarantulaPet = this.state.pets.find(p => p.equipped && p.name === 'Tarantula Pet');
+        if (tarantulaPet) {
+            const lvl = tarantulaPet.lvl || 1;
+            const byR = {
+                common: { str: [0.1, 10], cd: [0.1, 10], cc: [0, 0], vamp: [0, 0], spider: [0, 0] },
+                uncommon: { str: [0.2, 20], cd: [0.2, 20], cc: [0, 0], vamp: [0, 0], spider: [0, 0] },
+                rare: { str: [0.3, 30], cd: [0.3, 30], cc: [0.1, 10], vamp: [0, 0], spider: [0, 0] },
+                epic: { str: [0.4, 40], cd: [0.4, 40], cc: [0.15, 15], vamp: [0, 0], spider: [0.1, 10] },
+                legendary: { str: [0.5, 50], cd: [0.5, 50], cc: [0.2, 20], vamp: [0.1, 10], spider: [0.2, 20] }
+            };
+            const conf = byR[tarantulaPet.rarity] || byR.common;
+            const lerp = (a, b) => a + (b - a) * ((lvl - 1) / 99);
+            let amp = 1;
+            const armorAmp = this.state.inventory.find(i => i.equipped && i.tarantula_pet_amp);
+            if (armorAmp?.tarantula_pet_amp) amp = armorAmp.tarantula_pet_amp;
+            s.str += lerp(conf.str[0], conf.str[1]) * amp;
+            s.cd += lerp(conf.cd[0], conf.cd[1]) * amp;
+            if (conf.cc[1] > 0) s.cc += lerp(conf.cc[0], conf.cc[1]) * amp;
+            if (conf.vamp[1] > 0) s.vampirism += lerp(conf.vamp[0], conf.vamp[1]) * amp;
+        }
         const griffon = this.state.pets.find(p => p.equipped && p.name === 'Гриффон');
         if (griffon) {
             const byR = {
@@ -1225,6 +1281,19 @@ const game = {
             s.mf += (slayerZomb.lvl - 1) * 1.5;
             s.vitality += (slayerZomb.lvl - 1) * 0.5;
         }
+        const slayerSpider = this.state.slayer?.spider;
+        if (slayerSpider && slayerSpider.lvl > 0) {
+            const lvl = slayerSpider.lvl;
+            if (lvl <= 4) s.cd += lvl;
+            else if (lvl <= 7) s.cd += 4 + (lvl - 4) * 2;
+            else s.cd += 10 + (lvl - 7) * 3;
+            s.vampirism += lvl * 0.5;
+        }
+        this.state.inventory.forEach(i => {
+            if (!i.equipped) return;
+            if (i.spider_armor_scaling) s.cd += ((s.def || 0) / 10) * i.spider_armor_scaling;
+            if (i.primordial_vitality_boost) s.vitality *= (1 + i.primordial_vitality_boost / 100);
+        });
 
         // ПРОФЕССИОНАЛЬНЫЕ БОНУСЫ ОТ УРОВНЯ (возвращаем как было)
         s.mining_fortune += 3 * (this.state.skills.mining.lvl - 1);
@@ -1254,6 +1323,112 @@ const game = {
         if (mayorPet) {
             const rarityBonus = window.petRarityBonuses?.[mayorPet.rarity] || 0.1;
             s.xp_bonus += 5 * rarityBonus * (mayorPet.lvl || 1) / 10;
+        }
+
+        const chimeraItem = this.state.inventory.find(i => i.equipped && i.enchantments?.chimera);
+        if (chimeraItem) {
+            const chimeraTier = Math.max(1, Math.min(5, chimeraItem.enchantments.chimera || 1));
+            const petCopyPct = [20, 40, 60, 80, 100][chimeraTier - 1];
+            const weaponCopyPct = [10, 20, 30, 40, 50][chimeraTier - 1];
+            const copyStats = ['str','def','cc','cd','mf','int','hp','vitality','vampirism','gold_bonus','boss_damage'];
+            const addScaledStats = (src, pct) => {
+                if (!src || !pct) return;
+                copyStats.forEach(st => {
+                    const val = src[st] || 0;
+                    if (val) s[st] = (s[st] || 0) + (val * pct / 100);
+                });
+            };
+
+            const equippedPet = this.state.pets.find(p => p.equipped);
+            const petStats = {};
+            if (equippedPet) {
+                const lvl = equippedPet.lvl || 1;
+                if (equippedPet.name === 'Тигр') {
+                    let strMax = 20, cdBase = 0, cdMax = 0;
+                    if (equippedPet.rarity === 'rare') strMax = 25;
+                    else if (equippedPet.rarity === 'epic') { strMax = 30; cdBase = 1; cdMax = 20; }
+                    else if (equippedPet.rarity === 'legendary') { strMax = 40; cdBase = 2; cdMax = 75; }
+                    petStats.str = Math.floor(1 + (strMax - 1) * ((lvl - 1) / 99));
+                    if (cdMax > 0) petStats.cd = Math.floor(cdBase + (cdMax - cdBase) * ((lvl - 1) / 99));
+                } else if (equippedPet.name === 'Pig') {
+                    let max = 20;
+                    if (equippedPet.rarity === 'rare') max = 40;
+                    if (equippedPet.rarity === 'epic') max = 60;
+                    if (equippedPet.rarity === 'legendary') max = 100;
+                    petStats.farming_fortune = Math.floor(1 + (max - 1) * ((lvl - 1) / 99));
+                } else if (equippedPet.name === 'Бобёр') {
+                    let max = 20;
+                    if (equippedPet.rarity === 'rare') max = 40;
+                    if (equippedPet.rarity === 'epic') max = 60;
+                    if (equippedPet.rarity === 'legendary') max = 100;
+                    petStats.foraging_fortune = Math.floor(1 + (max - 1) * ((lvl - 1) / 99));
+                } else if (equippedPet.name === 'Дельфин') {
+                    let max = 20;
+                    if (equippedPet.rarity === 'rare') max = 40;
+                    if (equippedPet.rarity === 'epic') max = 60;
+                    if (equippedPet.rarity === 'legendary') max = 100;
+                    petStats.fishing_fortune = Math.floor(1 + (max - 1) * ((lvl - 1) / 99));
+                } else if (equippedPet.name === 'Черепаха') {
+                    let defMax = 15;
+                    if (equippedPet.rarity === 'rare') defMax = 30;
+                    if (equippedPet.rarity === 'epic') defMax = 50;
+                    if (equippedPet.rarity === 'legendary') defMax = 80;
+                    const def = Math.floor(1 + (defMax - 1) * ((lvl - 1) / 99));
+                    petStats.def = def;
+                    petStats.fishing_fortune = Math.floor(def * 0.5);
+                } else if (equippedPet.name === 'Гуль') {
+                    let vitMin = 0.01, vitMax = 2;
+                    if (equippedPet.rarity === 'rare') { vitMin = 0.02; vitMax = 4; }
+                    if (equippedPet.rarity === 'epic') { vitMin = 0.03; vitMax = 6; }
+                    if (equippedPet.rarity === 'legendary') { vitMin = 0.04; vitMax = 8; }
+                    petStats.vitality = parseFloat((vitMin + (vitMax - vitMin) * ((lvl - 1) / 99)).toFixed(2));
+                    if (equippedPet.rarity === 'legendary') {
+                        petStats.str = Math.floor(1 + (40 - 1) * ((lvl - 1) / 99));
+                    }
+                } else if (equippedPet.name === 'Зомби') {
+                    let strMax = 5, defMax = 5;
+                    if (equippedPet.rarity === 'rare') { strMax = 10; defMax = 10; }
+                    if (equippedPet.rarity === 'epic') { strMax = 20; defMax = 20; }
+                    if (equippedPet.rarity === 'legendary') { strMax = 35; defMax = 30; }
+                    petStats.str = Math.floor(1 + (strMax - 1) * ((lvl - 1) / 99));
+                    petStats.def = Math.floor(1 + (defMax - 1) * ((lvl - 1) / 99));
+                } else if (equippedPet.name === 'Гриффон') {
+                    const byR = {
+                        common: { str: 10, mf: 5, cd: 5 },
+                        uncommon: { str: 20, mf: 10, cd: 7.5 },
+                        rare: { str: 30, mf: 15, cd: 10 },
+                        epic: { str: 40, mf: 20, cd: 12.5 },
+                        legendary: { str: 50, mf: 25, cd: 15 }
+                    };
+                    Object.assign(petStats, byR[equippedPet.rarity] || byR.common);
+                }
+            }
+            addScaledStats(petStats, petCopyPct);
+
+            const equippedWeapon = this.state.inventory.find(i => i.equipped && i.type === 'weapon' && !i.ranged) || chimeraItem;
+            const weaponStats = {};
+            if (equippedWeapon) {
+                ['str','def','cc','cd','mf','int','hp','vitality','vampirism','gold_bonus','boss_damage'].forEach(st => {
+                    if (equippedWeapon[st]) weaponStats[st] = (weaponStats[st] || 0) + equippedWeapon[st];
+                });
+                if (equippedWeapon.enchantments) {
+                    Object.entries(equippedWeapon.enchantments).forEach(([ench, tier]) => {
+                        if (ench === 'chimera' || ench === 'bank') return;
+                        const enchData = window.enchantmentConfig?.[ench];
+                        if (enchData && enchData.stats[tier - 1]) {
+                            Object.entries(enchData.stats[tier - 1]).forEach(([stat, val]) => {
+                                if (copyStats.includes(stat)) weaponStats[stat] = (weaponStats[stat] || 0) + val;
+                            });
+                        }
+                    });
+                }
+                if (equippedWeapon.reforge?.bonuses) {
+                    Object.entries(equippedWeapon.reforge.bonuses).forEach(([stat, val]) => {
+                        if (copyStats.includes(stat)) weaponStats[stat] = (weaponStats[stat] || 0) + val;
+                    });
+                }
+            }
+            addScaledStats(weaponStats, weaponCopyPct);
         }
 
         return s;
@@ -1313,6 +1488,9 @@ const game = {
             </div>
             <div class="stat-row">
                 <span class="stat-label">💚 ВОССТАНОВЛЕНИЕ</span> <span class="stat-val">${(s.vitality || 0).toFixed(1)}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🩸 ВАМПИРИЗМ</span> <span class="stat-val">${Math.min(100, (s.vampirism || 0)).toFixed(1)}%</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">⛏️ МАЙНИНГ ФОРТУНА</span> <span class="stat-val">${Math.floor(s.mining_fortune || 0)}</span>
@@ -2029,17 +2207,21 @@ addPetXp(pet, amount) {
         this.renderShopList(t);
     },
 
-    _renderZombieItems(zombieType, l) {
-        const zItems = shopItems[zombieType] || [];
-        if (!zItems.length) return;
+    _renderSlayerItems(listType, l, opts = {}) {
+        const zItems = shopItems[listType] || [];
+        if (!zItems.length || !this.state.slayer) return;
         const rarityColors = { uncommon: '#55ff55', rare: '#5555ff', epic: '#aa00aa', legendary: '#ffaa00' };
         const rarityNames = { uncommon: 'Необычное', rare: 'Редкое', epic: 'Эпик', legendary: 'Легендарное' };
-        const slayerLvl = this.state.slayer?.zombie?.lvl || 1;
+        const slayerType = opts.slayerType || 'zombie';
+        const slayerName = opts.slayerName || (slayerType === 'spider' ? 'ПАУК СЛЕЙЕР' : 'ЗОМБИ СЛЕЙЕР');
+        const accent = opts.accent || (slayerType === 'spider' ? '#8a2be2' : 'var(--red)');
+        const icon = opts.icon || (slayerType === 'spider' ? '🕷️' : '🧟');
+        const slayerLvl = this.state.slayer?.[slayerType]?.lvl || 1;
         const progression = zItems.map(z => z.name);
         const currentItem = this.state.inventory.find(inv => progression.includes(inv.name));
         let currentIdx = currentItem ? progression.indexOf(currentItem.name) : -1;
         let nextIdx = currentIdx + 1;
-        l.innerHTML += `<div style="margin:12px 0 6px;padding:6px 10px;background:rgba(255,50,50,0.1);border-radius:6px;border-left:3px solid var(--red);"><b style="color:var(--red);">🧟 ЗОМБИ СЛЕЙЕР</b></div>`;
+        l.innerHTML += `<div style="margin:12px 0 6px;padding:6px 10px;background:${accent}22;border-radius:6px;border-left:3px solid ${accent};"><b style="color:${accent};">${icon} ${slayerName}</b></div>`;
         if (nextIdx >= zItems.length) {
             const maxItem = zItems[zItems.length - 1];
             const color = rarityColors[maxItem.rarity] || '#fff';
@@ -2052,6 +2234,14 @@ addPetXp(pet, amount) {
         let costParts = [];
         if (i.flesh_cost) costParts.push(`${i.flesh_cost} Плоти зомби`);
         if (i.living_flesh_cost) costParts.push(`${i.living_flesh_cost} Живой плоти`);
+        if (i.thread_cost) costParts.push(`${i.thread_cost} Нить`);
+        if (i.spider_catalyst_cost) costParts.push(`${i.spider_catalyst_cost} Spider Catalyst`);
+        if (i.tarantula_catalyst_cost) costParts.push(`${i.tarantula_catalyst_cost} Tarantula Catalyst`);
+        if (i.digested_mosquito_cost) costParts.push(`${i.digested_mosquito_cost} Digested Mosquito`);
+        if (i.shriveled_wasp_cost) costParts.push(`${i.shriveled_wasp_cost} Shriveled Wasp`);
+        if (i.iron_cost) costParts.push(`${i.iron_cost} Железа`);
+        if (i.gold_cost) costParts.push(`${i.gold_cost} Золота`);
+        if (i.emerald_cost) costParts.push(`${i.emerald_cost} Изумрудов`);
         if (i.cost > 0) costParts.push(`${i.cost.toLocaleString()}💰`);
         const costText = costParts.join(' + ') || 'Бесплатно';
         const action = currentIdx >= 0 ? 'УЛУЧШИТЬ' : 'КУПИТЬ';
@@ -2062,9 +2252,9 @@ addPetXp(pet, amount) {
         html += `</div>`;
         html += `<small style="color:#0f0; font-weight:bold">${this.getItemDesc(i)}</small>`;
         if (locked) {
-            html += `<div style="text-align:center;color:var(--red);margin-top:6px;font-weight:bold;">🔒 Требуется Zombie Slayer ${i.slayer_req} LVL</div>`;
+            html += `<div style="text-align:center;color:var(--red);margin-top:6px;font-weight:bold;">🔒 Требуется ${slayerType === 'spider' ? 'Spider' : 'Zombie'} Slayer ${i.slayer_req} LVL</div>`;
         } else {
-            html += `<div class="item-actions"><button class="act-btn" onclick="game.buyZombieItem('${zombieType}',${nextIdx})">${action} (${costText})</button></div>`;
+            html += `<div class="item-actions"><button class="act-btn" onclick="game.buySlayerItem('${listType}',${nextIdx},'${slayerType}')">${action} (${costText})</button></div>`;
         }
         html += `</div>`;
         l.innerHTML += html;
@@ -2129,7 +2319,9 @@ addPetXp(pet, amount) {
             const hasDaedalusSword = this.state.inventory.some(i => i.name === 'Daedalus Sword' && i.type === 'weapon');
             l.innerHTML += `<div class="card" style="border-left:3px solid #ffaa00;${hasDaedalusSword ? 'opacity:0.6;' : ''}"><b>Daedalus Sword</b> ${getRarityTag('legendary')}<br><small>+75 STR +30 MF +25 CC +50 CD. В Diana ивенте x2 статы и x2 рефорж.</small>${hasDaedalusSword ? `<div style="margin-top:6px;color:var(--green);font-weight:bold;">УЖЕ КУПЛЕНО</div>` : `<div class="item-actions"><button class="act-btn" onclick="game.buyDaedalusSword()">КУПИТЬ (50M + 1 Daedalus Stick + 16 Mythos Fragment)</button></div>`}</div>`;
 
-            this._renderZombieItems('zombie_weapon', l);
+            this._renderSlayerItems('zombie_weapon', l, { slayerType: 'zombie', slayerName: 'ЗОМБИ СЛЕЙЕР', icon: '🧟', accent: 'var(--red)' });
+            this._renderSlayerItems('spider_weapon', l, { slayerType: 'spider', slayerName: 'ПАУК СЛЕЙЕР', icon: '🕷️', accent: '#8a2be2' });
+            this._renderSlayerItems('spider_bow', l, { slayerType: 'spider', slayerName: 'ПАУЧЬИ ЛУКИ', icon: '🏹', accent: '#8a2be2' });
             return;
         }
 
@@ -2153,7 +2345,8 @@ addPetXp(pet, amount) {
                 html += `</div>`;
                 l.innerHTML += html;
             });
-            if (t === 'armor') this._renderZombieItems('zombie_armor', l);
+            if (t === 'armor') this._renderSlayerItems('zombie_armor', l, { slayerType: 'zombie', slayerName: 'ЗОМБИ СЛЕЙЕР', icon: '🧟', accent: 'var(--red)' });
+            if (t === 'armor') this._renderSlayerItems('spider_armor', l, { slayerType: 'spider', slayerName: 'ПАУК СЛЕЙЕР', icon: '🕷️', accent: '#8a2be2' });
             if (t === 'armor') {
                 const hasChallenger = this.state.inventory.some(i => i.name === 'Challenger Armor' && i.type === 'armor');
                 const hasMythos = this.state.inventory.some(i => i.name === 'Mythos Armor' && i.type === 'armor');
@@ -2201,6 +2394,10 @@ addPetXp(pet, amount) {
             return;
         }
 
+        if (t === 'accessory') {
+            this._renderSlayerItems('spider_accessory', l, { slayerType: 'spider', slayerName: 'ПАУЧЬИ ТАЛИСМАНЫ', icon: '🕸️', accent: '#8a2be2' });
+        }
+
         items.forEach((i,x)=>{
             l.innerHTML+=`<div class="card" style="border-left:3px solid ${rarityColors[i.rarity]||'#aaa'}"><b>${i.name}</b> ${getRarityTag(i.rarity)}<br><small>${this.getItemDesc(i)}</small><div class="item-actions"><button class="act-btn" onclick="game.buyShopItem('${t}',${x})">КУПИТЬ (${i.cost.toLocaleString()}💰)</button></div></div>`;
         });
@@ -2232,6 +2429,7 @@ addPetXp(pet, amount) {
         const normalize = (v) => {
             const s = String(v || '').trim().toLowerCase().replace(/ё/g, 'е');
             if (s.startsWith('золот')) return 'gold';
+            if (s.startsWith('нит')) return 'thread';
             return s;
         };
         const target = normalize(name);
@@ -2243,6 +2441,7 @@ addPetXp(pet, amount) {
         const normalize = (v) => {
             const s = String(v || '').trim().toLowerCase().replace(/ё/g, 'е');
             if (s.startsWith('золот')) return 'gold';
+            if (s.startsWith('нит')) return 'thread';
             return s;
         };
         const target = normalize(name);
@@ -2415,13 +2614,13 @@ addPetXp(pet, amount) {
         this.updateUI();
     },
 
-    buyZombieItem(t, x) {
+    buySlayerItem(t, x, slayerType = 'zombie') {
         const i = shopItems[t][x];
         if (!i) return;
         
-        const slayerLvl = this.state.slayer?.zombie?.lvl || 1;
+        const slayerLvl = this.state.slayer?.[slayerType]?.lvl || 1;
         if (i.slayer_req > 0 && slayerLvl < i.slayer_req) {
-            this.msg(`Требуется Zombie Slayer ${i.slayer_req} уровня!`);
+            this.msg(`Требуется ${slayerType === 'spider' ? 'Spider' : 'Zombie'} Slayer ${i.slayer_req} уровня!`);
             return;
         }
         
@@ -2441,6 +2640,38 @@ addPetXp(pet, amount) {
                 return;
             }
         }
+        if (i.thread_cost && !this._hasMaterial('Нить', i.thread_cost)) {
+            this.msg(`Недостаточно Нити! Нужно ${i.thread_cost}`);
+            return;
+        }
+        if (i.spider_catalyst_cost && !this._hasMaterial('Spider Catalyst', i.spider_catalyst_cost)) {
+            this.msg(`Недостаточно Spider Catalyst! Нужно ${i.spider_catalyst_cost}`);
+            return;
+        }
+        if (i.tarantula_catalyst_cost && !this._hasMaterial('Tarantula Catalyst', i.tarantula_catalyst_cost)) {
+            this.msg(`Недостаточно Tarantula Catalyst! Нужно ${i.tarantula_catalyst_cost}`);
+            return;
+        }
+        if (i.digested_mosquito_cost && !this._hasMaterial('Digested Mosquito', i.digested_mosquito_cost)) {
+            this.msg(`Недостаточно Digested Mosquito! Нужно ${i.digested_mosquito_cost}`);
+            return;
+        }
+        if (i.shriveled_wasp_cost && !this._hasMaterial('Shriveled Wasp', i.shriveled_wasp_cost)) {
+            this.msg(`Недостаточно Shriveled Wasp! Нужно ${i.shriveled_wasp_cost}`);
+            return;
+        }
+        if (i.iron_cost && !this._hasMaterial('Железо', i.iron_cost)) {
+            this.msg(`Недостаточно Железа! Нужно ${i.iron_cost}`);
+            return;
+        }
+        if (i.gold_cost && !this._hasMaterial('Золото', i.gold_cost)) {
+            this.msg(`Недостаточно Золота! Нужно ${i.gold_cost}`);
+            return;
+        }
+        if (i.emerald_cost && !this._hasMaterial('Изумруд', i.emerald_cost)) {
+            this.msg(`Недостаточно Изумрудов! Нужно ${i.emerald_cost}`);
+            return;
+        }
         if (i.cost > 0 && this.state.coins < i.cost) {
             this.msg('Не хватает монет!');
             return;
@@ -2456,6 +2687,14 @@ addPetXp(pet, amount) {
             lf.count -= i.living_flesh_cost;
             if (lf.count <= 0) this.state.inventory = this.state.inventory.filter(inv => inv.id !== lf.id);
         }
+        if (i.thread_cost) this._consumeMaterial('Нить', i.thread_cost);
+        if (i.spider_catalyst_cost) this._consumeMaterial('Spider Catalyst', i.spider_catalyst_cost);
+        if (i.tarantula_catalyst_cost) this._consumeMaterial('Tarantula Catalyst', i.tarantula_catalyst_cost);
+        if (i.digested_mosquito_cost) this._consumeMaterial('Digested Mosquito', i.digested_mosquito_cost);
+        if (i.shriveled_wasp_cost) this._consumeMaterial('Shriveled Wasp', i.shriveled_wasp_cost);
+        if (i.iron_cost) this._consumeMaterial('Железо', i.iron_cost);
+        if (i.gold_cost) this._consumeMaterial('Золото', i.gold_cost);
+        if (i.emerald_cost) this._consumeMaterial('Изумруд', i.emerald_cost);
         if (i.cost > 0) this.state.coins -= i.cost;
         
         const progression = (shopItems[t] || []).map(z => z.name);
@@ -2467,7 +2706,14 @@ addPetXp(pet, amount) {
             prevItem.def = i.def || 0;
             prevItem.vitality = i.vitality || 0;
             prevItem.zombie_bonus = i.zombie_bonus || 0;
+            prevItem.spider_bonus = i.spider_bonus || 0;
+            prevItem.spider_spawn_xp_bonus = i.spider_spawn_xp_bonus || 0;
+            prevItem.spider_damage_reduction = i.spider_damage_reduction || 0;
+            prevItem.shot_speed = i.shot_speed || 0;
+            prevItem.bow_hp_cost_pct = i.bow_hp_cost_pct || 0;
+            prevItem.bow_final_damage_bonus = i.bow_final_damage_bonus || 0;
             prevItem.cost = i.flesh_cost ? i.flesh_cost * 100 : 10000;
+            prevItem.rarity = i.rarity || prevItem.rarity;
             prevItem.equipped = wasEquipped;
             this.msg(`Улучшено до: ${i.name}!`);
         } else {
@@ -2480,12 +2726,23 @@ addPetXp(pet, amount) {
                 def: i.def || 0,
                 vitality: i.vitality || 0,
                 zombie_bonus: i.zombie_bonus || 0,
+                spider_bonus: i.spider_bonus || 0,
+                spider_spawn_xp_bonus: i.spider_spawn_xp_bonus || 0,
+                spider_damage_reduction: i.spider_damage_reduction || 0,
+                shot_speed: i.shot_speed || 0,
+                bow_hp_cost_pct: i.bow_hp_cost_pct || 0,
+                bow_final_damage_bonus: i.bow_final_damage_bonus || 0,
+                rarity: i.rarity,
                 cost: i.flesh_cost ? i.flesh_cost * 100 : 10000
             };
             this.state.inventory.push(newItem);
             this.msg(`${i.name} куплен!`);
         }
         this.updateUI();
+    },
+
+    buyZombieItem(t, x) {
+        this.buySlayerItem(t, x, 'zombie');
     },
 
     switchTab(id, el) {
@@ -2520,16 +2777,28 @@ addPetXp(pet, amount) {
             if (this.state.slayer) {
                 html += '<h3 style="color:var(--red); text-align:center; margin-top:15px;">👹 СЛЕЙЕРЫ</h3>';
                 const zomb = this.state.slayer.zombie || { lvl: 1, xp: 0 };
+                const spider = this.state.slayer.spider || { lvl: 1, xp: 0 };
                 const zombCfg = typeof slayerConfig !== 'undefined' ? slayerConfig.zombie : null;
+                const spiderCfg = typeof slayerConfig !== 'undefined' ? slayerConfig.spider : null;
                 let nextReq = 0;
                 if (zombCfg && zomb.lvl < 10) {
                     nextReq = zombCfg.levels[zomb.lvl]?.req || 0;
                 }
+                let spiderReq = 0;
+                if (spiderCfg && spider.lvl < 10) {
+                    spiderReq = spiderCfg.levels[spider.lvl]?.req || 0;
+                }
                 const slayerProg = nextReq > 0 ? Math.min(100, (zomb.xp / nextReq * 100)).toFixed(1) : 100;
+                const spiderProg = spiderReq > 0 ? Math.min(100, (spider.xp / spiderReq * 100)).toFixed(1) : 100;
                 html += `<div class="card" style="border-left:4px solid var(--red);">
                     <b>🧟 Zombie Slayer LVL ${zomb.lvl}</b><br>
                     <small>${zomb.xp.toLocaleString()} / ${nextReq > 0 ? nextReq.toLocaleString() : 'MAX'} XP</small>
                     <div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${slayerProg}%;background:var(--red)"></div></div>
+                </div>`;
+                html += `<div class="card" style="border-left:4px solid #8a2be2;">
+                    <b>🕷️ Spider Slayer LVL ${spider.lvl}</b><br>
+                    <small>${spider.xp.toLocaleString()} / ${spiderReq > 0 ? spiderReq.toLocaleString() : 'MAX'} XP</small>
+                    <div class="hp-bar" style="margin-top:8px"><div class="hp-fill" style="width:${spiderProg}%;background:#8a2be2"></div></div>
                 </div>`;
             }
             document.getElementById('skills-content').innerHTML = html;
